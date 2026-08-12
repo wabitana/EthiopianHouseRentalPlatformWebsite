@@ -1,0 +1,48 @@
+{
+  "name": "platform",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "next start",
+    "lint": "eslint",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:setup": "prisma db push && tsx prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
+    "bcryptjs": "^3.0.3",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.40.0",
+    "gsap": "^3.15.0",
+    "jose": "^6.2.3",
+    "lucide-react": "^1.18.0",
+    "next": "16.2.9",
+    "prisma": "^5.22.0",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-icons": "^5.6.0",
+    "tailwind-merge": "^3.6.0",
+    "three": "^0.184.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.9",
+    "tailwindcss": "^4",
+    "tsx": "^4.22.4",
+    "typescript": "^5"
+  }
+}
