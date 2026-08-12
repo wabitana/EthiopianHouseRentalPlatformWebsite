@@ -1,4 +1,5 @@
 import '../datasources/auth_remote_datasource.dart';
+import '../datasources/auth_remote_datasource_impl.dart';
 import '../../shared/models/user_model.dart';
 
 abstract class AuthRepository {
@@ -20,7 +21,7 @@ class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource _remoteDataSource;
 
   AuthRepositoryImpl({AuthRemoteDataSource? remoteDataSource})
-      : _remoteDataSource = remoteDataSource ?? MockAuthRemoteDataSource();
+      : _remoteDataSource = remoteDataSource ?? ApiAuthRemoteDataSource();
 
   @override
   Future<UserModel?> getCurrentUser() => _remoteDataSource.fetchCurrentUser();

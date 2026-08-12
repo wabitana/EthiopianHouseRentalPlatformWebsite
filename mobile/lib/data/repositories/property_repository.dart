@@ -1,4 +1,5 @@
 import '../datasources/property_remote_datasource.dart';
+import '../datasources/property_remote_datasource_impl.dart';
 import '../../shared/models/property_model.dart';
 
 abstract class PropertyRepository {
@@ -28,7 +29,7 @@ class PropertyRepositoryImpl implements PropertyRepository {
   final PropertyRemoteDataSource _remoteDataSource;
 
   PropertyRepositoryImpl({PropertyRemoteDataSource? remoteDataSource})
-      : _remoteDataSource = remoteDataSource ?? MockPropertyRemoteDataSource();
+      : _remoteDataSource = remoteDataSource ?? ApiPropertyRemoteDataSource();
 
   @override
   Future<List<PropertyModel>> getProperties({
@@ -43,33 +44,62 @@ class PropertyRepositoryImpl implements PropertyRepository {
     String? searchQuery,
     String? sortBy,
   }) async {
-    final list = await _remoteDataSource.fetchProperties(
-      city: city,
-      area: area,
-      propertyType: propertyType,
-      minPrice: minPrice,
-      maxPrice: maxPrice,
-      minRooms: minRooms,
-      minBathrooms: minBathrooms,
-      requiredAmenities: requiredAmenities,
-      searchQuery: searchQuery,
-      sortBy: sortBy,
-    );
+    try {
+      final list = await _remoteDataSource.fetchProperties(
+        city: city,
+        area: area,
+        propertyType: propertyType,
+        minPrice: minPrice,
+        maxPrice: maxPrice,
+        minRooms: minRooms,
+        minBathrooms: minBathrooms,
+        requiredAmenities: requiredAmenities,
+        searchQuery: searchQuery,
+        sortBy: sortBy,
+      );
 
-    return list..sort((a, b) {
-      if (sortBy == 'Lowest price') return a.price.compareTo(b.price);
-      if (sortBy == 'Highest price') return b.price.compareTo(a.price);
-      if (sortBy == 'Newest') return b.createdAt.compareTo(a.createdAt);
-      return b.viewsCount.compareTo(a.viewsCount);
-    });
+      list.sort((a, b) {
+        if (sortBy == 'Lowest price') return a.price.compareTo(b.price);
+        if (sortBy == 'Highest price') return b.price.compareTo(a.price);
+        if (sortBy == 'Newest') return b.createdAt.compareTo(a.createdAt);
+        return b.viewsCount.compareTo(a.viewsCount);
+      });
+
+      return list;
+    } catch (_) {
+      // Fallback to mock data source if offline
+      return MockPropertyRemoteDataSource().fetchProperties(
+        city: city,
+        area: area,
+        propertyType: propertyType,
+        minPrice: minPrice,
+        maxPrice: maxPrice,
+        minRooms: minRooms,
+        minBathrooms: minBathrooms,
+        requiredAmenities: requiredAmenities,
+        searchQuery: searchQuery,
+        sortBy: sortBy,
+      );
+    }
   }
 
   @override
-  Future<PropertyModel?> getPropertyById(String id) => _remoteDataSource.fetchPropertyById(id);
+  Future<PropertyModel?> getPropertyById(String id) async {
+    try {
+      final property = await _remoteDataSource.fetchPropertyById(id);
+      if (property != null) return property;
+    } catch (_) {}
+    return MockPropertyRemoteDataSource().fetchPropertyById(id);
+  }
 
   @override
-  Future<List<PropertyModel>> getProviderProperties(String providerId) =>
-      _remoteDataSource.fetchProviderProperties(providerId);
+  Future<List<PropertyModel>> getProviderProperties(String providerId) async {
+    try {
+      return await _remoteDataSource.fetchProviderProperties(providerId);
+    } catch (_) {
+      return MockPropertyRemoteDataSource().fetchProviderProperties(providerId);
+    }
+  }
 
   @override
   Future<PropertyModel> createProperty(PropertyModel property) =>

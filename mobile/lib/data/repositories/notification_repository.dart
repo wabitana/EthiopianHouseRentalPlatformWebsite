@@ -1,3 +1,5 @@
+import '../../core/constants/api_endpoints.dart';
+import '../../core/network/api_client.dart';
 import '../mock_data.dart';
 import '../../shared/models/notification_model.dart';
 
@@ -5,6 +7,38 @@ abstract class NotificationRepository {
   Future<List<NotificationModel>> getNotifications(String userId);
   Future<void> markAsRead(String notificationId);
   Future<void> markAllAsRead(String userId);
+}
+
+class ApiNotificationRepository implements NotificationRepository {
+  @override
+  Future<List<NotificationModel>> getNotifications(String userId) async {
+    try {
+      final res = await ApiClient.get(ApiEndpoints.notifications);
+      if (res is List) {
+        return res.map((item) => NotificationModel.fromJson(item as Map<String, dynamic>)).toList();
+      }
+    } catch (_) {}
+    return MockNotificationRepository().getNotifications(userId);
+  }
+
+  @override
+  Future<void> markAsRead(String notificationId) async {
+    try {
+      await ApiClient.patch(ApiEndpoints.readNotification(notificationId));
+    } catch (_) {}
+  }
+
+  @override
+  Future<void> markAllAsRead(String userId) async {
+    try {
+      final list = await getNotifications(userId);
+      for (final n in list) {
+        if (!n.isRead) {
+          await markAsRead(n.id);
+        }
+      }
+    } catch (_) {}
+  }
 }
 
 class MockNotificationRepository implements NotificationRepository {

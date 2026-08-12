@@ -13,7 +13,7 @@ class InquiryProvider extends ChangeNotifier {
   String? _errorMessage;
 
   InquiryProvider({InquiryRepository? inquiryRepository})
-      : _inquiryRepository = inquiryRepository ?? MockInquiryRepository();
+      : _inquiryRepository = inquiryRepository ?? ApiInquiryRepository();
 
   List<InquiryModel> get seekerInquiries => _seekerInquiries;
   List<InquiryModel> get providerInquiries => _providerInquiries;

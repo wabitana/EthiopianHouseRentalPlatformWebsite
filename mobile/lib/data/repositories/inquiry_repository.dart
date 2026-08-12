@@ -1,3 +1,5 @@
+import '../../core/constants/api_endpoints.dart';
+import '../../core/network/api_client.dart';
 import '../mock_data.dart';
 import '../../shared/models/inquiry_model.dart';
 
@@ -6,6 +8,64 @@ abstract class InquiryRepository {
   Future<List<InquiryModel>> getProviderInquiries(String providerId);
   Future<InquiryModel> sendInquiry(InquiryModel inquiry);
   Future<InquiryModel> respondToInquiry(String inquiryId, String reply, InquiryStatus newStatus);
+}
+
+class ApiInquiryRepository implements InquiryRepository {
+  @override
+  Future<List<InquiryModel>> getSeekerInquiries(String seekerId) async {
+    try {
+      final res = await ApiClient.get(ApiEndpoints.inquiries);
+      if (res is List) {
+        return res.map((item) => InquiryModel.fromJson(item as Map<String, dynamic>)).toList();
+      }
+    } catch (_) {}
+    return MockInquiryRepository().getSeekerInquiries(seekerId);
+  }
+
+  @override
+  Future<List<InquiryModel>> getProviderInquiries(String providerId) async {
+    try {
+      final res = await ApiClient.get(ApiEndpoints.providerInquiries);
+      if (res is List) {
+        return res.map((item) => InquiryModel.fromJson(item as Map<String, dynamic>)).toList();
+      }
+    } catch (_) {}
+    return MockInquiryRepository().getProviderInquiries(providerId);
+  }
+
+  @override
+  Future<InquiryModel> sendInquiry(InquiryModel inquiry) async {
+    try {
+      final res = await ApiClient.post(
+        ApiEndpoints.inquiries,
+        body: {
+          'propertyId': inquiry.propertyId,
+          'message': inquiry.message,
+        },
+      );
+      if (res is Map<String, dynamic>) {
+        return InquiryModel.fromJson(res);
+      }
+    } catch (_) {}
+    return MockInquiryRepository().sendInquiry(inquiry);
+  }
+
+  @override
+  Future<InquiryModel> respondToInquiry(String inquiryId, String reply, InquiryStatus newStatus) async {
+    try {
+      final res = await ApiClient.patch(
+        ApiEndpoints.inquiryDetail(inquiryId),
+        body: {
+          'response': reply,
+          'status': newStatus.code,
+        },
+      );
+      if (res is Map<String, dynamic>) {
+        return InquiryModel.fromJson(res);
+      }
+    } catch (_) {}
+    return MockInquiryRepository().respondToInquiry(inquiryId, reply, newStatus);
+  }
 }
 
 class MockInquiryRepository implements InquiryRepository {

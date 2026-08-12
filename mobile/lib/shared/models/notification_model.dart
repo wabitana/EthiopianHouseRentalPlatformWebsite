@@ -45,4 +45,34 @@ class NotificationModel {
       createdAt: createdAt,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'userId': userId,
+      'title': title,
+      'message': message,
+      'type': type.name,
+      'relatedPropertyId': relatedPropertyId,
+      'relatedInquiryId': relatedInquiryId,
+      'isRead': isRead,
+      'createdAt': createdAt.toIso8601String(),
+    };
+  }
+
+  factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    return NotificationModel(
+      id: json['id'] as String,
+      userId: json['userId'] as String? ?? '',
+      title: json['title'] as String? ?? 'Notification',
+      message: json['message'] as String? ?? '',
+      type: NotificationType.systemAlert,
+      relatedPropertyId: json['relatedPropertyId'] as String?,
+      relatedInquiryId: json['relatedInquiryId'] as String?,
+      isRead: json['isRead'] as bool? ?? json['read'] as bool? ?? false,
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
+    );
+  }
 }

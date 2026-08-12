@@ -9,7 +9,7 @@ class NotificationProvider extends ChangeNotifier {
   bool _isLoading = false;
 
   NotificationProvider({NotificationRepository? notificationRepository})
-      : _notificationRepository = notificationRepository ?? MockNotificationRepository();
+      : _notificationRepository = notificationRepository ?? ApiNotificationRepository();
 
   List<NotificationModel> get notifications => _notifications;
   int get unreadCount => _notifications.where((n) => !n.isRead).length;

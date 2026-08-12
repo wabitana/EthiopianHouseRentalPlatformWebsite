@@ -5,15 +5,29 @@ class FavoritesProvider extends ChangeNotifier {
   final FavoritesRepository _favoritesRepository;
 
   final Set<String> _favoritePropertyIds = {'prop_1', 'prop_3'};
-  final bool _isLoading = false;
+  bool _isLoading = false;
 
   FavoritesProvider({FavoritesRepository? favoritesRepository})
-      : _favoritesRepository = favoritesRepository ?? MockFavoritesRepository();
+      : _favoritesRepository = favoritesRepository ?? ApiFavoritesRepository();
 
   Set<String> get favoritePropertyIds => _favoritePropertyIds;
   bool get isLoading => _isLoading;
 
   bool isFavorite(String propertyId) => _favoritePropertyIds.contains(propertyId);
+
+  Future<void> loadFavorites(String userId) async {
+    _isLoading = true;
+    notifyListeners();
+    try {
+      final ids = await _favoritesRepository.getFavoriteIds(userId);
+      if (ids.isNotEmpty) {
+        _favoritePropertyIds.clear();
+        _favoritePropertyIds.addAll(ids);
+      }
+    } catch (_) {}
+    _isLoading = false;
+    notifyListeners();
+  }
 
   Future<void> toggleFavorite(String userId, String propertyId) async {
     if (_favoritePropertyIds.contains(propertyId)) {

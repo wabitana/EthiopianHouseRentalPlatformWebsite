@@ -1,13 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ethiopian_house_rental/data/datasources/property_remote_datasource.dart';
 import 'package:ethiopian_house_rental/data/repositories/property_repository.dart';
 import 'package:ethiopian_house_rental/shared/models/property_model.dart';
 
 void main() {
-  group('MockPropertyRepository Tests', () {
-    late MockPropertyRepository repository;
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  group('PropertyRepository Tests', () {
+    late PropertyRepositoryImpl repository;
 
     setUp(() {
-      repository = MockPropertyRepository();
+      repository = PropertyRepositoryImpl(remoteDataSource: MockPropertyRemoteDataSource());
     });
 
     test('getProperties returns all mock listings initially', () async {

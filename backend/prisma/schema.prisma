@@ -1,0 +1,119 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  phone         String
+  passwordHash  String
+  role          String   @default("seeker") // seeker, provider, admin
+  avatarUrl     String?
+  isVerified    Boolean  @default(false)
+  rating        Float    @default(4.8)
+  totalListings Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  properties    Property[]     @relation("ProviderProperties")
+  favorites     Favorite[]
+  inquiriesSent Inquiry[]      @relation("SeekerInquiries")
+  notifications Notification[]
+  reports       Report[]
+}
+
+model Property {
+  id                 String   @id @default(uuid())
+  providerId         String
+  provider           User     @relation("ProviderProperties", fields: [providerId], references: [id], onDelete: Cascade)
+  providerName       String
+  providerPhone      String
+  providerAvatar     String?
+  providerIsVerified Boolean  @default(true)
+
+  title              String
+  description        String
+  propertyType       String   // Apartment, Villa, Studio, Condominium, Townhouse
+  price              Float
+  rentalPeriod       String   @default("Monthly")
+  rooms              Int
+  bathrooms          Int
+
+  city               String
+  area               String
+  neighborhood       String
+  addressDetails     String?
+
+  images             String   @default("[]") // Stored as JSON string
+  amenities          String   @default("[]") // Stored as JSON string
+
+  availability       Boolean  @default(true)
+  isVerified         Boolean  @default(true)
+  listingStatus      String   @default("pending") // pending, active, rented, rejected
+
+  viewsCount         Int      @default(0)
+  inquiriesCount     Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  favorites          Favorite[]
+  inquiries          Inquiry[]
+  reports            Report[]
+}
+
+model Favorite {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, propertyId])
+}
+
+model Inquiry {
+  id            String   @id @default(uuid())
+  propertyId    String
+  property      Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  propertyTitle String
+  propertyImage String
+  seekerId      String
+  seeker        User     @relation("SeekerInquiries", fields: [seekerId], references: [id], onDelete: Cascade)
+  seekerName    String
+  seekerPhone   String
+  providerId    String
+  message       String
+  status        String   @default("new_inquiry") // new_inquiry, responded, viewing_arranged, closed
+  response      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("SYSTEM") // SYSTEM, INQUIRY, PROPERTY, RESPONSE
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Report {
+  id         String   @id @default(uuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  reporterId String
+  reporter   User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  reason     String
+  details    String?
+  createdAt  DateTime @default(now())
+}
