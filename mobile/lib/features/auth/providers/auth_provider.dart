@@ -41,12 +41,27 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _currentUser = await _authRepository.login(emailOrPhone, password, role);
+      final user = await _authRepository.login(emailOrPhone, password, role);
+
+      if (user.role != role) {
+        _currentUser = null;
+        final registeredLabel = user.role == UserRole.seeker ? 'House Seeker' : 'House Provider';
+        final selectedLabel = role == UserRole.seeker ? 'House Seeker' : 'House Provider';
+        _errorMessage = 'This account is registered as a $registeredLabel. You cannot log in as $selectedLabel.';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      _currentUser = user;
       _isLoading = false;
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = 'Invalid email/phone or password';
+      final msg = e.toString();
+      _errorMessage = msg.startsWith('Exception: ')
+          ? msg.replaceFirst('Exception: ', '')
+          : (msg.isEmpty ? 'Invalid email/phone or password' : msg);
       _isLoading = false;
       notifyListeners();
       return false;

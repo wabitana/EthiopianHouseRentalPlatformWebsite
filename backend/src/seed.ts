@@ -10,7 +10,7 @@ async function main() {
   // 1. Create Users
   const seekerUser = await prisma.user.upsert({
     where: { email: 'seeker@delala.com' },
-    update: {},
+    update: { role: 'seeker', passwordHash },
     create: {
       name: 'Abebe Bikila',
       email: 'seeker@delala.com',
@@ -24,7 +24,7 @@ async function main() {
 
   const providerUser = await prisma.user.upsert({
     where: { email: 'provider@delala.com' },
-    update: {},
+    update: { role: 'provider', passwordHash },
     create: {
       name: 'Tigist Alemu',
       email: 'provider@delala.com',
