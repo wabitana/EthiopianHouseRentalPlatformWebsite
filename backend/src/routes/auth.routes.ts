@@ -87,14 +87,18 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email/phone or password' });
     }
 
-    // Optional role override verification if provided
-    if (role && user.role !== role.toLowerCase()) {
-      // Update role if switching profile role
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { role: role.toLowerCase() },
-      });
-      user.role = role.toLowerCase();
+    // Strict role authorization verification:
+    // Ensure user cannot log in under a different role than their registered account role.
+    if (role) {
+      const requestedRole = role.toLowerCase();
+      const userRole = user.role.toLowerCase();
+      if (userRole !== requestedRole && userRole !== 'admin') {
+        const registeredLabel = userRole === 'seeker' ? 'House Seeker' : 'House Provider';
+        const selectedLabel = requestedRole === 'seeker' ? 'House Seeker' : 'House Provider';
+        return res.status(403).json({
+          error: `This account is registered as a ${registeredLabel}. You cannot log in as ${selectedLabel}. Please select '${registeredLabel}' to log in.`,
+        });
+      }
     }
 
     const token = jwt.sign(

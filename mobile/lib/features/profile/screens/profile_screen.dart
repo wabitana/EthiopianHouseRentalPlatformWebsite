@@ -9,8 +9,6 @@ import '../../../core/localization/language_provider.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/screens/welcome_screen.dart';
-import '../../house_seeker/screens/seeker_main_layout.dart';
-import '../../house_provider/screens/provider_main_layout.dart';
 import 'theme_settings_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -227,74 +225,7 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // Account Role Switcher Card (For easy testing during demo!)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppColors.secondaryLight,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppColors.secondary.withValues(alpha: 0.4)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.swap_horiz_rounded, color: AppColors.secondary),
-                            SizedBox(width: 8),
-                            Text(
-                              'Switch App Role Mode (Demo Test)',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppColors.textPrimary),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Seamlessly switch between Seeker and Provider views for quick testing.',
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  backgroundColor: user.role == UserRole.seeker ? AppColors.primary : Colors.white,
-                                  foregroundColor: user.role == UserRole.seeker ? Colors.white : AppColors.primary,
-                                ),
-                                onPressed: () {
-                                  authProvider.switchRole(UserRole.seeker);
-                                  Navigator.of(context).pushAndRemoveUntil(
-                                    MaterialPageRoute(builder: (_) => const SeekerMainLayout()),
-                                    (route) => false,
-                                  );
-                                },
-                                child: const Text('Seeker Mode'),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  backgroundColor: user.role == UserRole.provider ? AppColors.primary : Colors.white,
-                                  foregroundColor: user.role == UserRole.provider ? Colors.white : AppColors.primary,
-                                ),
-                                onPressed: () {
-                                  authProvider.switchRole(UserRole.provider);
-                                  Navigator.of(context).pushAndRemoveUntil(
-                                    MaterialPageRoute(builder: (_) => const ProviderMainLayout()),
-                                    (route) => false,
-                                  );
-                                },
-                                child: const Text('Provider Mode'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
+
 
                   // Menu Options
                   Material(
