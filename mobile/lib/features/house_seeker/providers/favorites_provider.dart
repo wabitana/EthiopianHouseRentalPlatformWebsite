@@ -4,7 +4,7 @@ import '../../../data/repositories/favorites_repository.dart';
 class FavoritesProvider extends ChangeNotifier {
   final FavoritesRepository _favoritesRepository;
 
-  final Set<String> _favoritePropertyIds = {'prop_1', 'prop_3'};
+  final Set<String> _favoritePropertyIds = {};
   bool _isLoading = false;
 
   FavoritesProvider({FavoritesRepository? favoritesRepository})

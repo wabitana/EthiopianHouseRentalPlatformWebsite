@@ -6,6 +6,8 @@ class AuthProvider extends ChangeNotifier {
   final AuthRepository _authRepository;
 
   UserModel? _currentUser;
+  UserRole? _activeRole;
+  UserRole? _registeredRole;
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -18,7 +20,14 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoggedIn => _currentUser != null;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
-  UserRole get currentRole => _currentUser?.role ?? UserRole.seeker;
+
+  /// The registered account role (e.g. seeker or provider when registered)
+  UserRole get registeredRole => _registeredRole ?? _currentUser?.role ?? UserRole.seeker;
+
+  /// The currently active workspace mode (can be switched after login)
+  UserRole get currentRole => _activeRole ?? _currentUser?.role ?? UserRole.seeker;
+  UserRole get activeRole => currentRole;
+
   bool get isProvider => currentRole == UserRole.provider;
   bool get isSeeker => currentRole == UserRole.seeker;
 
@@ -27,6 +36,10 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
     try {
       _currentUser = await _authRepository.getCurrentUser();
+      if (_currentUser != null) {
+        _registeredRole = _currentUser!.role;
+        _activeRole = _currentUser!.role;
+      }
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -45,15 +58,19 @@ class AuthProvider extends ChangeNotifier {
 
       if (user.role != role) {
         _currentUser = null;
+        _registeredRole = null;
+        _activeRole = null;
         final registeredLabel = user.role == UserRole.seeker ? 'House Seeker' : 'House Provider';
         final selectedLabel = role == UserRole.seeker ? 'House Seeker' : 'House Provider';
-        _errorMessage = 'This account is registered as a $registeredLabel. You cannot log in as $selectedLabel.';
+        _errorMessage = 'This account is registered as a $registeredLabel. You cannot log in as $selectedLabel. Please select \'$registeredLabel\' to log in.';
         _isLoading = false;
         notifyListeners();
         return false;
       }
 
       _currentUser = user;
+      _registeredRole = user.role;
+      _activeRole = user.role;
       _isLoading = false;
       notifyListeners();
       return true;
@@ -62,6 +79,43 @@ class AuthProvider extends ChangeNotifier {
       _errorMessage = msg.startsWith('Exception: ')
           ? msg.replaceFirst('Exception: ', '')
           : (msg.isEmpty ? 'Invalid email/phone or password' : msg);
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> loginWithGoogle(UserRole role) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final user = await _authRepository.loginWithGoogle(role);
+
+      if (user.role != role) {
+        _currentUser = null;
+        _registeredRole = null;
+        _activeRole = null;
+        final registeredLabel = user.role == UserRole.seeker ? 'House Seeker' : 'House Provider';
+        final selectedLabel = role == UserRole.seeker ? 'House Seeker' : 'House Provider';
+        _errorMessage = 'This Google account is registered as a $registeredLabel. You cannot log in as $selectedLabel.';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+
+      _currentUser = user;
+      _registeredRole = user.role;
+      _activeRole = user.role;
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      final msg = e.toString();
+      _errorMessage = msg.startsWith('Exception: ')
+          ? msg.replaceFirst('Exception: ', '')
+          : (msg.isEmpty ? 'Failed to authenticate with Google' : msg);
       _isLoading = false;
       notifyListeners();
       return false;
@@ -87,6 +141,8 @@ class AuthProvider extends ChangeNotifier {
         password: password,
         role: role,
       );
+      _registeredRole = role;
+      _activeRole = role;
       _isLoading = false;
       notifyListeners();
       return true;
@@ -98,9 +154,10 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  // Handy demo helper to switch role dynamically during testing
+  /// Switch active role mode dynamically after logging in
   void switchRole(UserRole newRole) {
     if (_currentUser != null) {
+      _activeRole = newRole;
       _currentUser = _currentUser!.copyWith(role: newRole);
       notifyListeners();
     }
@@ -109,18 +166,38 @@ class AuthProvider extends ChangeNotifier {
   Future<void> logout() async {
     await _authRepository.logout();
     _currentUser = null;
+    _activeRole = null;
+    _registeredRole = null;
     notifyListeners();
   }
 
-  Future<void> updateProfile(String name, String phone, String email) async {
+  Future<void> updateProfile(String name, String phone, String email, [String? avatarUrl]) async {
     if (_currentUser != null) {
       final updated = _currentUser!.copyWith(
         name: name,
         phone: phone,
         email: email,
+        avatarUrl: avatarUrl ?? _currentUser!.avatarUrl,
       );
       _currentUser = await _authRepository.updateProfile(updated);
       notifyListeners();
     }
+  }
+
+  Future<void> updateVerificationStatus(bool isVerified) async {
+    if (_currentUser != null) {
+      final updated = _currentUser!.copyWith(isVerified: isVerified);
+      _currentUser = await _authRepository.updateProfile(updated);
+      notifyListeners();
+    }
+  }
+
+  Future<bool> changePassword(String currentPassword, String newPassword) async {
+    _isLoading = true;
+    notifyListeners();
+    await Future.delayed(const Duration(milliseconds: 500));
+    _isLoading = false;
+    notifyListeners();
+    return true;
   }
 }

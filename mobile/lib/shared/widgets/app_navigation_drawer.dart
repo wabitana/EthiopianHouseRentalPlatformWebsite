@@ -7,8 +7,6 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/profile/screens/theme_settings_screen.dart';
 import '../../features/notifications/screens/notification_center_screen.dart';
-import '../../features/house_seeker/screens/seeker_main_layout.dart';
-import '../../features/house_provider/screens/provider_main_layout.dart';
 import '../../shared/models/user_model.dart';
 import '../../shared/widgets/verification_badge.dart';
 
@@ -98,7 +96,7 @@ class AppNavigationDrawer extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  user?.role.displayName ?? 'House Seeker',
+                                  '${authProvider.activeRole.displayName} (Active)',
                                   style: const TextStyle(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
@@ -126,6 +124,26 @@ class AppNavigationDrawer extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
               children: [
+                _buildDrawerTile(
+                  context,
+                  icon: Icons.swap_horiz_rounded,
+                  title: authProvider.isProvider ? 'Switch to House Seeker' : 'Switch to House Provider',
+                  subtitle: authProvider.isProvider ? 'Explore & inquire rental houses' : 'Manage properties & provider dashboard',
+                  primary: AppColors.secondary,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    final targetRole = authProvider.isProvider ? UserRole.seeker : UserRole.provider;
+                    authProvider.switchRole(targetRole);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Switched to ${targetRole.displayName} Mode ✓'),
+                        backgroundColor: AppColors.primary,
+                        behavior: SnackBarBehavior.floating,
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                ),
                 _buildDrawerTile(
                   context,
                   icon: Icons.palette_outlined,
@@ -191,41 +209,6 @@ class AppNavigationDrawer extends StatelessWidget {
                       ),
                     );
                   }).toList(),
-                ),
-                const Divider(height: 24, indent: 16, endIndent: 16),
-
-                // Role Switcher Tile (Demo Test)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  child: Text(
-                    'SWITCH ROLE MODE (DEMO)',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.8,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ),
-                _buildDrawerTile(
-                  context,
-                  icon: user?.role == UserRole.seeker ? Icons.storefront_outlined : Icons.person_outline,
-                  title: user?.role == UserRole.seeker ? 'Switch to Provider Mode' : 'Switch to Seeker Mode',
-                  subtitle: 'Access property management tools',
-                  primary: primary,
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    final newRole = user?.role == UserRole.seeker ? UserRole.provider : UserRole.seeker;
-                    authProvider.switchRole(newRole);
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                        builder: (_) => newRole == UserRole.seeker
-                            ? const SeekerMainLayout()
-                            : const ProviderMainLayout(),
-                      ),
-                      (route) => false,
-                    );
-                  },
                 ),
               ],
             ),

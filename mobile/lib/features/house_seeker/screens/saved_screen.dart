@@ -9,7 +9,9 @@ import '../../auth/providers/auth_provider.dart';
 import 'property_detail_screen.dart';
 
 class SavedScreen extends StatelessWidget {
-  const SavedScreen({super.key});
+  final VoidCallback? onExploreTap;
+
+  const SavedScreen({super.key, this.onExploreTap});
 
   @override
   Widget build(BuildContext context) {
@@ -22,15 +24,32 @@ class SavedScreen extends StatelessWidget {
         .toList();
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Saved Houses'),
+        title: Text(
+          savedProperties.isEmpty ? 'Saved Houses' : 'Saved Houses (${savedProperties.length})',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
+        ),
       ),
       body: savedProperties.isEmpty
-          ? const EmptyStateWidget(
-              icon: Icons.favorite_border_rounded,
-              title: 'No saved houses yet',
-              description: 'Tap the heart icon on any house listing to save it here for quick access later.',
+          ? Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24),
+                child: EmptyStateWidget(
+                  icon: Icons.favorite_border_rounded,
+                  title: 'No saved houses yet',
+                  description: 'Tap the heart icon on any house listing to save it here for quick access later.',
+                  buttonText: 'Explore Houses',
+                  onButtonPressed: onExploreTap,
+                ),
+              ),
             )
           : ListView.builder(
               padding: const EdgeInsets.all(16),

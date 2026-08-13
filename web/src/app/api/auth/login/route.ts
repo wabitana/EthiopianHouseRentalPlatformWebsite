@@ -6,6 +6,7 @@ import { verifyPassword, createToken, setAuthCookie, toRole } from "@/lib/auth";
 const schema = z.object({
   email: z.string().email(),
   password: z.string(),
+  role: z.string().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -16,6 +17,19 @@ export async function POST(req: NextRequest) {
     const user = await prisma.user.findUnique({ where: { email: data.email } });
     if (!user || !(await verifyPassword(data.password, user.passwordHash))) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
+    }
+
+    if (data.role) {
+      const reqRole = data.role.toUpperCase();
+      const userRole = user.role.toUpperCase();
+      if (userRole !== reqRole && userRole !== "ADMIN") {
+        const registeredLabel = userRole === "CUSTOMER" || userRole === "SEEKER" ? "House Seeker" : "House Provider";
+        const selectedLabel = reqRole === "CUSTOMER" || reqRole === "SEEKER" ? "House Seeker" : "House Provider";
+        return NextResponse.json(
+          { error: `This account is registered as a ${registeredLabel}. You cannot log in as ${selectedLabel}. Please select '${registeredLabel}' to log in.` },
+          { status: 403 }
+        );
+      }
     }
 
     const token = await createToken({

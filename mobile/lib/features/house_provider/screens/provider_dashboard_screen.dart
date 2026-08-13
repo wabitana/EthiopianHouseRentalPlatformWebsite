@@ -12,6 +12,7 @@ import '../../auth/providers/auth_provider.dart';
 import 'post_house_wizard_screen.dart';
 import 'my_listings_screen.dart';
 import 'provider_inquiries_screen.dart';
+import '../../../shared/models/user_model.dart';
 import '../../../shared/widgets/app_navigation_drawer.dart';
 
 class ProviderDashboardScreen extends StatelessWidget {
@@ -19,7 +20,8 @@ class ProviderDashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<AuthProvider>().currentUser;
+    final authProvider = context.watch<AuthProvider>();
+    final user = authProvider.currentUser;
     final propertyProvider = context.watch<PropertyProvider>();
     final inquiryProvider = context.watch<InquiryProvider>();
 
@@ -44,6 +46,24 @@ class ProviderDashboardScreen extends StatelessWidget {
             bottom: Radius.circular(24),
           ),
         ),
+        actions: [
+          IconButton(
+            tooltip: 'Switch to Seeker Mode',
+            icon: const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 24),
+            onPressed: () {
+              authProvider.switchRole(UserRole.seeker);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Switched to House Seeker Mode ✓'),
+                  backgroundColor: AppColors.primary,
+                  behavior: SnackBarBehavior.floating,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),

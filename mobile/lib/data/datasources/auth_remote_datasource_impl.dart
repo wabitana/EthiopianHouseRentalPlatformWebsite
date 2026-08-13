@@ -43,6 +43,28 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
   }
 
   @override
+  Future<UserModel> loginWithGoogle(UserRole role, {String? email, String? name, String? avatarUrl}) async {
+    final res = await ApiClient.post(
+      ApiEndpoints.google,
+      body: {
+        'email': email ?? 'google_user@example.com',
+        'name': name ?? 'Google User',
+        'avatarUrl': avatarUrl ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
+        'role': role.code,
+      },
+      requireAuth: false,
+    );
+
+    if (res != null && res['token'] != null && res['user'] != null) {
+      await TokenStorage.saveToken(res['token'] as String);
+      final user = UserModel.fromJson(res['user'] as Map<String, dynamic>);
+      await TokenStorage.saveUserRole(user.role.code);
+      return user;
+    }
+    throw ApiException('Failed to parse Google login response');
+  }
+
+  @override
   Future<UserModel> registerUser({
     required String name,
     required String email,

@@ -40,7 +40,26 @@ class AppColors {
   static const Color verified = Color(0xFF2563EB);
   static const Color verifiedBackground = Color(0xFFDBEAFE);
 
-  // Card Shadow
+  // Gradients
+  static const LinearGradient primaryGradient = LinearGradient(
+    colors: [Color(0xFF1B4D3E), Color(0xFF2E6F5B)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient heroGradient = LinearGradient(
+    colors: [Color(0xFF0F3228), Color(0xFF1B4D3E), Color(0xFF246552)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+
+  static const LinearGradient goldGradient = LinearGradient(
+    colors: [Color(0xFFD97706), Color(0xFFF59E0B)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  // Card & Button Shadows
   static List<BoxShadow> cardShadow = [
     BoxShadow(
       color: Colors.black.withValues(alpha: 0.04),
@@ -53,6 +72,14 @@ class AppColors {
     BoxShadow(
       color: Colors.black.withValues(alpha: 0.08),
       blurRadius: 18,
+      offset: const Offset(0, 6),
+    ),
+  ];
+
+  static List<BoxShadow> primaryGlowShadow = [
+    BoxShadow(
+      color: const Color(0xFF1B4D3E).withValues(alpha: 0.28),
+      blurRadius: 16,
       offset: const Offset(0, 6),
     ),
   ];

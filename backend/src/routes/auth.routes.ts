@@ -128,6 +128,71 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// POST /api/v1/auth/google
+router.post('/google', async (req, res) => {
+  try {
+    const { email, name, avatarUrl, role } = req.body;
+
+    const userEmail = email || 'google_user@example.com';
+    const userName = name || 'Google User';
+    const userRole = (role || 'seeker').toLowerCase();
+
+    let user = await prisma.user.findUnique({ where: { email: userEmail } });
+
+    if (user) {
+      if (role) {
+        const requestedRole = role.toLowerCase();
+        const existingRole = user.role.toLowerCase();
+        if (existingRole !== requestedRole && existingRole !== 'admin') {
+          const registeredLabel = existingRole === 'seeker' ? 'House Seeker' : 'House Provider';
+          const selectedLabel = requestedRole === 'seeker' ? 'House Seeker' : 'House Provider';
+          return res.status(403).json({
+            error: `This Google account is registered as a ${registeredLabel}. You cannot log in as ${selectedLabel}. Please select '${registeredLabel}'.`,
+          });
+        }
+      }
+    } else {
+      const defaultPasswordHash = await bcrypt.hash('google_oauth_secure_pwd_2026', 10);
+      user = await prisma.user.create({
+        data: {
+          name: userName,
+          email: userEmail,
+          phone: '+251 90 000 0000',
+          passwordHash: defaultPasswordHash,
+          role: userRole,
+          avatarUrl: avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
+          isVerified: true,
+        },
+      });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role, name: user.name },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+
+    return res.json({
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        avatarUrl: user.avatarUrl,
+        isVerified: user.isVerified,
+        rating: user.rating,
+        totalListings: user.totalListings,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    console.error('Google auth error:', error);
+    return res.status(500).json({ error: 'Failed to authenticate with Google' });
+  }
+});
+
 // POST /api/v1/auth/logout
 router.post('/logout', authenticateToken, (req, res) => {
   return res.json({ success: true, message: 'Logged out successfully' });

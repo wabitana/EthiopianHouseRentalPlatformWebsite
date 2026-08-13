@@ -12,6 +12,7 @@ import '../../notifications/providers/notification_provider.dart';
 import '../../notifications/screens/notification_center_screen.dart';
 import 'property_detail_screen.dart';
 import 'search_screen.dart';
+import '../../../shared/models/user_model.dart';
 import '../../../shared/widgets/app_navigation_drawer.dart';
 
 class SeekerHomeScreen extends StatelessWidget {
@@ -41,6 +42,21 @@ class SeekerHomeScreen extends StatelessWidget {
         ),
         actions: [
           IconButton(
+            tooltip: 'Switch to Provider Mode',
+            icon: const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 24),
+            onPressed: () {
+              authProvider.switchRole(UserRole.provider);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Switched to House Provider Mode ✓'),
+                  backgroundColor: AppColors.primary,
+                  behavior: SnackBarBehavior.floating,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
+          ),
+          IconButton(
             icon: Badge(
               isLabelVisible: notificationProvider.unreadCount > 0,
               label: Text('${notificationProvider.unreadCount}'),
@@ -53,7 +69,7 @@ class SeekerHomeScreen extends StatelessWidget {
               );
             },
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
         ],
       ),
       body: RefreshIndicator(

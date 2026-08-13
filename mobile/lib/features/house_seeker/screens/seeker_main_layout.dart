@@ -24,12 +24,18 @@ class SeekerMainLayout extends StatefulWidget {
 class _SeekerMainLayoutState extends State<SeekerMainLayout> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = const [
-    SeekerHomeScreen(),
-    SearchScreen(),
-    SavedScreen(),
-    SeekerInquiriesScreen(),
-    ProfileScreen(),
+  late final List<Widget> _pages = [
+    const SeekerHomeScreen(),
+    const SearchScreen(),
+    SavedScreen(
+      onExploreTap: () {
+        setState(() {
+          _currentIndex = 0;
+        });
+      },
+    ),
+    const SeekerInquiriesScreen(),
+    const ProfileScreen(),
   ];
 
   @override

@@ -4,8 +4,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../providers/auth_provider.dart';
 import 'onboarding_screen.dart';
-import '../../house_seeker/screens/seeker_main_layout.dart';
-import '../../house_provider/screens/provider_main_layout.dart';
+import '../../../shared/widgets/main_layout_wrapper.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -45,15 +44,9 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
 
     final authProvider = context.read<AuthProvider>();
     if (authProvider.isLoggedIn) {
-      if (authProvider.isProvider) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const ProviderMainLayout()),
-        );
-      } else {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const SeekerMainLayout()),
-        );
-      }
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MainLayoutWrapper()),
+      );
     } else {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const OnboardingScreen()),

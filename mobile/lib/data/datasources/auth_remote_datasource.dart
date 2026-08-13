@@ -4,6 +4,7 @@ import '../mock_data.dart';
 abstract class AuthRemoteDataSource {
   Future<UserModel?> fetchCurrentUser();
   Future<UserModel> loginUser(String emailOrPhone, String password, UserRole role);
+  Future<UserModel> loginWithGoogle(UserRole role, {String? email, String? name, String? avatarUrl});
   Future<UserModel> registerUser({
     required String name,
     required String email,
@@ -33,6 +34,21 @@ class MockAuthRemoteDataSource implements AuthRemoteDataSource {
     } else {
       _currentUser = MockData.seekerUser;
     }
+    return _currentUser!;
+  }
+
+  @override
+  Future<UserModel> loginWithGoogle(UserRole role, {String? email, String? name, String? avatarUrl}) async {
+    await Future.delayed(const Duration(milliseconds: 600));
+    _currentUser = UserModel(
+      id: 'google_user_101',
+      name: name ?? 'Abebe Bikila (Google User)',
+      email: email ?? 'abebe.google@gmail.com',
+      phone: '+251 91 122 3344',
+      role: role,
+      avatarUrl: avatarUrl ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
+      isVerified: true,
+    );
     return _currentUser!;
   }
 
