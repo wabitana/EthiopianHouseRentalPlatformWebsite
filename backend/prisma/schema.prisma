@@ -90,6 +90,7 @@ model Inquiry {
   seekerPhone   String
   providerId    String
   message       String
+  messages      String   @default("[]") // JSON string array of chat messages
   status        String   @default("new_inquiry") // new_inquiry, responded, viewing_arranged, closed
   response      String?
   createdAt     DateTime @default(now())

@@ -1,4 +1,5 @@
 import 'package:intl/intl.dart';
+import '../constants/api_endpoints.dart';
 
 class Formatters {
   static String formatCurrency(double amount) {
@@ -25,5 +26,26 @@ class Formatters {
     } else {
       return 'Just now';
     }
+  }
+
+  static String formatImageUrl(String? url) {
+    if (url == null || url.trim().isEmpty) return '';
+    var trimmed = url.trim();
+    
+    // Clean up any legacy URLs containing /api/v1/uploads
+    if (trimmed.contains('/api/v1/uploads/')) {
+      trimmed = trimmed.replaceAll('/api/v1/uploads/', '/uploads/');
+    }
+
+    if (trimmed.startsWith('http://') ||
+        trimmed.startsWith('https://') ||
+        trimmed.startsWith('blob:') ||
+        trimmed.startsWith('data:')) {
+      return trimmed;
+    }
+    if (trimmed.startsWith('/')) {
+      return '${ApiEndpoints.mediaBaseUrl}$trimmed';
+    }
+    return '${ApiEndpoints.mediaBaseUrl}/$trimmed';
   }
 }

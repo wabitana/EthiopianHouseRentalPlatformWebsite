@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import '../../../core/constants/api_endpoints.dart';
+import '../../../core/network/api_client.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/formatters.dart';
@@ -255,6 +258,150 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
     }
   }
 
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? file = await picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 80,
+      );
+
+      if (file == null) return;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Processing photo...'), duration: Duration(seconds: 2)),
+        );
+      }
+
+      try {
+        final bytes = await file.readAsBytes();
+        final res = await ApiClient.uploadImageBytes(
+          ApiEndpoints.upload,
+          bytes,
+          file.name.isNotEmpty ? file.name : 'house_photo.jpg',
+        );
+        if (res is Map<String, dynamic> && res['url'] != null) {
+          final rawUrl = res['url'].toString();
+          final uploadedUrl = rawUrl.startsWith('http')
+              ? rawUrl
+              : '${ApiEndpoints.mediaBaseUrl}$rawUrl';
+          setState(() {
+            _selectedImages.add(uploadedUrl);
+          });
+        } else {
+          setState(() {
+            _selectedImages.add(file.path);
+          });
+        }
+      } catch (err) {
+        setState(() {
+          _selectedImages.add(file.path);
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error selecting image: ${e.toString()}')),
+        );
+      }
+    }
+  }
+
+  void _showUrlInputDialog() {
+    final urlController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Image URL'),
+        content: TextField(
+          controller: urlController,
+          decoration: const InputDecoration(
+            hintText: 'https://images.unsplash.com/...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              if (urlController.text.trim().isNotEmpty) {
+                setState(() {
+                  _selectedImages.add(urlController.text.trim());
+                });
+              }
+              Navigator.pop(ctx);
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showImageSourceModal() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Select Photo Source',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: AppColors.primaryContainer,
+                child: Icon(Icons.camera_alt_rounded, color: AppColors.primary),
+              ),
+              title: const Text('Take Photo with Camera', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Capture house photo directly using device camera'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: AppColors.primaryContainer,
+                child: Icon(Icons.photo_library_rounded, color: AppColors.primary),
+              ),
+              title: const Text('Choose from Gallery / Files', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Pick photos saved on your device'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: AppColors.surfaceVariant,
+                child: Icon(Icons.link_rounded, color: AppColors.textSecondary),
+              ),
+              title: const Text('Enter Image URL', style: TextStyle(fontWeight: FontWeight.bold)),
+              subtitle: const Text('Paste a web image link directly'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showUrlInputDialog();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // Step 1 — Photos
   Widget _buildStep1Photos() {
     return Column(
@@ -278,11 +425,7 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
           itemBuilder: (context, index) {
             if (index == _selectedImages.length) {
               return InkWell(
-                onTap: () {
-                  setState(() {
-                    _selectedImages.add('https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80');
-                  });
-                },
+                onTap: _showImageSourceModal,
                 child: Container(
                   decoration: BoxDecoration(
                     color: AppColors.primaryContainer.withValues(alpha: 0.5),
@@ -304,7 +447,16 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(_selectedImages[index], fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+                  child: Image.network(
+                    Formatters.formatImageUrl(_selectedImages[index]),
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: AppColors.surfaceVariant,
+                      child: const Icon(Icons.home_work_outlined, color: AppColors.textMuted),
+                    ),
+                  ),
                 ),
                 Positioned(
                   top: 6,
@@ -530,7 +682,17 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
               if (_selectedImages.isNotEmpty)
                 ClipRRect(
                   borderRadius: BorderRadius.circular(12),
-                  child: Image.network(_selectedImages.first, height: 160, width: double.infinity, fit: BoxFit.cover),
+                  child: Image.network(
+                    Formatters.formatImageUrl(_selectedImages.first),
+                    height: 160,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      height: 160,
+                      color: AppColors.surfaceVariant,
+                      child: const Icon(Icons.home_work_outlined, size: 50, color: AppColors.textMuted),
+                    ),
+                  ),
                 ),
               const SizedBox(height: 14),
               Text(

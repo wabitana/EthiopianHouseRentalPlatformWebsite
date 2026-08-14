@@ -261,7 +261,7 @@ class ProviderDashboardScreen extends StatelessWidget {
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: Image.network(
-                            property.images.isNotEmpty ? property.images.first : '',
+                            Formatters.formatImageUrl(property.images.isNotEmpty ? property.images.first : ''),
                             width: 50,
                             height: 50,
                             fit: BoxFit.cover,

@@ -30,7 +30,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   int _currentImageIndex = 0;
 
   Widget _buildSafeImage(String url, {double? width, double? height, BoxFit fit = BoxFit.cover, double iconSize = 60, String? title}) {
-    final trimmed = url.trim();
+    final formatted = Formatters.formatImageUrl(url);
     return Container(
       width: width,
       height: height,
@@ -43,10 +43,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
       ),
       child: Stack(
         children: [
-          if (trimmed.isNotEmpty && (trimmed.startsWith('http://') || trimmed.startsWith('https://')))
+          if (formatted.isNotEmpty)
             Positioned.fill(
               child: Image.network(
-                trimmed,
+                formatted,
                 width: width,
                 height: height,
                 fit: fit,

@@ -146,4 +146,63 @@ class ApiClient {
       throw ApiException('Network request failed: ${e.toString()}');
     }
   }
+
+  static Future<dynamic> uploadMultipart(
+    String url,
+    String filePath, {
+    String fieldName = 'image',
+    bool requireAuth = true,
+  }) async {
+    try {
+      final request = http.MultipartRequest('POST', Uri.parse(url));
+      if (requireAuth) {
+        final token = await TokenStorage.getToken();
+        if (token != null && token.isNotEmpty) {
+          request.headers['Authorization'] = 'Bearer $token';
+        }
+      }
+      request.files.add(await http.MultipartFile.fromPath(fieldName, filePath));
+      final streamedResponse = await request.send().timeout(_timeout);
+      final response = await http.Response.fromStream(streamedResponse);
+      return _handleResponse(response);
+    } on SocketException {
+      throw ApiException('Unable to connect to server. Please check internet connection.');
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('File upload failed: ${e.toString()}');
+    }
+  }
+
+  static Future<dynamic> uploadImageBytes(
+    String url,
+    List<int> bytes,
+    String filename, {
+    String fieldName = 'image',
+    bool requireAuth = true,
+  }) async {
+    try {
+      final request = http.MultipartRequest('POST', Uri.parse(url));
+      if (requireAuth) {
+        final token = await TokenStorage.getToken();
+        if (token != null && token.isNotEmpty) {
+          request.headers['Authorization'] = 'Bearer $token';
+        }
+      }
+      request.files.add(http.MultipartFile.fromBytes(
+        fieldName,
+        bytes,
+        filename: filename.isEmpty ? 'upload.jpg' : filename,
+      ));
+      final streamedResponse = await request.send().timeout(_timeout);
+      final response = await http.Response.fromStream(streamedResponse);
+      return _handleResponse(response);
+    } on SocketException {
+      throw ApiException('Unable to connect to server. Please check internet connection.');
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Image upload failed: ${e.toString()}');
+    }
+  }
 }

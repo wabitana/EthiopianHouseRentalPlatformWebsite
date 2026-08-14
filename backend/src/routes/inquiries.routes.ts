@@ -4,6 +4,60 @@ import { authenticateToken, AuthRequest } from '../middleware/auth';
 
 const router = Router();
 
+// Helper to format inquiry output with messages list
+const formatInquiry = (inq: any) => {
+  let messagesList: any[] = [];
+  try {
+    if (inq.messages && typeof inq.messages === 'string') {
+      messagesList = JSON.parse(inq.messages);
+    } else if (Array.isArray(inq.messages)) {
+      messagesList = inq.messages;
+    }
+  } catch (_) {
+    messagesList = [];
+  }
+
+  // Fallback for legacy single-message inquiries
+  if (messagesList.length === 0 && inq.message) {
+    messagesList.push({
+      id: `msg_legacy_1_${inq.id}`,
+      senderId: inq.seekerId,
+      senderName: inq.seekerName || 'House Seeker',
+      senderRole: 'seeker',
+      text: inq.message,
+      createdAt: inq.createdAt,
+    });
+    if (inq.response) {
+      messagesList.push({
+        id: `msg_legacy_2_${inq.id}`,
+        senderId: inq.providerId,
+        senderName: 'House Provider',
+        senderRole: 'provider',
+        text: inq.response,
+        createdAt: inq.updatedAt || inq.createdAt,
+      });
+    }
+  }
+
+  return {
+    id: inq.id,
+    propertyId: inq.propertyId,
+    propertyTitle: inq.propertyTitle,
+    propertyImage: inq.propertyImage,
+    seekerId: inq.seekerId,
+    seekerName: inq.seekerName,
+    seekerPhone: inq.seekerPhone,
+    providerId: inq.providerId,
+    message: inq.message,
+    providerReply: inq.response,
+    response: inq.response,
+    status: inq.status,
+    messages: messagesList,
+    createdAt: inq.createdAt,
+    updatedAt: inq.updatedAt,
+  };
+};
+
 // POST /api/v1/inquiries (House Seeker creates inquiry)
 router.post('/', authenticateToken, async (req: AuthRequest, res) => {
   try {
@@ -24,6 +78,15 @@ router.post('/', authenticateToken, async (req: AuthRequest, res) => {
     const images = typeof property.images === 'string' ? JSON.parse(property.images) : property.images;
     const propertyImage = images && images.length > 0 ? images[0] : '';
 
+    const initialMessage = {
+      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      senderId: seekerId,
+      senderName: seekerUser.name,
+      senderRole: 'seeker',
+      text: message,
+      createdAt: new Date().toISOString(),
+    };
+
     const inquiry = await prisma.inquiry.create({
       data: {
         propertyId,
@@ -34,6 +97,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res) => {
         seekerPhone: seekerUser.phone,
         providerId: property.providerId,
         message,
+        messages: JSON.stringify([initialMessage]),
         status: 'new_inquiry',
       },
     });
@@ -54,7 +118,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res) => {
       },
     });
 
-    return res.status(201).json(inquiry);
+    return res.status(201).json(formatInquiry(inquiry));
   } catch (error) {
     console.error('Create inquiry error:', error);
     return res.status(500).json({ error: 'Failed to create inquiry' });
@@ -75,9 +139,127 @@ router.get('/', authenticateToken, async (req: AuthRequest, res) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    return res.json(inquiries);
+    return res.json(inquiries.map(formatInquiry));
   } catch (error) {
     return res.status(500).json({ error: 'Failed to fetch inquiries' });
+  }
+});
+
+// GET /api/v1/inquiries/:id (Get single inquiry with full chat history)
+router.get('/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+
+    const inquiry = await prisma.inquiry.findUnique({ where: { id } });
+    if (!inquiry) return res.status(404).json({ error: 'Inquiry not found' });
+
+    if (inquiry.providerId !== userId && inquiry.seekerId !== userId && req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Not authorized to view this chat' });
+    }
+
+    return res.json(formatInquiry(inquiry));
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch inquiry details' });
+  }
+});
+
+// POST /api/v1/inquiries/:id/messages (Continuous 2-Way Chatting: Seeker or Provider sends message)
+router.post('/:id/messages', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const { message, text } = req.body;
+    const messageText = message || text;
+
+    if (!messageText || !messageText.trim()) {
+      return res.status(400).json({ error: 'Message text cannot be empty' });
+    }
+
+    const inquiry = await prisma.inquiry.findUnique({ where: { id } });
+    if (!inquiry) return res.status(404).json({ error: 'Inquiry not found' });
+
+    if (inquiry.providerId !== userId && inquiry.seekerId !== userId && req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Not authorized to send message in this chat' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const isSeeker = userId === inquiry.seekerId;
+    const senderRole = isSeeker ? 'seeker' : 'provider';
+    const senderName = user?.name || (isSeeker ? inquiry.seekerName : 'House Provider');
+
+    // Parse existing messages
+    let currentMessages: any[] = [];
+    try {
+      if (inquiry.messages && typeof inquiry.messages === 'string') {
+        currentMessages = JSON.parse(inquiry.messages);
+      }
+    } catch (_) {
+      currentMessages = [];
+    }
+
+    if (currentMessages.length === 0 && inquiry.message) {
+      currentMessages.push({
+        id: `msg_legacy_1_${inquiry.id}`,
+        senderId: inquiry.seekerId,
+        senderName: inquiry.seekerName || 'House Seeker',
+        senderRole: 'seeker',
+        text: inquiry.message,
+        createdAt: inquiry.createdAt,
+      });
+      if (inquiry.response) {
+        currentMessages.push({
+          id: `msg_legacy_2_${inquiry.id}`,
+          senderId: inquiry.providerId,
+          senderName: 'House Provider',
+          senderRole: 'provider',
+          text: inquiry.response,
+          createdAt: inquiry.updatedAt || inquiry.createdAt,
+        });
+      }
+    }
+
+    const newMessageObj = {
+      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      senderId: userId,
+      senderName,
+      senderRole,
+      text: messageText.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    currentMessages.push(newMessageObj);
+
+    // Update status and response field if provider responded
+    const newStatus = isSeeker ? inquiry.status : 'responded';
+    const newResponse = isSeeker ? inquiry.response : messageText.trim();
+
+    const updated = await prisma.inquiry.update({
+      where: { id },
+      data: {
+        messages: JSON.stringify(currentMessages),
+        status: newStatus,
+        response: newResponse,
+      },
+    });
+
+    // Notify recipient
+    const recipientId = isSeeker ? inquiry.providerId : inquiry.seekerId;
+    if (recipientId) {
+      await prisma.notification.create({
+        data: {
+          userId: recipientId,
+          title: `New Message for "${inquiry.propertyTitle}"`,
+          message: `${senderName}: "${messageText.trim().substring(0, 60)}${messageText.length > 60 ? '...' : ''}"`,
+          type: isSeeker ? 'INQUIRY' : 'RESPONSE',
+        },
+      });
+    }
+
+    return res.json(formatInquiry(updated));
+  } catch (error) {
+    console.error('Send chat message error:', error);
+    return res.status(500).json({ error: 'Failed to send chat message' });
   }
 });
 
@@ -91,8 +273,28 @@ router.patch('/:id', authenticateToken, async (req: AuthRequest, res) => {
     const inquiry = await prisma.inquiry.findUnique({ where: { id } });
     if (!inquiry) return res.status(404).json({ error: 'Inquiry not found' });
 
-    if (inquiry.providerId !== userId && inquiry.seekerId !== userId) {
+    if (inquiry.providerId !== userId && inquiry.seekerId !== userId && req.user?.role !== 'admin') {
       return res.status(403).json({ error: 'Not authorized to modify this inquiry' });
+    }
+
+    let currentMessages: any[] = [];
+    try {
+      if (inquiry.messages && typeof inquiry.messages === 'string') {
+        currentMessages = JSON.parse(inquiry.messages);
+      }
+    } catch (_) {
+      currentMessages = [];
+    }
+
+    if (response) {
+      currentMessages.push({
+        id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        senderId: userId,
+        senderName: req.user?.role === 'provider' ? 'House Provider' : 'House Seeker',
+        senderRole: req.user?.role === 'provider' ? 'provider' : 'seeker',
+        text: response.trim(),
+        createdAt: new Date().toISOString(),
+      });
     }
 
     const updated = await prisma.inquiry.update({
@@ -100,10 +302,10 @@ router.patch('/:id', authenticateToken, async (req: AuthRequest, res) => {
       data: {
         ...(status && { status }),
         ...(response !== undefined && { response }),
+        ...(response && { messages: JSON.stringify(currentMessages) }),
       },
     });
 
-    // Notify seeker if provider responded
     if (response && inquiry.seekerId) {
       await prisma.notification.create({
         data: {
@@ -115,7 +317,7 @@ router.patch('/:id', authenticateToken, async (req: AuthRequest, res) => {
       });
     }
 
-    return res.json(updated);
+    return res.json(formatInquiry(updated));
   } catch (error) {
     return res.status(500).json({ error: 'Failed to update inquiry' });
   }

@@ -71,6 +71,16 @@ class InquiryProvider extends ChangeNotifier {
       seekerAvatar: seeker.avatarUrl,
       providerId: property.providerId,
       message: message,
+      messages: [
+        ChatMessageModel(
+          id: 'msg_${DateTime.now().millisecondsSinceEpoch}',
+          senderId: seeker.id,
+          senderName: seeker.name,
+          senderRole: 'seeker',
+          text: message,
+          createdAt: DateTime.now(),
+        ),
+      ],
     );
 
     try {
@@ -98,5 +108,36 @@ class InquiryProvider extends ChangeNotifier {
     if (pIndex != -1) _providerInquiries[pIndex] = updated;
 
     notifyListeners();
+  }
+
+  Future<InquiryModel?> sendChatMessage({
+    required String inquiryId,
+    required String messageText,
+    required String senderId,
+    required String senderRole,
+    required String senderName,
+  }) async {
+    try {
+      final updated = await _inquiryRepository.sendChatMessage(
+        inquiryId,
+        messageText,
+        senderId,
+        senderRole,
+        senderName,
+      );
+
+      final sIndex = _seekerInquiries.indexWhere((inq) => inq.id == inquiryId);
+      if (sIndex != -1) _seekerInquiries[sIndex] = updated;
+
+      final pIndex = _providerInquiries.indexWhere((inq) => inq.id == inquiryId);
+      if (pIndex != -1) _providerInquiries[pIndex] = updated;
+
+      notifyListeners();
+      return updated;
+    } catch (e) {
+      _errorMessage = 'Failed to send chat message';
+      notifyListeners();
+      return null;
+    }
   }
 }

@@ -20,9 +20,21 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
       final token = await TokenStorage.getToken();
       if (token == null || token.isEmpty) return null;
 
-      final res = await ApiClient.get(ApiEndpoints.me);
-      if (res != null && res['user'] != null) {
-        return UserModel.fromJson(res['user'] as Map<String, dynamic>);
+      try {
+        final res = await ApiClient.get(ApiEndpoints.me);
+        if (res != null && res['user'] != null) {
+          final userMap = res['user'] as Map<String, dynamic>;
+          await TokenStorage.saveUserData(userMap);
+          return UserModel.fromJson(userMap);
+        }
+      } catch (err) {
+        debugPrint('fetchCurrentUser network attempt info: $err');
+      }
+
+      // Fallback: Read cached user data if network fetch failed
+      final cachedMap = await TokenStorage.getUserData();
+      if (cachedMap != null) {
+        return UserModel.fromJson(cachedMap);
       }
       return null;
     } catch (_) {
@@ -44,7 +56,9 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
 
     if (res != null && res['token'] != null && res['user'] != null) {
       await TokenStorage.saveToken(res['token'] as String);
-      final user = UserModel.fromJson(res['user'] as Map<String, dynamic>);
+      final userMap = res['user'] as Map<String, dynamic>;
+      await TokenStorage.saveUserData(userMap);
+      final user = UserModel.fromJson(userMap);
       await TokenStorage.saveUserRole(user.role.code);
       return user;
     }
@@ -86,7 +100,9 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
 
     if (res != null && res['token'] != null && res['user'] != null) {
       await TokenStorage.saveToken(res['token'] as String);
-      final user = UserModel.fromJson(res['user'] as Map<String, dynamic>);
+      final userMap = res['user'] as Map<String, dynamic>;
+      await TokenStorage.saveUserData(userMap);
+      final user = UserModel.fromJson(userMap);
       await TokenStorage.saveUserRole(user.role.code);
       return user;
     }
@@ -115,7 +131,9 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
 
     if (res != null && res['token'] != null && res['user'] != null) {
       await TokenStorage.saveToken(res['token'] as String);
-      final user = UserModel.fromJson(res['user'] as Map<String, dynamic>);
+      final userMap = res['user'] as Map<String, dynamic>;
+      await TokenStorage.saveUserData(userMap);
+      final user = UserModel.fromJson(userMap);
       await TokenStorage.saveUserRole(user.role.code);
       return user;
     }

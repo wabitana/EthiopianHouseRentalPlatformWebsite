@@ -39,6 +39,48 @@ extension InquiryStatusExtension on InquiryStatus {
   }
 }
 
+class ChatMessageModel {
+  final String id;
+  final String senderId;
+  final String senderName;
+  final String senderRole; // 'seeker' or 'provider'
+  final String text;
+  final DateTime createdAt;
+
+  ChatMessageModel({
+    required this.id,
+    required this.senderId,
+    required this.senderName,
+    required this.senderRole,
+    required this.text,
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'senderId': senderId,
+      'senderName': senderName,
+      'senderRole': senderRole,
+      'text': text,
+      'createdAt': createdAt.toIso8601String(),
+    };
+  }
+
+  factory ChatMessageModel.fromJson(Map<String, dynamic> json) {
+    return ChatMessageModel(
+      id: json['id'] as String? ?? 'msg_${DateTime.now().millisecondsSinceEpoch}',
+      senderId: json['senderId'] as String? ?? '',
+      senderName: json['senderName'] as String? ?? 'User',
+      senderRole: json['senderRole'] as String? ?? 'seeker',
+      text: json['text'] as String? ?? json['message'] as String? ?? '',
+      createdAt: json['createdAt'] != null
+          ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
+}
+
 class InquiryModel {
   final String id;
   final String propertyId;
@@ -58,6 +100,7 @@ class InquiryModel {
   final String message;
   final String? providerReply;
   final InquiryStatus status;
+  final List<ChatMessageModel> messages;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -77,14 +120,17 @@ class InquiryModel {
     required this.message,
     this.providerReply,
     this.status = InquiryStatus.newInquiry,
+    List<ChatMessageModel>? messages,
     DateTime? createdAt,
     DateTime? updatedAt,
-  })  : createdAt = createdAt ?? DateTime.now(),
+  })  : messages = messages ?? [],
+        createdAt = createdAt ?? DateTime.now(),
         updatedAt = updatedAt ?? DateTime.now();
 
   InquiryModel copyWith({
     InquiryStatus? status,
     String? providerReply,
+    List<ChatMessageModel>? messages,
   }) {
     return InquiryModel(
       id: id,
@@ -102,6 +148,7 @@ class InquiryModel {
       message: message,
       providerReply: providerReply ?? this.providerReply,
       status: status ?? this.status,
+      messages: messages ?? this.messages,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );
@@ -124,12 +171,47 @@ class InquiryModel {
       'message': message,
       'response': providerReply,
       'status': status.code,
+      'messages': messages.map((m) => m.toJson()).toList(),
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
   }
 
   factory InquiryModel.fromJson(Map<String, dynamic> json) {
+    List<ChatMessageModel> parsedMessages = [];
+    if (json['messages'] != null && json['messages'] is List) {
+      parsedMessages = (json['messages'] as List)
+          .map((m) => ChatMessageModel.fromJson(m as Map<String, dynamic>))
+          .toList();
+    }
+
+    // Fallback if messages list is empty
+    if (parsedMessages.isEmpty && json['message'] != null) {
+      parsedMessages.add(
+        ChatMessageModel(
+          id: 'msg_seeker_init',
+          senderId: json['seekerId'] as String? ?? '',
+          senderName: json['seekerName'] as String? ?? 'House Seeker',
+          senderRole: 'seeker',
+          text: json['message'] as String? ?? '',
+          createdAt: json['createdAt'] != null ? DateTime.tryParse(json['createdAt'] as String) : null,
+        ),
+      );
+      final reply = (json['response'] ?? json['providerReply']) as String?;
+      if (reply != null && reply.isNotEmpty) {
+        parsedMessages.add(
+          ChatMessageModel(
+            id: 'msg_provider_init',
+            senderId: json['providerId'] as String? ?? '',
+            senderName: 'House Provider',
+            senderRole: 'provider',
+            text: reply,
+            createdAt: json['updatedAt'] != null ? DateTime.tryParse(json['updatedAt'] as String) : null,
+          ),
+        );
+      }
+    }
+
     return InquiryModel(
       id: json['id'] as String,
       propertyId: json['propertyId'] as String? ?? '',
@@ -146,11 +228,12 @@ class InquiryModel {
       message: json['message'] as String? ?? '',
       providerReply: (json['response'] ?? json['providerReply']) as String?,
       status: InquiryStatusExtension.fromCode(json['status'] as String? ?? 'newInquiry'),
+      messages: parsedMessages,
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'] as String)
+          ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
           : DateTime.now(),
       updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'] as String)
+          ? DateTime.tryParse(json['updatedAt'] as String) ?? DateTime.now()
           : DateTime.now(),
     );
   }

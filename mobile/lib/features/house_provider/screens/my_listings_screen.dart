@@ -161,7 +161,7 @@ class _ProviderPropertyCard extends StatelessWidget {
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: Image.network(
-                property.images.isNotEmpty ? property.images.first : '',
+                Formatters.formatImageUrl(property.images.isNotEmpty ? property.images.first : ''),
                 width: 65,
                 height: 65,
                 fit: BoxFit.cover,

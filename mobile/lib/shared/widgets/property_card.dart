@@ -52,8 +52,9 @@ class PropertyCard extends StatelessWidget {
                       width: double.infinity,
                       child: Builder(
                         builder: (context) {
-                          final imageUrl = property.images.isNotEmpty ? property.images.first.trim() : '';
-                          if (imageUrl.isEmpty || (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://'))) {
+                          final rawUrl = property.images.isNotEmpty ? property.images.first.trim() : '';
+                          final imageUrl = Formatters.formatImageUrl(rawUrl);
+                          if (imageUrl.isEmpty) {
                             return Container(
                               color: AppColors.surfaceVariant,
                               child: const Center(
@@ -290,8 +291,9 @@ class PropertyCard extends StatelessWidget {
                       width: double.infinity,
                       child: Builder(
                         builder: (context) {
-                          final imageUrl = property.images.isNotEmpty ? property.images.first.trim() : '';
-                          if (imageUrl.isEmpty || (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://'))) {
+                          final rawUrl = property.images.isNotEmpty ? property.images.first.trim() : '';
+                          final imageUrl = Formatters.formatImageUrl(rawUrl);
+                          if (imageUrl.isEmpty) {
                             return Container(
                               color: AppColors.surfaceVariant,
                               child: const Center(

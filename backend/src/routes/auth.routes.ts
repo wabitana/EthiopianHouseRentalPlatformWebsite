@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { prisma } from '../prisma';
+import { prisma, withDbRetry } from '../prisma';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 
 const router = Router();
@@ -72,11 +72,13 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Email/Phone and password are required' });
     }
 
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [{ email: emailOrPhone }, { phone: emailOrPhone }],
-      },
-    });
+    const user = await withDbRetry(() =>
+      prisma.user.findFirst({
+        where: {
+          OR: [{ email: emailOrPhone }, { phone: emailOrPhone }],
+        },
+      })
+    );
 
     if (!user) {
       return res.status(401).json({ error: 'Invalid email/phone or password' });
