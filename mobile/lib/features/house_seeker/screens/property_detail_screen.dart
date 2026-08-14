@@ -429,14 +429,21 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           crossAxisAlignment: CrossAxisAlignment.baseline,
                           textBaseline: TextBaseline.alphabetic,
                           children: [
-                            Text(
-                              Formatters.formatCurrency(property.price),
-                              style: const TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primary,
+                            Expanded(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  Formatters.formatCurrency(property.price),
+                                  style: const TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.primary,
+                                  ),
+                                ),
                               ),
                             ),
+                            const SizedBox(width: 8),
                             Text(
                               'per ${property.rentalPeriod.toLowerCase()}',
                               style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
@@ -486,6 +493,8 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           city: property.city,
                           area: property.area,
                           neighborhood: property.neighborhood,
+                          latitude: property.latitude,
+                          longitude: property.longitude,
                         ),
                         const SizedBox(height: 20),
 

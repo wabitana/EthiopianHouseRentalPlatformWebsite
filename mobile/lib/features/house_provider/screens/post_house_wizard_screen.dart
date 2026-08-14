@@ -9,6 +9,7 @@ import '../../../core/utils/formatters.dart';
 import '../../../shared/models/property_model.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
+import '../../../shared/widgets/ethiopia_map_preview.dart';
 import '../../house_seeker/providers/property_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 
@@ -43,6 +44,8 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
   String _area = 'Bole';
   final _neighborhoodController = TextEditingController(text: 'Bulbula Site 3');
   final _addressController = TextEditingController(text: 'Near Mariam Church, Block 14');
+  double? _latitude;
+  double? _longitude;
 
   final List<String> _selectedAmenities = ['Water', 'Electricity', 'Parking', 'Kitchen', 'Security', 'Water Tank'];
 
@@ -102,6 +105,8 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
       area: _area,
       neighborhood: _neighborhoodController.text.trim(),
       addressDetails: _addressController.text.trim(),
+      latitude: _latitude,
+      longitude: _longitude,
       images: _selectedImages,
       amenities: _selectedAmenities,
       availability: true,
@@ -626,6 +631,34 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
         const SizedBox(height: 16),
 
         CustomTextField(label: 'Address Details / Directions', controller: _addressController, maxLines: 2, hint: 'Landmarks, street name, building number...'),
+        const SizedBox(height: 16),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Pin Location on Map', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            if (_latitude != null && _longitude != null)
+              Text(
+                '${_latitude!.toStringAsFixed(4)}, ${_longitude!.toStringAsFixed(4)}',
+                style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.bold),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        EthiopiaMapPreview(
+          city: _city,
+          area: _area,
+          neighborhood: _neighborhoodController.text.isNotEmpty ? _neighborhoodController.text : _area,
+          latitude: _latitude,
+          longitude: _longitude,
+          isInteractive: true,
+          onLocationSelected: (latLng) {
+            setState(() {
+              _latitude = latLng.latitude;
+              _longitude = latLng.longitude;
+            });
+          },
+        ),
       ],
     );
   }

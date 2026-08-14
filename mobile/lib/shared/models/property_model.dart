@@ -57,6 +57,8 @@ class PropertyModel {
   final String area;
   final String neighborhood;
   final String? addressDetails;
+  final double? latitude;
+  final double? longitude;
 
   final List<String> images;
   final List<String> amenities;
@@ -88,6 +90,8 @@ class PropertyModel {
     required this.area,
     required this.neighborhood,
     this.addressDetails,
+    this.latitude,
+    this.longitude,
     required this.images,
     required this.amenities,
     this.availability = true,
@@ -118,6 +122,8 @@ class PropertyModel {
     String? area,
     String? neighborhood,
     String? addressDetails,
+    double? latitude,
+    double? longitude,
     List<String>? images,
     List<String>? amenities,
     bool? availability,
@@ -144,6 +150,8 @@ class PropertyModel {
       area: area ?? this.area,
       neighborhood: neighborhood ?? this.neighborhood,
       addressDetails: addressDetails ?? this.addressDetails,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
       images: images ?? this.images,
       amenities: amenities ?? this.amenities,
       availability: availability ?? this.availability,
@@ -175,6 +183,8 @@ class PropertyModel {
       'area': area,
       'neighborhood': neighborhood,
       'addressDetails': addressDetails,
+      'latitude': latitude,
+      'longitude': longitude,
       'images': images,
       'amenities': amenities,
       'availability': availability,
@@ -206,6 +216,8 @@ class PropertyModel {
       area: json['area'] as String,
       neighborhood: json['neighborhood'] as String,
       addressDetails: json['addressDetails'] as String?,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
       images: List<String>.from(json['images'] as List),
       amenities: List<String>.from(json['amenities'] as List),
       availability: json['availability'] as bool? ?? true,
