@@ -1,6 +1,8 @@
+import 'dart:js_interop';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:web/web.dart' as web;
@@ -35,6 +37,7 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
   late final MapController _mapController;
   late LatLng _currentCenter;
   bool _isSatellite = false;
+  bool _isLocating = false;
   double _zoomLevel = 14.5;
 
   @override
@@ -69,6 +72,84 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
         _currentCenter = newCenter;
       });
       _mapController.move(newCenter, _zoomLevel);
+    }
+  }
+
+  Future<void> _useCurrentLocation() async {
+    setState(() {
+      _isLocating = true;
+    });
+
+    if (kIsWeb) {
+      try {
+        web.window.navigator.geolocation.getCurrentPosition(
+          (web.GeolocationPosition pos) {
+            final lat = pos.coords.latitude;
+            final lng = pos.coords.longitude;
+            final currentLatLng = LatLng(lat, lng);
+            if (mounted) {
+              setState(() {
+                _currentCenter = currentLatLng;
+                _zoomLevel = 16.0;
+                _isLocating = false;
+              });
+              _mapController.move(currentLatLng, 16.0);
+              widget.onLocationSelected?.call(currentLatLng);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Location set to your GPS position (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})'),
+                  backgroundColor: AppColors.primary,
+                ),
+              );
+            }
+          }.toJS,
+          (web.GeolocationPositionError err) {
+            if (mounted) {
+              setState(() => _isLocating = false);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Location permission denied or unavailable.')),
+              );
+            }
+          }.toJS,
+        );
+        return;
+      } catch (e) {
+        debugPrint('Web geolocation fallback info: $e');
+      }
+    }
+
+    try {
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+
+      final currentLatLng = LatLng(position.latitude, position.longitude);
+      setState(() {
+        _currentCenter = currentLatLng;
+        _zoomLevel = 16.0;
+        _isLocating = false;
+      });
+
+      _mapController.move(currentLatLng, 16.0);
+      widget.onLocationSelected?.call(currentLatLng);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Location set to your current GPS position (${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)})',
+            ),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      setState(() => _isLocating = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not fetch GPS location: ${e.toString()}')),
+        );
+      }
     }
   }
 
@@ -190,6 +271,42 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
                 ),
               ],
             ),
+
+            // Top Left: Use My Location Button (when interactive for provider)
+            if (widget.isInteractive)
+              Positioned(
+                top: 10,
+                left: 10,
+                child: GestureDetector(
+                  onTap: _isLocating ? null : _useCurrentLocation,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_isLocating)
+                          const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        else
+                          const Icon(Icons.my_location_rounded, color: Colors.white, size: 14),
+                        const SizedBox(width: 4),
+                        Text(
+                          _isLocating ? 'Locating...' : 'Use My Location',
+                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
 
             // Top Bar: Map Style Switcher (Street vs Satellite)
             Positioned(

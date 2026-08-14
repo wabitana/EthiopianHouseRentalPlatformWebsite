@@ -126,15 +126,19 @@ class _NotificationTile extends StatelessWidget {
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        notification.title,
-                        style: TextStyle(
-                          fontWeight: notification.isRead ? FontWeight.w600 : FontWeight.bold,
-                          fontSize: 14,
-                          color: AppColors.textPrimary,
+                      Expanded(
+                        child: Text(
+                          notification.title,
+                          style: TextStyle(
+                            fontWeight: notification.isRead ? FontWeight.w600 : FontWeight.bold,
+                            fontSize: 14,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Text(
                         Formatters.formatTimeAgo(notification.createdAt),
                         style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
