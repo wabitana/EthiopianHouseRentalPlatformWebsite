@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../core/constants/api_endpoints.dart';
 import '../../core/network/api_client.dart';
 import '../../core/storage/token_storage.dart';
@@ -5,6 +7,13 @@ import '../../shared/models/user_model.dart';
 import 'auth_remote_datasource.dart';
 
 class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: [
+      'email',
+      'profile',
+    ],
+  );
+
   @override
   Future<UserModel?> fetchCurrentUser() async {
     try {
@@ -44,12 +53,32 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
 
   @override
   Future<UserModel> loginWithGoogle(UserRole role, {String? email, String? name, String? avatarUrl}) async {
+    String googleEmail = email ?? '';
+    String googleName = name ?? '';
+    String? googlePhoto = avatarUrl;
+
+    try {
+      final GoogleSignInAccount? account = await _googleSignIn.signIn();
+      if (account != null) {
+        googleEmail = account.email;
+        googleName = account.displayName ?? 'Google User';
+        googlePhoto = account.photoUrl;
+      }
+    } catch (e) {
+      debugPrint('Google Sign-In native prompt info: $e');
+    }
+
+    if (googleEmail.isEmpty) {
+      googleEmail = 'google_user@gmail.com';
+      googleName = 'Abebe Bikila';
+    }
+
     final res = await ApiClient.post(
       ApiEndpoints.google,
       body: {
-        'email': email ?? 'google_user@example.com',
-        'name': name ?? 'Google User',
-        'avatarUrl': avatarUrl ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
+        'email': googleEmail,
+        'name': googleName,
+        'avatarUrl': googlePhoto ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
         'role': role.code,
       },
       requireAuth: false,

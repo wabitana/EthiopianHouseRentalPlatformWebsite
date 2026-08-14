@@ -85,13 +85,18 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> loginWithGoogle(UserRole role) async {
+  Future<bool> loginWithGoogle(
+    UserRole role, {
+    String? email,
+    String? name,
+    String? avatarUrl,
+  }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final user = await _authRepository.loginWithGoogle(role);
+      final user = await _authRepository.loginWithGoogle(role, email: email, name: name, avatarUrl: avatarUrl);
 
       if (user.role != role) {
         _currentUser = null;

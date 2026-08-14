@@ -7,6 +7,7 @@ import '../../../shared/widgets/custom_text_field.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import '../../../shared/widgets/main_layout_wrapper.dart';
+import '../../../shared/widgets/google_account_picker_dialog.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -45,15 +46,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  void _onGoogleRegister() async {
-    final authProvider = context.read<AuthProvider>();
-    final success = await authProvider.loginWithGoogle(_selectedRole);
-    if (success && mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const MainLayoutWrapper()),
-        (route) => false,
-      );
-    }
+  void _onGoogleRegister() {
+    showDialog(
+      context: context,
+      builder: (ctx) => GoogleAccountPickerDialog(
+        onAccountSelected: (account) async {
+          final authProvider = context.read<AuthProvider>();
+          final success = await authProvider.loginWithGoogle(
+            _selectedRole,
+            email: account.email,
+            name: account.name,
+            avatarUrl: account.avatarUrl,
+          );
+          if (success && mounted) {
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const MainLayoutWrapper()),
+              (route) => false,
+            );
+          }
+        },
+      ),
+    );
   }
 
   @override
