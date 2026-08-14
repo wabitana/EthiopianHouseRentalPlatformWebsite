@@ -16,6 +16,8 @@ import {
   Image,
   Building2,
   Home,
+  ShieldCheck,
+  ShieldAlert,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -35,12 +37,11 @@ interface NavbarProps {
 
 const customerLinks = [
   { href: "/", label: "Home", icon: Store },
-  { href: "/about", label: "About", icon: Info },
   { href: "/browse-houses", label: "Browse Houses", icon: Building2 },
+  { href: "/sub-admin", label: "🛡️ Sub-Admin Portal", icon: ShieldCheck },
+  { href: "/cms/dashboard", label: "👑 Super Admin", icon: ShieldAlert },
   { href: "/services", label: "Services", icon: Wrench },
-  // Updated to link to the anchor ID on the home page
   { href: "/#contact", label: "Contact", icon: MessageSquare },
-  { href: "/launch-app", label: "Launch App", icon: LayoutDashboard },
 ];
 
 export function Navbar({ user, cartCount = 0, cmsNavbar = {} }: NavbarProps) {

@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -21,17 +21,21 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  vendor           Vendor?
-  orders           Order[]
-  serviceBookings  ServiceBooking[]
-  reviews          Review[]
-  cartItems        CartItem[]
-  complaints       Complaint[]
-  assignedServices ServiceBooking[] @relation("AssignedProvider")
+  assignedRegion        String?  @default("Addis Ababa - Bole")
+  vendor                Vendor?
+  orders                Order[]
+  serviceBookings       ServiceBooking[]
+  reviews               Review[]
+  cartItems             CartItem[]
+  complaints            Complaint[]
+  assignedServices      ServiceBooking[] @relation("AssignedProvider")
   notifications         Notification[]
   savedAddresses        SavedAddress[]
   pushSubscriptions     PushSubscription[]
   serviceSubscriptions  ServiceSubscription[]
+  properties            Property[] @relation("UserProperties")
+  verifiedProperties    Property[] @relation("SubAdminVerifiedProperties")
+  inspections           PropertyInspection[]
 }
 
 model Vendor {
@@ -340,3 +344,47 @@ model PushSubscription {
 
   @@unique([userId, endpoint])
 }
+
+model Property {
+  id                   String   @id @default(cuid())
+  title                String
+  description          String
+  price                Float
+  deposit              Float
+  city                 String   @default("Addis Ababa")
+  neighborhood         String   @default("Bole")
+  address              String?
+  bedrooms             Int      @default(2)
+  bathrooms            Int      @default(2)
+  areaSqm              Float    @default(120)
+  images               String   @default("[]")
+  has3DWalkthrough     Boolean  @default(true)
+  model3DType          String   @default("executive_suite")
+  status               String   @default("APPROVED") // PENDING, APPROVED, REJECTED
+  landlordName         String   @default("Delala Rentals PLC")
+  landlordPhone        String   @default("0911819145")
+  landlordEmail        String   @default("rentals@delala.com")
+  verifiedBySubAdminId String?
+  verifiedBySubAdmin   User?    @relation("SubAdminVerifiedProperties", fields: [verifiedBySubAdminId], references: [id])
+  userId               String?
+  user                 User?    @relation("UserProperties", fields: [userId], references: [id])
+  featured             Boolean  @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  inspections PropertyInspection[]
+}
+
+model PropertyInspection {
+  id             String   @id @default(cuid())
+  propertyId     String
+  property       Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  subAdminId     String
+  subAdmin       User     @relation(fields: [subAdminId], references: [id])
+  subAdminName   String
+  status         String   // APPROVED, REJECTED, CHANGES_REQUESTED
+  notes          String?
+  checklistJson  String?  // JSON checklist summary
+  createdAt      DateTime @default(now())
+}
+
