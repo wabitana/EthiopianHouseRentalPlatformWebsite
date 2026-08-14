@@ -8,6 +8,8 @@ import { Navbar } from "@/components/layout/navbar";
 import { PushPrompt } from "@/components/customer/push-prompt";
 import { Mail, Phone, MapPin, ChevronRight, Send } from "lucide-react";
 
+import AdminHotKeyModal from "@/components/AdminHotKeyModal";
+
 const geist = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -51,6 +53,7 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col bg-slate-50">
         <Navbar user={user} cartCount={cartCount} cmsNavbar={cms_navbar} />
         <main className="flex-1 pb-0">{children}</main>
+        <AdminHotKeyModal />
         <PushPrompt />
        <footer className="bg-slate-900 text-slate-300 pt-16 pb-8">
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">

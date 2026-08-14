@@ -38,8 +38,6 @@ interface NavbarProps {
 const customerLinks = [
   { href: "/", label: "Home", icon: Store },
   { href: "/browse-houses", label: "Browse Houses", icon: Building2 },
-  { href: "/sub-admin", label: "🛡️ Sub-Admin Portal", icon: ShieldCheck },
-  { href: "/cms/dashboard", label: "👑 Super Admin", icon: ShieldAlert },
   { href: "/services", label: "Services", icon: Wrench },
   { href: "/#contact", label: "Contact", icon: MessageSquare },
 ];

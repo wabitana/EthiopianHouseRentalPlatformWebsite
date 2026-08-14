@@ -227,33 +227,24 @@ export default function HomePage() {
               {hero.subtitle || "Explore verified apartments, luxury villas, studio flats, and family houses in Addis Ababa, Hawassa, Adama & Bahir Dar with transparent ETB pricing and digital lease agreements."}
             </p>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-8 flex flex-wrap gap-4">
               <Link href={hero.primaryButtonLink || "/browse-houses"}>
                 <Button
                   size="lg"
-                  className="bg-white text-emerald-800 hover:bg-emerald-50 font-bold"
+                  className="bg-white text-emerald-800 hover:bg-emerald-50 font-bold shadow-lg"
                 >
                   {hero.primaryButtonText || "Explore Home Rentals"}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
 
-              <Link href="/sub-admin">
-                <Button
-                  size="lg"
-                  className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold shadow-lg border border-amber-400/50"
-                >
-                  🛡️ Sub-Admin Verification Desk
-                </Button>
-              </Link>
-
-              <Link href="/cms/dashboard">
+              <Link href={hero.secondaryButtonLink || "/services"}>
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-white/80 bg-black/40 text-white hover:bg-white/20 font-bold backdrop-blur"
+                  className="border-white/80 bg-black/30 text-white hover:bg-white/20 font-bold backdrop-blur"
                 >
-                  👑 Super Admin Dashboard
+                  {hero.secondaryButtonText || "Book Rental Inspection"}
                 </Button>
               </Link>
             </div>
