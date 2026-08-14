@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { prisma } from '../prisma';
 import { authenticateToken, AuthRequest } from '../middleware/auth';
 
+import { sendNewPropertyEmailAlert } from '../services/email.service';
+
 const router = Router();
 
 // Helper to format property output
@@ -175,8 +177,8 @@ router.post('/', authenticateToken, async (req: AuthRequest, res) => {
         images: JSON.stringify(images || []),
         amenities: JSON.stringify(amenities || []),
         availability: true,
-        isVerified: false,
-        listingStatus: 'pending', // Requires admin review
+        isVerified: true,
+        listingStatus: 'active', // Immediately visible to seekers
       },
     });
 
@@ -185,6 +187,43 @@ router.post('/', authenticateToken, async (req: AuthRequest, res) => {
       where: { id: userId },
       data: { totalListings: { increment: 1 } },
     });
+
+    // Broadcast In-App Notifications to all registered users
+    try {
+      const allUsers = await prisma.user.findMany({
+        select: { id: true, email: true },
+      });
+
+      if (allUsers.length > 0) {
+        await prisma.notification.createMany({
+          data: allUsers.map((u) => ({
+            userId: u.id,
+            title: `New Property Posted: ${title}`,
+            message: `A new ${propertyType} with ${rooms} rooms in ${area}, ${city} is now available for ${price} ETB/${rentalPeriod || 'Monthly'}.`,
+            type: 'PROPERTY',
+          })),
+        });
+        console.log(`🔔 Created in-app notification for ${allUsers.length} users.`);
+        
+        // Dispatch Email Alert to all users
+        const emails = allUsers.map((u) => u.email).filter(Boolean);
+        sendNewPropertyEmailAlert(emails, {
+          title,
+          description,
+          propertyType,
+          price: Number(price),
+          rentalPeriod: rentalPeriod || 'Monthly',
+          rooms: Number(rooms || 1),
+          bathrooms: Number(bathrooms || 1),
+          city,
+          area,
+          neighborhood,
+          images: typeof images === 'string' ? JSON.parse(images) : (images || []),
+        }).catch((err) => console.error('Email alert dispatch error:', err));
+      }
+    } catch (notifErr) {
+      console.error('Notification broadcast warning:', notifErr);
+    }
 
     return res.status(201).json(formatProperty(newProperty));
   } catch (error) {
