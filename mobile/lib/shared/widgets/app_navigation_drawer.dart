@@ -13,6 +13,8 @@ import '../../features/house_provider/screens/post_house_wizard_screen.dart';
 import '../../features/house_provider/screens/provider_analytics_screen.dart';
 import '../../features/house_provider/screens/provider_inquiries_screen.dart';
 import '../../features/house_provider/screens/my_listings_screen.dart';
+import '../../features/house_provider/screens/subscription_plans_screen.dart';
+import '../../features/profile/screens/identity_verification_screen.dart';
 import '../../shared/models/user_model.dart';
 import '../../shared/widgets/verification_badge.dart';
 import '../../shared/widgets/custom_button.dart';
@@ -462,6 +464,32 @@ class AppNavigationDrawer extends StatelessWidget {
                       Navigator.of(context).pop();
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const PostHouseWizardScreen()),
+                      );
+                    },
+                  ),
+                  _buildDrawerTile(
+                    context,
+                    icon: Icons.card_membership_rounded,
+                    title: 'Landlord Subscription Plans',
+                    subtitle: 'Activate Basic, Pro, or Business plan via Chapa',
+                    primary: const Color(0xFFF59E0B),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const SubscriptionPlansScreen()),
+                      );
+                    },
+                  ),
+                  _buildDrawerTile(
+                    context,
+                    icon: Icons.verified_user_rounded,
+                    title: 'Identity Verification (Fayda / Passport)',
+                    subtitle: 'Upload National ID & selfie for Verified Badge',
+                    primary: const Color(0xFF0284C7),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const IdentityVerificationScreen()),
                       );
                     },
                   ),

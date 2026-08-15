@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../../prisma';
 import { authenticateToken, AuthRequest } from '../../middleware/auth';
 import { sendNewPropertyEmailAlert } from '../email/email.service';
+import { subscriptionService } from '../subscriptions/subscription.service';
 
 const router = Router();
 
@@ -210,6 +211,15 @@ router.post('/', authenticateToken, async (req: AuthRequest, res) => {
       images,
       amenities,
     } = req.body;
+
+    const isSubscribed = await subscriptionService.isOwnerSubscribed(userId);
+    if (!isSubscribed) {
+      return res.status(402).json({
+        error: 'Active Owner Subscription Required',
+        message: 'House Providers must hold an active subscription plan (Basic, Professional, or Business) before posting property listings.',
+        requiresSubscription: true,
+      });
+    }
 
     if (!title || !description || !propertyType || !price || !city || !area || !neighborhood) {
       return res.status(400).json({ error: 'Missing required property information' });

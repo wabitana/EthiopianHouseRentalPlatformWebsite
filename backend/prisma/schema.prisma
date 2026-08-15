@@ -21,11 +21,19 @@ model User {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  properties    Property[]     @relation("ProviderProperties")
-  favorites     Favorite[]
-  inquiriesSent Inquiry[]      @relation("SeekerInquiries")
-  notifications Notification[]
-  reports       Report[]
+  properties        Property[]          @relation("ProviderProperties")
+  favorites         Favorite[]
+  inquiriesSent     Inquiry[]           @relation("SeekerInquiries")
+  notifications     Notification[]
+  reports           Report[]
+
+  // Modular System Relations
+  identityDocuments IdentityDocument[]
+  subscriptions     Subscription[]
+  payments          Payment[]
+  rentalRequests    RentalRequest[]     @relation("RenterRequests")
+  saleRequests      SaleRequest[]       @relation("BuyerRequests")
+  auditLogs         AuditLog[]
 }
 
 model Property {
@@ -40,7 +48,10 @@ model Property {
   title              String
   description        String
   propertyType       String   // Apartment, Villa, Studio, Condominium, Townhouse
+  transactionType    String   @default("RENT") // RENT, SALE
   price              Float
+  rentPrice          Float?
+  salePrice          Float?
   rentalPeriod       String   @default("Monthly")
   rooms              Int
   bathrooms          Int
@@ -50,12 +61,12 @@ model Property {
   neighborhood       String
   addressDetails     String?
 
-  images             String   @default("[]") // Stored as JSON string
-  amenities          String   @default("[]") // Stored as JSON string
+  images             String   @default("[]") // JSON string array
+  amenities          String   @default("[]") // JSON string array
 
   availability       Boolean  @default(true)
   isVerified         Boolean  @default(true)
-  listingStatus      String   @default("pending") // pending, active, rented, rejected
+  listingStatus      String   @default("pending") // pending, active, rented, sold, rejected
 
   viewsCount         Int      @default(0)
   inquiriesCount     Int      @default(0)
@@ -65,6 +76,9 @@ model Property {
   favorites          Favorite[]
   inquiries          Inquiry[]
   reports            Report[]
+  propertyDocuments  PropertyDocument[]
+  rentalRequests     RentalRequest[]
+  saleRequests       SaleRequest[]
 }
 
 model Favorite {
@@ -103,7 +117,7 @@ model Notification {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title     String
   message   String
-  type      String   @default("SYSTEM") // SYSTEM, INQUIRY, PROPERTY, RESPONSE
+  type      String   @default("SYSTEM") // SYSTEM, INQUIRY, PROPERTY, RESPONSE, SUBSCRIPTION
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 }
@@ -117,4 +131,117 @@ model Report {
   reason     String
   details    String?
   createdAt  DateTime @default(now())
+}
+
+// ==========================================
+// NEW FEATURE-BASED DOMAIN ENTITIES
+// ==========================================
+
+model IdentityDocument {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idType       String   // NATIONAL_ID, PASSPORT, DRIVERS_LICENSE
+  idNumber     String
+  documentUrl  String
+  selfieUrl    String?
+  status       String   @default("PENDING") // PENDING, UNDER_REVIEW, VERIFIED, REJECTED
+  aiRiskScore  Float?
+  aiNotes      String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model PropertyDocument {
+  id          String   @id @default(uuid())
+  propertyId  String
+  property    Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  ownerId     String
+  docType     String   // TITLE_DEED, SITE_PLAN, LEASE_LICENSE
+  docUrl      String
+  status      String   @default("PENDING") // PENDING, VERIFIED, REJECTED
+  aiRiskScore Float?
+  aiNotes     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SubscriptionPlan {
+  id           String         @id @default(uuid())
+  name         String         @unique // Basic, Professional, Business
+  priceETB     Float
+  durationDays Int            @default(30)
+  maxListings  Int            @default(5)
+  features     String         @default("[]") // JSON string array
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id         String           @id @default(uuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId     String
+  plan       SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  status     String           @default("PENDING") // PENDING, ACTIVE, EXPIRED, CANCELLED
+  startDate  DateTime         @default(now())
+  endDate    DateTime
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  payments   Payment[]
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  amountETB      Float
+  paymentMethod  String        @default("CHAPA_SIMULATION") // CHAPA_SIMULATION, CHAPA_REAL, CBE_BIRR
+  reference      String        @unique
+  status         String        @default("PENDING") // PENDING, SUCCESS, FAILED
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model RentalRequest {
+  id                String    @id @default(uuid())
+  propertyId        String
+  property          Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  renterId          String
+  renter            User      @relation("RenterRequests", fields: [renterId], references: [id], onDelete: Cascade)
+  ownerId           String
+  status            String    @default("PENDING") // PENDING, ACCEPTED, REJECTED, ACTIVE, COMPLETED, TERMINATED
+  proposedStartDate DateTime?
+  notes             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model SaleRequest {
+  id             String   @id @default(uuid())
+  propertyId     String
+  property       Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  buyerId        String
+  buyer          User     @relation("BuyerRequests", fields: [buyerId], references: [id], onDelete: Cascade)
+  ownerId        String
+  offeredPriceETB Float
+  status         String   @default("PENDING") // PENDING, ACCEPTED, REJECTED, UNDER_REVIEW, LEGAL_PROCESS, COMPLETED
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  details   String?
+  ipAddress String?
+  createdAt DateTime @default(now())
 }

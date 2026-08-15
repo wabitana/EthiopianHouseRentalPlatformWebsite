@@ -12,6 +12,7 @@ import '../../../shared/widgets/custom_text_field.dart';
 import '../../../shared/widgets/ethiopia_map_preview.dart';
 import '../../house_seeker/providers/property_provider.dart';
 import '../../auth/providers/auth_provider.dart';
+import 'subscription_plans_screen.dart';
 
 class PostHouseWizardScreen extends StatefulWidget {
   const PostHouseWizardScreen({super.key});
@@ -114,14 +115,55 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
       listingStatus: PropertyListingStatus.active,
     );
 
-    await context.read<PropertyProvider>().createProperty(newProperty);
+    final success = await context.read<PropertyProvider>().createProperty(newProperty);
 
     if (mounted) {
       setState(() {
         _isSubmitting = false;
       });
-      _showSuccessDialog();
+      if (success) {
+        _showSuccessDialog();
+      } else {
+        _showSubscriptionRequiredDialog();
+      }
     }
+  }
+
+  void _showSubscriptionRequiredDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Column(
+          children: [
+            Icon(Icons.card_membership_rounded, color: Colors.amber, size: 54),
+            SizedBox(height: 10),
+            Text('Subscription Plan Required', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18), textAlign: TextAlign.center),
+          ],
+        ),
+        content: const Text(
+          'House Providers must hold an active subscription plan (Basic, Professional, or Business) before posting property listings for Rent or Sale on Ethiopian Property Platform.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SubscriptionPlansScreen()),
+              );
+            },
+            child: const Text('View Plans', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showSuccessDialog() {

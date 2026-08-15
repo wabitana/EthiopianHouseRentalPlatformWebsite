@@ -8,4 +8,8 @@ export { default as reportRoutes } from './reports/report.routes';
 export { default as adminRoutes } from './admin/admin.routes';
 export { default as uploadRoutes } from './upload/upload.routes';
 export { default as aiRoutes } from './ai/ai.routes';
+export { default as subscriptionRoutes } from './subscriptions/subscription.routes';
+export { default as verificationRoutes } from './verification/verification.routes';
+export { default as rentalRoutes } from './rentals/rental.routes';
+export { default as saleRoutes } from './sales/sale.routes';
 export * from './email/email.service';

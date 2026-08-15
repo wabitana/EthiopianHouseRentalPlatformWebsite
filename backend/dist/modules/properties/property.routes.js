@@ -4,6 +4,7 @@ const express_1 = require("express");
 const prisma_1 = require("../../prisma");
 const auth_1 = require("../../middleware/auth");
 const email_service_1 = require("../email/email.service");
+const subscription_service_1 = require("../subscriptions/subscription.service");
 const router = (0, express_1.Router)();
 // Helper to format property output
 const formatProperty = (p) => ({
@@ -164,6 +165,14 @@ router.post('/', auth_1.authenticateToken, async (req, res) => {
         if (!providerUser)
             return res.status(404).json({ error: 'Provider profile not found' });
         const { title, description, propertyType, price, rentalPeriod, rooms, bathrooms, city, area, neighborhood, addressDetails, images, amenities, } = req.body;
+        const isSubscribed = await subscription_service_1.subscriptionService.isOwnerSubscribed(userId);
+        if (!isSubscribed) {
+            return res.status(402).json({
+                error: 'Active Owner Subscription Required',
+                message: 'House Providers must hold an active subscription plan (Basic, Professional, or Business) before posting property listings.',
+                requiresSubscription: true,
+            });
+        }
         if (!title || !description || !propertyType || !price || !city || !area || !neighborhood) {
             return res.status(400).json({ error: 'Missing required property information' });
         }
