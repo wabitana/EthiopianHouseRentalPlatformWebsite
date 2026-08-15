@@ -16,6 +16,11 @@ export function createApp(): Express {
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+  // Handle browser favicon requests cleanly (prevents 404 error logs in console)
+  app.get('/favicon.ico', (req, res) => {
+    res.status(204).end();
+  });
+
   // Swagger Interactive Documentation UI
   setupSwagger(app);
 

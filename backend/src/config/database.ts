@@ -9,7 +9,7 @@ declare global {
 export const prisma =
   global.prisma ||
   new PrismaClient({
-    log: env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    log: ['error', 'warn'],
   });
 
 if (env.NODE_ENV !== 'production') {
@@ -19,9 +19,9 @@ if (env.NODE_ENV !== 'production') {
 export async function connectDatabase(): Promise<void> {
   try {
     await prisma.$connect();
-    console.log('✅ PostgreSQL database connected successfully via Prisma.');
+    console.log('PostgreSQL database connected successfully via Prisma.');
   } catch (error) {
-    console.error('❌ Database connection failed:', error);
+    console.error('Database connection failed:', error);
   }
 }
 
