@@ -9,6 +9,10 @@ import '../../features/profile/screens/theme_settings_screen.dart';
 import '../../features/notifications/screens/notification_center_screen.dart';
 import '../../features/ai_assistant/screens/ai_assistant_screen.dart';
 import '../../features/house_seeker/screens/search_screen.dart';
+import '../../features/house_provider/screens/post_house_wizard_screen.dart';
+import '../../features/house_provider/screens/provider_analytics_screen.dart';
+import '../../features/house_provider/screens/provider_inquiries_screen.dart';
+import '../../features/house_provider/screens/my_listings_screen.dart';
 import '../../shared/models/user_model.dart';
 import '../../shared/widgets/verification_badge.dart';
 import '../../shared/widgets/custom_button.dart';
@@ -418,7 +422,7 @@ class AppNavigationDrawer extends StatelessWidget {
             ),
           ),
 
-          // 2. Scrollable Navigation List with 5 New PRO Features
+          // 2. Scrollable Navigation List with Tailored Provider / Seeker Pro Tools
           Expanded(
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
@@ -443,69 +447,164 @@ class AppNavigationDrawer extends StatelessWidget {
                     );
                   },
                 ),
-                _buildDrawerTile(
-                  context,
-                  icon: Icons.auto_awesome_rounded,
-                  title: 'AI Housing Assistant',
-                  subtitle: 'Search real properties & get smart recommendations',
-                  primary: Colors.amber.shade800,
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const AiAssistantScreen()),
-                    );
-                  },
-                ),
-                // NEW PRO FEATURE 1: Subcity Search Map Explorer
-                _buildDrawerTile(
-                  context,
-                  icon: Icons.map_rounded,
-                  title: 'Interactive Subcity Map Explorer',
-                  subtitle: 'Explore registered house pins on live map',
-                  primary: const Color(0xFF0284C7),
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const SearchScreen()),
-                    );
-                  },
-                ),
-                // NEW PRO FEATURE 2: Lease Draft Generator
-                _buildDrawerTile(
-                  context,
-                  icon: Icons.description_outlined,
-                  title: 'Rental Lease Draft Generator',
-                  subtitle: 'Generate standard Amharic/English tenancy contract',
-                  primary: const Color(0xFF0D9488),
-                  onTap: () => _showLeaseDraftModal(context),
-                ),
-                // NEW PRO FEATURE 3: Market Price & Utility Index
-                _buildDrawerTile(
-                  context,
-                  icon: Icons.analytics_outlined,
-                  title: 'Rent Market Price & Utility Index',
-                  subtitle: 'Compare subcity rates & water/power stability',
-                  primary: const Color(0xFF8B5CF6),
-                  onTap: () => _showMarketPriceAnalyzerModal(context),
-                ),
-                // NEW PRO FEATURE 4: Scam Protection Shield
-                _buildDrawerTile(
-                  context,
-                  icon: Icons.shield_outlined,
-                  title: 'Landlord Verification & Safety Shield',
-                  subtitle: 'Zero broker fees & title deed verification',
-                  primary: const Color(0xFF10B981),
-                  onTap: () => _showScamAuditModal(context),
-                ),
-                // NEW PRO FEATURE 5: 24/7 Rental Hotline Support
-                _buildDrawerTile(
-                  context,
-                  icon: Icons.headset_mic_outlined,
-                  title: '24/7 Support Desk & Toll-Free Hotline',
-                  subtitle: 'Hotline: 9090 / +251 911 000 000',
-                  primary: const Color(0xFFE11D48),
-                  onTap: () => _showSupportDeskModal(context),
-                ),
+
+                // -------------------------------------------------------------
+                // HOUSE PROVIDER / LANDLORD SPECIFIC DRAWER TOOLS
+                // -------------------------------------------------------------
+                if (authProvider.isProvider) ...[
+                  _buildDrawerTile(
+                    context,
+                    icon: Icons.add_home_work_rounded,
+                    title: 'Post New Property Listing',
+                    subtitle: 'Add a new rental house with photos & terms',
+                    primary: const Color(0xFF10B981),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const PostHouseWizardScreen()),
+                      );
+                    },
+                  ),
+                  _buildDrawerTile(
+                    context,
+                    icon: Icons.holiday_village_rounded,
+                    title: 'My Managed Listings',
+                    subtitle: 'View, edit prices & availability status',
+                    primary: const Color(0xFF0F172A),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const MyListingsScreen()),
+                      );
+                    },
+                  ),
+                  _buildDrawerTile(
+                    context,
+                    icon: Icons.insights_rounded,
+                    title: 'Earnings & Occupancy Analytics',
+                    subtitle: 'Track monthly rent income & view counts',
+                    primary: const Color(0xFF0284C7),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const ProviderAnalyticsScreen()),
+                      );
+                    },
+                  ),
+                  _buildDrawerTile(
+                    context,
+                    icon: Icons.mark_chat_unread_rounded,
+                    title: 'Tenant Viewing Requests',
+                    subtitle: 'Review & approve tour bookings from seekers',
+                    primary: const Color(0xFFF59E0B),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const ProviderInquiriesScreen()),
+                      );
+                    },
+                  ),
+                  _buildDrawerTile(
+                    context,
+                    icon: Icons.auto_awesome_rounded,
+                    title: 'AI Landlord Assistant',
+                    subtitle: 'Optimize descriptions, price houses & auto-reply',
+                    primary: Colors.amber.shade800,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AiAssistantScreen()),
+                      );
+                    },
+                  ),
+                  _buildDrawerTile(
+                    context,
+                    icon: Icons.description_outlined,
+                    title: 'Tenancy Contract Generator',
+                    subtitle: 'Generate standard Amharic/English lease contracts',
+                    primary: const Color(0xFF0D9488),
+                    onTap: () => _showLeaseDraftModal(context),
+                  ),
+                  _buildDrawerTile(
+                    context,
+                    icon: Icons.analytics_outlined,
+                    title: 'Subcity Rent Price Benchmark',
+                    subtitle: 'Compare listing price against area averages',
+                    primary: const Color(0xFF8B5CF6),
+                    onTap: () => _showMarketPriceAnalyzerModal(context),
+                  ),
+                  _buildDrawerTile(
+                    context,
+                    icon: Icons.headset_mic_outlined,
+                    title: '24/7 Landlord Support Desk',
+                    subtitle: 'Hotline: 9090 / +251 911 000 000',
+                    primary: const Color(0xFFE11D48),
+                    onTap: () => _showSupportDeskModal(context),
+                  ),
+                ]
+                // -------------------------------------------------------------
+                // HOUSE SEEKER / TENANT SPECIFIC DRAWER TOOLS
+                // -------------------------------------------------------------
+                else ...[
+                  _buildDrawerTile(
+                    context,
+                    icon: Icons.auto_awesome_rounded,
+                    title: 'AI Housing Assistant',
+                    subtitle: 'Search real properties & get smart recommendations',
+                    primary: Colors.amber.shade800,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const AiAssistantScreen()),
+                      );
+                    },
+                  ),
+                  _buildDrawerTile(
+                    context,
+                    icon: Icons.map_rounded,
+                    title: 'Interactive Subcity Map Explorer',
+                    subtitle: 'Explore registered house pins on live map',
+                    primary: const Color(0xFF0284C7),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const SearchScreen()),
+                      );
+                    },
+                  ),
+                  _buildDrawerTile(
+                    context,
+                    icon: Icons.description_outlined,
+                    title: 'Rental Lease Draft Generator',
+                    subtitle: 'Generate standard Amharic/English tenancy contract',
+                    primary: const Color(0xFF0D9488),
+                    onTap: () => _showLeaseDraftModal(context),
+                  ),
+                  _buildDrawerTile(
+                    context,
+                    icon: Icons.analytics_outlined,
+                    title: 'Rent Market Price & Utility Index',
+                    subtitle: 'Compare subcity rates & water/power stability',
+                    primary: const Color(0xFF8B5CF6),
+                    onTap: () => _showMarketPriceAnalyzerModal(context),
+                  ),
+                  _buildDrawerTile(
+                    context,
+                    icon: Icons.shield_outlined,
+                    title: 'Landlord Verification & Safety Shield',
+                    subtitle: 'Zero broker fees & title deed verification',
+                    primary: const Color(0xFF10B981),
+                    onTap: () => _showScamAuditModal(context),
+                  ),
+                  _buildDrawerTile(
+                    context,
+                    icon: Icons.headset_mic_outlined,
+                    title: '24/7 Support Desk & Toll-Free Hotline',
+                    subtitle: 'Hotline: 9090 / +251 911 000 000',
+                    primary: const Color(0xFFE11D48),
+                    onTap: () => _showSupportDeskModal(context),
+                  ),
+                ],
                 _buildDrawerTile(
                   context,
                   icon: Icons.palette_outlined,

@@ -40,6 +40,7 @@ class ApiEndpoints {
   // Provider endpoints
   static String get providerProperties => '$baseUrl/provider/properties';
   static String get providerInquiries => '$baseUrl/provider/inquiries';
+  static String get providerAnalytics => '$baseUrl/properties/provider/analytics';
 
   // Favorites endpoints
   static String get favorites => '$baseUrl/favorites';
