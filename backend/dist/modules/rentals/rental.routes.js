@@ -1,0 +1,16 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const rental_controller_1 = require("./rental.controller");
+const auth_middleware_1 = require("../../middleware/auth.middleware");
+const role_middleware_1 = require("../../middleware/role.middleware");
+const validation_middleware_1 = require("../../middleware/validation.middleware");
+const rental_validation_1 = require("./rental.validation");
+const client_1 = require("@prisma/client");
+const router = (0, express_1.Router)();
+router.use(auth_middleware_1.authenticate);
+router.post('/request', (0, role_middleware_1.authorizeRoles)(client_1.Role.RENTER, client_1.Role.BUYER, client_1.Role.ADMIN), (0, validation_middleware_1.validateRequest)(rental_validation_1.createRentalRequestSchema), rental_controller_1.RentalController.submit);
+router.get('/my-requests', rental_controller_1.RentalController.getMyRequests);
+router.get('/owner-requests', (0, role_middleware_1.authorizeRoles)(client_1.Role.OWNER, client_1.Role.ADMIN), rental_controller_1.RentalController.getOwnerRequests);
+router.patch('/:id/respond', (0, role_middleware_1.authorizeRoles)(client_1.Role.OWNER, client_1.Role.ADMIN), (0, validation_middleware_1.validateRequest)(rental_validation_1.respondRentalRequestSchema), rental_controller_1.RentalController.respond);
+exports.default = router;

@@ -20,7 +20,9 @@ router.get('/', (req, res) => {
     name: 'Ethiopian Property Platform API',
     version: 'v1',
     health: '/api/v1/health',
-    documentation: 'RESTful API for Ethiopian House Rental & Sale Platform',
+    swagger: '/api-docs',
+    swaggerJson: '/api-docs/json',
+    documentation: 'Interactive OpenAPI Swagger documentation available at /api-docs',
     endpoints: {
       auth: '/api/v1/auth',
       users: '/api/v1/users',

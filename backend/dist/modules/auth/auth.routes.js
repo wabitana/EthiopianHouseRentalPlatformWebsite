@@ -1,0 +1,15 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const auth_controller_1 = require("./auth.controller");
+const validation_middleware_1 = require("../../middleware/validation.middleware");
+const auth_validation_1 = require("./auth.validation");
+const rate_limit_middleware_1 = require("../../middleware/rate-limit.middleware");
+const router = (0, express_1.Router)();
+const authRateLimiter = (0, rate_limit_middleware_1.rateLimit)({ windowMs: 15 * 60 * 1000, max: 20 });
+router.post('/register', authRateLimiter, (0, validation_middleware_1.validateRequest)(auth_validation_1.registerSchema), auth_controller_1.AuthController.register);
+router.post('/login', authRateLimiter, (0, validation_middleware_1.validateRequest)(auth_validation_1.loginSchema), auth_controller_1.AuthController.login);
+router.post('/verify-phone', (0, validation_middleware_1.validateRequest)(auth_validation_1.verifyOtpSchema), auth_controller_1.AuthController.verifyPhone);
+router.post('/refresh', (0, validation_middleware_1.validateRequest)(auth_validation_1.refreshTokenSchema), auth_controller_1.AuthController.refreshToken);
+router.post('/send-otp', authRateLimiter, (0, validation_middleware_1.validateRequest)(auth_validation_1.sendOtpSchema), auth_controller_1.AuthController.sendOtp);
+exports.default = router;

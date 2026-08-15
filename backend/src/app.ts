@@ -6,6 +6,7 @@ import { storageConfig } from './config/storage';
 import routes from './routes';
 import { errorHandler } from './middleware/error.middleware';
 import { notFoundHandler } from './middleware/not-found.middleware';
+import { setupSwagger } from './config/swagger';
 
 export function createApp(): Express {
   const app = express();
@@ -14,6 +15,9 @@ export function createApp(): Express {
   app.use(cors());
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+  // Swagger Interactive Documentation UI
+  setupSwagger(app);
 
   // Static Public Uploads Serving
   app.use('/uploads', express.static(storageConfig.uploadDir));
