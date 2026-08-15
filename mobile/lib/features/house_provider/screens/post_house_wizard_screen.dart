@@ -608,9 +608,15 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
         const Text('City', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          initialValue: _city,
+          initialValue: AppConstants.ethiopianCities.where((c) => c != 'All').contains(_city)
+              ? _city
+              : AppConstants.ethiopianCities.where((c) => c != 'All').first,
           decoration: const InputDecoration(border: OutlineInputBorder()),
-          items: AppConstants.ethiopianCities.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+          items: AppConstants.ethiopianCities
+              .where((c) => c != 'All')
+              .toSet()
+              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+              .toList(),
           onChanged: (val) => setState(() => _city = val!),
         ),
         const SizedBox(height: 16),
@@ -619,9 +625,11 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
           const Text('Area / Subcity', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           DropdownButtonFormField<String>(
-            initialValue: _area,
+            initialValue: AppConstants.addisSubcities.contains(_area)
+                ? _area
+                : AppConstants.addisSubcities.first,
             decoration: const InputDecoration(border: OutlineInputBorder()),
-            items: AppConstants.addisSubcities.map((a) => DropdownMenuItem(value: a, child: Text(a))).toList(),
+            items: AppConstants.addisSubcities.toSet().map((a) => DropdownMenuItem(value: a, child: Text(a))).toList(),
             onChanged: (val) => setState(() => _area = val!),
           ),
           const SizedBox(height: 16),

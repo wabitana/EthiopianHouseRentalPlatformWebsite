@@ -14,6 +14,11 @@ import 'property_detail_screen.dart';
 import 'search_screen.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/widgets/app_navigation_drawer.dart';
+import '../../../shared/widgets/currency_selector_widget.dart';
+import '../../../shared/widgets/property_comparison_sheet.dart';
+import 'saved_searches_screen.dart';
+import '../../tenants/screens/maintenance_portal_screen.dart';
+import '../../ai_assistant/screens/ai_assistant_screen.dart';
 
 class SeekerHomeScreen extends StatelessWidget {
   const SeekerHomeScreen({super.key});
@@ -125,10 +130,49 @@ class SeekerHomeScreen extends StatelessWidget {
                         ],
                       ),
                     ),
+                    const CurrencySelectorWidget(isCompact: true),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
+
+              // 12 Feature Quick Shortcuts Bar
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    ActionChip(
+                      avatar: const Icon(Icons.compare_arrows_rounded, size: 14, color: AppColors.primary),
+                      label: const Text('Compare Houses', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                          builder: (_) => PropertyComparisonSheet(properties: propertyProvider.properties.take(3).toList()),
+                        );
+                      },
+                    ),
+                    const SizedBox(width: 6),
+                    ActionChip(
+                      avatar: const Icon(Icons.notifications_active_outlined, size: 14, color: AppColors.secondary),
+                      label: const Text('Saved Search Alerts', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const SavedSearchesScreen()));
+                      },
+                    ),
+                    const SizedBox(width: 6),
+                    ActionChip(
+                      avatar: const Icon(Icons.build_outlined, size: 14, color: Colors.purple),
+                      label: const Text('Tenant Repairs', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenancePortalScreen()));
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
 
                 // City Selector Banner
                 Container(
@@ -148,7 +192,9 @@ class SeekerHomeScreen extends StatelessWidget {
                       ),
                       DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
-                          value: propertyProvider.selectedCity,
+                          value: AppConstants.ethiopianCities.contains(propertyProvider.selectedCity)
+                              ? propertyProvider.selectedCity
+                              : AppConstants.ethiopianCities.first,
                           isDense: true,
                           style: const TextStyle(
                             fontSize: 14,
@@ -156,7 +202,7 @@ class SeekerHomeScreen extends StatelessWidget {
                             color: AppColors.primary,
                           ),
                           icon: const Icon(Icons.arrow_drop_down, color: AppColors.primary),
-                          items: AppConstants.ethiopianCities.map((city) {
+                          items: AppConstants.ethiopianCities.toSet().map((city) {
                             return DropdownMenuItem(
                               value: city,
                               child: Text(city),
@@ -340,6 +386,17 @@ class SeekerHomeScreen extends StatelessWidget {
             ),
           ),
         ),
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppColors.primary,
+        icon: const Icon(Icons.auto_awesome_rounded, color: Colors.amberAccent),
+        label: const Text('AI Assistant', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AiAssistantScreen()),
+          );
+        },
+      ),
     );
   }
 

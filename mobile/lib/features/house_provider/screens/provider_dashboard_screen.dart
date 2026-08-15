@@ -12,6 +12,7 @@ import '../../auth/providers/auth_provider.dart';
 import 'post_house_wizard_screen.dart';
 import 'my_listings_screen.dart';
 import 'provider_inquiries_screen.dart';
+import 'provider_analytics_screen.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/widgets/app_navigation_drawer.dart';
 
@@ -47,6 +48,13 @@ class ProviderDashboardScreen extends StatelessWidget {
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Listing Analytics',
+            icon: const Icon(Icons.analytics_outlined, color: Colors.white, size: 22),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ProviderAnalyticsScreen()));
+            },
+          ),
           IconButton(
             tooltip: 'Switch to Seeker Mode',
             icon: const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 24),

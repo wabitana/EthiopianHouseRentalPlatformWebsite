@@ -12,6 +12,12 @@ import '../providers/favorites_provider.dart';
 import '../providers/inquiry_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../report/screens/report_property_modal.dart';
+import '../../../core/services/currency_service.dart';
+import '../../../shared/widgets/currency_selector_widget.dart';
+import '../../../shared/widgets/neighborhood_radar_widget.dart';
+import '../../rentals/screens/digital_lease_generator_screen.dart';
+import '../../rentals/screens/schedule_tour_modal.dart';
+import '../../rentals/screens/roommate_rent_splitter_screen.dart';
 import '../../../data/mock_data.dart';
 
 class PropertyDetailScreen extends StatefulWidget {
@@ -434,7 +440,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                                 fit: BoxFit.scaleDown,
                                 alignment: Alignment.centerLeft,
                                 child: Text(
-                                  Formatters.formatCurrency(property.price),
+                                  context.watch<CurrencyProvider>().formatPrice(property.price),
                                   style: const TextStyle(
                                     fontSize: 26,
                                     fontWeight: FontWeight.w800,
@@ -444,10 +450,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              'per ${property.rentalPeriod.toLowerCase()}',
-                              style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-                            ),
+                            const CurrencySelectorWidget(isCompact: true),
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -495,6 +498,89 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           neighborhood: property.neighborhood,
                           latitude: property.latitude,
                           longitude: property.longitude,
+                        ),
+                        const SizedBox(height: 16),
+                        NeighborhoodRadarWidget(city: property.city, area: property.area),
+                        const SizedBox(height: 20),
+
+                        // Impressive Action Hub (Lease Contract, Schedule Visit, Rent Splitter)
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Quick Rental Actions', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.primary,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 10),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      icon: const Icon(Icons.description_outlined, size: 16),
+                                      label: const Text('Digital Contract', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => DigitalLeaseGeneratorScreen(property: property),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.secondary,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(vertical: 10),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      icon: const Icon(Icons.calendar_month_outlined, size: 16),
+                                      label: const Text('Schedule Tour', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      onPressed: () {
+                                        showModalBottomSheet(
+                                          context: context,
+                                          isScrollControlled: true,
+                                          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                                          builder: (_) => ScheduleTourModal(property: property),
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.primary,
+                                  minimumSize: const Size(double.infinity, 38),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                icon: const Icon(Icons.calculate_outlined, size: 16),
+                                label: const Text('Roommate Rent & Utility Splitter', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => RoommateRentSplitterScreen(initialPrice: property.price),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 20),
 

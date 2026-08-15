@@ -293,9 +293,11 @@ class SearchFilterBottomSheet extends StatelessWidget {
                 const Text('City', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  initialValue: provider.selectedCity,
+                  initialValue: AppConstants.ethiopianCities.contains(provider.selectedCity)
+                      ? provider.selectedCity
+                      : AppConstants.ethiopianCities.first,
                   decoration: const InputDecoration(border: OutlineInputBorder()),
-                  items: AppConstants.ethiopianCities.map((city) {
+                  items: AppConstants.ethiopianCities.toSet().map((city) {
                     return DropdownMenuItem(value: city, child: Text(city));
                   }).toList(),
                   onChanged: (val) {
@@ -309,9 +311,11 @@ class SearchFilterBottomSheet extends StatelessWidget {
                   const Text('Area / Subcity', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    initialValue: provider.selectedArea,
+                    initialValue: ['All', ...AppConstants.addisSubcities].contains(provider.selectedArea)
+                        ? provider.selectedArea
+                        : 'All',
                     decoration: const InputDecoration(border: OutlineInputBorder()),
-                    items: ['All', ...AppConstants.addisSubcities].map((area) {
+                    items: <String>{'All', ...AppConstants.addisSubcities}.map((area) {
                       return DropdownMenuItem(value: area, child: Text(area));
                     }).toList(),
                     onChanged: (val) {

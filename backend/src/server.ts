@@ -12,6 +12,7 @@ import notificationsRoutes from './routes/notifications.routes';
 import reportRoutes from './routes/report.routes';
 import adminRoutes from './routes/admin.routes';
 import uploadRoutes from './routes/upload.routes';
+import aiRoutes from './routes/ai.routes';
 
 dotenv.config();
 
@@ -37,6 +38,7 @@ app.use('/api/v1/notifications', notificationsRoutes);
 app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/upload', uploadRoutes);
+app.use('/api/v1/ai', aiRoutes);
 
 // Health check endpoint
 app.get('/api/v1/health', (_req, res) => {

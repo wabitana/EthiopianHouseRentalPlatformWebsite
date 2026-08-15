@@ -4,6 +4,7 @@ class AppConstants {
   static const String currency = 'ETB';
 
   static const List<String> ethiopianCities = [
+    'All',
     'Addis Ababa',
     'Adama',
     'Hawassa',

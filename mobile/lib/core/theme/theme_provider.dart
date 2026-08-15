@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
-import '../storage/local_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'app_colors.dart';
 
-enum AppFontSize { small, normal, large, extraLarge }
+enum AppFontSize { small, medium, large }
 
 extension AppFontSizeExtension on AppFontSize {
   String get displayName {
     switch (this) {
       case AppFontSize.small:
         return 'Small';
-      case AppFontSize.normal:
-        return 'Normal';
+      case AppFontSize.medium:
+        return 'Medium';
       case AppFontSize.large:
         return 'Large';
-      case AppFontSize.extraLarge:
-        return 'Extra Large';
     }
   }
 
@@ -22,152 +20,153 @@ extension AppFontSizeExtension on AppFontSize {
     switch (this) {
       case AppFontSize.small:
         return 0.9;
-      case AppFontSize.normal:
+      case AppFontSize.medium:
         return 1.0;
       case AppFontSize.large:
-        return 1.1;
-      case AppFontSize.extraLarge:
-        return 1.25;
+        return 1.15;
     }
   }
 }
 
 class ThemeProvider extends ChangeNotifier {
+  static const String _themePrefKey = 'app_theme_mode';
   ThemeMode _themeMode = ThemeMode.light;
-  Color _primaryColor = AppColors.primary; // Ethiopian Emerald Green (0xFF1B4D3E)
-  AppFontSize _fontSize = AppFontSize.normal;
-  String _fontFamily = 'Inter';
+
+  Color _primaryColor = AppColors.primary;
+  String _fontFamily = 'Roboto';
   double _borderRadius = 12.0;
+  AppFontSize _fontSize = AppFontSize.medium;
   bool _compactLayout = false;
   bool _enableAnimations = true;
 
-  // Available Accent Palette
-  static const List<Color> availableColors = [
-    Color(0xFF1B4D3E), // Ethiopian Emerald Green (Default)
-    Color(0xFFF97316), // Vivid Orange
-    Color(0xFFEF4444), // Crimson Red
-    Color(0xFFEC4899), // Pink
-    Color(0xFF8B5CF6), // Purple
-    Color(0xFF6366F1), // Indigo
-    Color(0xFF3B82F6), // Blue
-    Color(0xFF06B6D4), // Cyan
-    Color(0xFF14B8A6), // Teal
-    Color(0xFF10B981), // Emerald Green
-    Color(0xFFF59E0B), // Amber Gold
-    Color(0xFF64748B), // Slate Grey
-  ];
-
-  static const List<String> availableFonts = ['Inter', 'Roboto', 'Poppins', 'Outfit'];
-  static const List<double> availableRadii = [4.0, 8.0, 12.0, 16.0, 24.0];
-
   ThemeMode get themeMode => _themeMode;
+  bool get isDarkMode => _themeMode == ThemeMode.dark;
   Color get primaryColor => _primaryColor;
-  AppFontSize get fontSize => _fontSize;
   String get fontFamily => _fontFamily;
   double get borderRadius => _borderRadius;
+  AppFontSize get fontSize => _fontSize;
   bool get compactLayout => _compactLayout;
   bool get enableAnimations => _enableAnimations;
 
+  static List<Color> get availableColors => [
+        AppColors.primary,
+        const Color(0xFF1E88E5),
+        const Color(0xFF00897B),
+        const Color(0xFF8E24AA),
+        const Color(0xFFF57C00),
+      ];
+
+  static List<String> get availableFonts => ['Roboto', 'Inter', 'Poppins', 'Outfit'];
+  static List<double> get availableRadii => [8.0, 12.0, 16.0, 20.0];
+
   ThemeProvider() {
-    _loadFromStorage();
+    _loadThemeMode();
   }
 
-  void _loadFromStorage() {
-    final modeStr = LocalStorageService.getString('theme_mode');
-    if (modeStr != null) {
-      if (modeStr == 'dark') _themeMode = ThemeMode.dark;
-      if (modeStr == 'system') _themeMode = ThemeMode.system;
-      if (modeStr == 'light') _themeMode = ThemeMode.light;
-    }
-
-    final colorVal = LocalStorageService.getInt('primary_color');
-    if (colorVal != null) {
-      _primaryColor = Color(colorVal);
-    }
-
-    final fontStr = LocalStorageService.getString('font_family');
-    if (fontStr != null && availableFonts.contains(fontStr)) {
-      _fontFamily = fontStr;
-    }
-
-    final sizeStr = LocalStorageService.getString('font_size');
-    if (sizeStr != null) {
-      for (final s in AppFontSize.values) {
-        if (s.name == sizeStr) {
-          _fontSize = s;
-          break;
-        }
+  Future<void> _loadThemeMode() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isDark = prefs.getBool(_themePrefKey);
+      if (isDark != null) {
+        _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
+        notifyListeners();
       }
-    }
+    } catch (_) {}
+  }
 
-    final radiusVal = LocalStorageService.getDouble('border_radius');
-    if (radiusVal != null) {
-      _borderRadius = radiusVal;
-    }
-
-    _compactLayout = LocalStorageService.getBool('compact_layout') ?? false;
-    _enableAnimations = LocalStorageService.getBool('enable_animations') ?? true;
+  Future<void> toggleTheme(bool isDark) async {
+    _themeMode = isDark ? ThemeMode.dark : ThemeMode.light;
     notifyListeners();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_themePrefKey, isDark);
+    } catch (_) {}
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
     _themeMode = mode;
     notifyListeners();
-    await LocalStorageService.setString('theme_mode', mode.name);
   }
 
   Future<void> setPrimaryColor(Color color) async {
     _primaryColor = color;
     notifyListeners();
-    await LocalStorageService.setInt('primary_color', color.toARGB32());
   }
 
-  Future<void> setFontSize(AppFontSize size) async {
-    _fontSize = size;
+  Future<void> setFontFamily(String family) async {
+    _fontFamily = family;
     notifyListeners();
-    await LocalStorageService.setString('font_size', size.name);
-  }
-
-  Future<void> setFontFamily(String font) async {
-    _fontFamily = font;
-    notifyListeners();
-    await LocalStorageService.setString('font_family', font);
   }
 
   Future<void> setBorderRadius(double radius) async {
     _borderRadius = radius;
     notifyListeners();
-    await LocalStorageService.setDouble('border_radius', radius);
   }
 
-  Future<void> setCompactLayout(bool val) async {
-    _compactLayout = val;
+  Future<void> setFontSize(AppFontSize size) async {
+    _fontSize = size;
     notifyListeners();
-    await LocalStorageService.setBool('compact_layout', val);
   }
 
-  Future<void> setEnableAnimations(bool val) async {
-    _enableAnimations = val;
+  Future<void> setCompactLayout(bool compact) async {
+    _compactLayout = compact;
     notifyListeners();
-    await LocalStorageService.setBool('enable_animations', val);
+  }
+
+  Future<void> setEnableAnimations(bool enable) async {
+    _enableAnimations = enable;
+    notifyListeners();
   }
 
   Future<void> resetToDefaults() async {
     _themeMode = ThemeMode.light;
     _primaryColor = AppColors.primary;
-    _fontSize = AppFontSize.normal;
-    _fontFamily = 'Inter';
+    _fontFamily = 'Roboto';
     _borderRadius = 12.0;
+    _fontSize = AppFontSize.medium;
     _compactLayout = false;
     _enableAnimations = true;
     notifyListeners();
+  }
 
-    await LocalStorageService.remove('theme_mode');
-    await LocalStorageService.remove('primary_color');
-    await LocalStorageService.remove('font_size');
-    await LocalStorageService.remove('font_family');
-    await LocalStorageService.remove('border_radius');
-    await LocalStorageService.remove('compact_layout');
-    await LocalStorageService.remove('enable_animations');
+  static ThemeData get lightTheme {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      primaryColor: AppColors.primary,
+      scaffoldBackgroundColor: AppColors.background,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: AppColors.primary,
+        brightness: Brightness.light,
+        primary: AppColors.primary,
+        secondary: AppColors.secondary,
+      ),
+    );
+  }
+
+  static ThemeData get darkTheme {
+    return ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      primaryColor: AppColors.primary,
+      scaffoldBackgroundColor: const Color(0xFF12181B),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF1E262B),
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: AppColors.primary,
+        brightness: Brightness.dark,
+        primary: AppColors.primary,
+        secondary: AppColors.secondary,
+        surface: const Color(0xFF1E262B),
+      ),
+    );
   }
 }

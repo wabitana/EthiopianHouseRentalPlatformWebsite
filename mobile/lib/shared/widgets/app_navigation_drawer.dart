@@ -7,6 +7,7 @@ import '../../features/auth/providers/auth_provider.dart';
 import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/profile/screens/theme_settings_screen.dart';
 import '../../features/notifications/screens/notification_center_screen.dart';
+import '../../features/ai_assistant/screens/ai_assistant_screen.dart';
 import '../../shared/models/user_model.dart';
 import '../../shared/widgets/verification_badge.dart';
 
@@ -141,6 +142,19 @@ class AppNavigationDrawer extends StatelessWidget {
                         behavior: SnackBarBehavior.floating,
                         duration: const Duration(seconds: 2),
                       ),
+                    );
+                  },
+                ),
+                _buildDrawerTile(
+                  context,
+                  icon: Icons.auto_awesome_rounded,
+                  title: 'AI Housing Assistant',
+                  subtitle: 'Search real properties & get smart recommendations',
+                  primary: Colors.amber.shade800,
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const AiAssistantScreen()),
                     );
                   },
                 ),

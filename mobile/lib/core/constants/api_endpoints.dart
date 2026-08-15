@@ -53,4 +53,5 @@ class ApiEndpoints {
   static String readNotification(String id) => '$baseUrl/notifications/$id/read';
   static String get reports => '$baseUrl/reports';
   static String get upload => '$baseUrl/upload';
+  static String get aiChat => '$baseUrl/ai/chat';
 }
