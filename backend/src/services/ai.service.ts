@@ -177,7 +177,37 @@ async function handleDirectDbFallback(message: string, conversationId: string, c
   const lowerMsg = message.toLowerCase();
   const isAmharic = /[\u1200-\u137F]/.test(message);
 
-  // Check if query is a general housing question (checklists, deposit, lease terms, negotiation)
+  // Check if query is a general housing question (checklists, deposit, lease terms, contract, commute, roommate, scam)
+  if (lowerMsg.includes('lease') || lowerMsg.includes('contract') || lowerMsg.includes('ውል')) {
+    const leaseRes = await executeAiTool('generate_amharic_lease_draft', { tenantName: ctx.userName || 'Tenant' }, ctx);
+    return {
+      message: `${leaseRes.amharicContractTitle}\n\n${leaseRes.keyTermsAmharic.join('\n')}`,
+      properties: [],
+      actions: ['Generated Amharic & English Lease Draft'],
+      conversationId,
+    };
+  }
+
+  if (lowerMsg.includes('commute') || lowerMsg.includes('taxi') || lowerMsg.includes('distance')) {
+    const commuteRes = await executeAiTool('calculate_commute_time', { destinationHub: 'Kazanchis / City Center' }, ctx);
+    return {
+      message: `🚕 Commute Breakdown to ${commuteRes.destination}:\n• Minibus Taxi: ${commuteRes.estimatedMinibusTaxiMinutes}\n• Light Rail: ${commuteRes.estimatedLightRailMinutes}\n• Ride-Hail / Uber: ${commuteRes.estimatedUberRideHailCostETB}\n\nRoute: ${commuteRes.recommendedRoute}`,
+      properties: [],
+      actions: ['Calculated Transport & Commute Time'],
+      conversationId,
+    };
+  }
+
+  if (lowerMsg.includes('roommate') || lowerMsg.includes('split') || lowerMsg.includes('share')) {
+    const splitRes = await executeAiTool('roommate_matching_calculator', { roommatesCount: 2 }, ctx);
+    return {
+      message: `👥 Roommate Expense Split Calculator (2 Roommates):\n• Total Monthly Rent + Utilities: ${splitRes.totalMonthlyExpenseETB} ETB\n• Per Person Share: ${splitRes.perPersonMonthlyShareETB} ETB/month\n\nBreakdown per roommate:\n- Rent Share: ${splitRes.expenseBreakdownPerPerson.rentShare} ETB\n- Water Tank Refill: ${splitRes.expenseBreakdownPerPerson.waterRefillShare} ETB\n- Security Guard: ${splitRes.expenseBreakdownPerPerson.securityGuardShare} ETB`,
+      properties: [],
+      actions: ['Calculated Roommate Bill Split'],
+      conversationId,
+    };
+  }
+
   if (lowerMsg.includes('check') || lowerMsg.includes('inspect') || lowerMsg.includes('deposit') || lowerMsg.includes('term') || lowerMsg.includes('document')) {
     if (lowerMsg.includes('check') || lowerMsg.includes('inspect')) {
       const checklistRes = await executeAiTool('generate_visit_checklist', {}, ctx);

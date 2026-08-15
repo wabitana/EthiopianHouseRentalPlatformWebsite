@@ -21,6 +21,16 @@ const GUEST_ALLOWED_TOOLS = new Set([
   'generate_visit_checklist',
   'generate_negotiation_message',
   'housing_faq',
+  'instant_book_tour',
+  'generate_amharic_lease_draft',
+  'calculate_commute_time',
+  'assess_water_electricity_reliability',
+  'roommate_matching_calculator',
+  'market_price_analyzer',
+  'scam_verification_check',
+  'ai_listing_copywriter',
+  'create_price_alert',
+  'energy_water_bill_estimator',
 ]);
 
 const SEEKER_EXCLUSIVE_TOOLS = new Set([
