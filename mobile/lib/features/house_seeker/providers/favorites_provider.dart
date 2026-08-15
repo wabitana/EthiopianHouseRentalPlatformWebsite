@@ -20,11 +20,11 @@ class FavoritesProvider extends ChangeNotifier {
     notifyListeners();
     try {
       final ids = await _favoritesRepository.getFavoriteIds(userId);
-      if (ids.isNotEmpty) {
-        _favoritePropertyIds.clear();
-        _favoritePropertyIds.addAll(ids);
-      }
-    } catch (_) {}
+      _favoritePropertyIds.clear();
+      _favoritePropertyIds.addAll(ids);
+    } catch (e) {
+      debugPrint('Error loading favorites from database: $e');
+    }
     _isLoading = false;
     notifyListeners();
   }

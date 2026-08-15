@@ -16,6 +16,7 @@ abstract class AuthRepository {
   Future<void> logout();
   Future<void> resetPassword(String emailOrPhone);
   Future<UserModel> updateProfile(UserModel updatedUser);
+  Future<UserModel> verifyIdentity(String idType, String idNumber, {String? documentImage, String? selfieImage});
 }
 
 class AuthRepositoryImpl implements AuthRepository {
@@ -60,10 +61,11 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<UserModel> updateProfile(UserModel updatedUser) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return updatedUser;
-  }
+  Future<UserModel> updateProfile(UserModel updatedUser) => _remoteDataSource.updateUserProfile(updatedUser);
+
+  @override
+  Future<UserModel> verifyIdentity(String idType, String idNumber, {String? documentImage, String? selfieImage}) =>
+      _remoteDataSource.verifyIdentity(idType, idNumber, documentImage: documentImage, selfieImage: selfieImage);
 }
 
 // Backward compatibility alias for MockAuthRepository

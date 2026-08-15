@@ -197,6 +197,25 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> verifyIdentity(String idType, String idNumber, {String? documentImage, String? selfieImage}) async {
+    if (_currentUser != null) {
+      _isLoading = true;
+      notifyListeners();
+      try {
+        _currentUser = await _authRepository.verifyIdentity(idType, idNumber, documentImage: documentImage, selfieImage: selfieImage);
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } catch (e) {
+        _errorMessage = 'Failed to process identity verification';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    }
+    return false;
+  }
+
   Future<bool> changePassword(String currentPassword, String newPassword) async {
     _isLoading = true;
     notifyListeners();

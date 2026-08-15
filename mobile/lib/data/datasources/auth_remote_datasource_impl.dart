@@ -147,4 +147,48 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
     } catch (_) {}
     await TokenStorage.clearAll();
   }
+
+  @override
+  Future<UserModel> updateUserProfile(UserModel updatedUser) async {
+    try {
+      final res = await ApiClient.patch(
+        ApiEndpoints.me,
+        body: {
+          'name': updatedUser.name,
+          'phone': updatedUser.phone,
+          'avatarUrl': updatedUser.avatarUrl,
+          'isVerified': updatedUser.isVerified,
+        },
+      );
+
+      if (res != null && res['user'] != null) {
+        final userMap = res['user'] as Map<String, dynamic>;
+        await TokenStorage.saveUserData(userMap);
+        return UserModel.fromJson(userMap);
+      }
+    } catch (e) {
+      debugPrint('updateUserProfile network attempt info: $e');
+    }
+    return updatedUser;
+  }
+
+  @override
+  Future<UserModel> verifyIdentity(String idType, String idNumber, {String? documentImage, String? selfieImage}) async {
+    final res = await ApiClient.post(
+      ApiEndpoints.verifyIdentity,
+      body: {
+        'idType': idType,
+        'idNumber': idNumber,
+        'documentImage': documentImage ?? '',
+        'selfieImage': selfieImage ?? '',
+      },
+    );
+
+    if (res != null && res['user'] != null) {
+      final userMap = res['user'] as Map<String, dynamic>;
+      await TokenStorage.saveUserData(userMap);
+      return UserModel.fromJson(userMap);
+    }
+    throw ApiException('Failed to parse identity verification response');
+  }
 }

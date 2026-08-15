@@ -26,6 +26,18 @@ const upload = multer({ storage });
 
 // POST /api/v1/upload
 router.post('/', authenticateToken, upload.single('image'), (req, res) => {
+  if (req.body && req.body.base64) {
+    try {
+      const base64Data = req.body.base64.replace(/^data:image\/\w+;base64,/, '');
+      const filename = `img-${Date.now()}-${Math.round(Math.random() * 1e9)}.jpg`;
+      const filepath = path.join(uploadDir, filename);
+      fs.writeFileSync(filepath, Buffer.from(base64Data, 'base64'));
+      return res.json({ url: `/uploads/${filename}`, filename });
+    } catch (e) {
+      return res.status(400).json({ error: 'Failed to save base64 image' });
+    }
+  }
+
   if (!req.file) {
     return res.status(400).json({ error: 'No image file uploaded' });
   }

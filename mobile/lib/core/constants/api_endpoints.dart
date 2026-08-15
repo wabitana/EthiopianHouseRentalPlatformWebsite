@@ -30,6 +30,7 @@ class ApiEndpoints {
   static String get google => '$baseUrl/auth/google';
   static String get logout => '$baseUrl/auth/logout';
   static String get me => '$baseUrl/users/me';
+  static String get verifyIdentity => '$baseUrl/auth/verify-identity';
 
   // Properties endpoints
   static String get properties => '$baseUrl/properties';

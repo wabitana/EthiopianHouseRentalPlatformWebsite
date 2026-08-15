@@ -8,10 +8,26 @@ import '../providers/favorites_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'property_detail_screen.dart';
 
-class SavedScreen extends StatelessWidget {
+class SavedScreen extends StatefulWidget {
   final VoidCallback? onExploreTap;
 
   const SavedScreen({super.key, this.onExploreTap});
+
+  @override
+  State<SavedScreen> createState() => _SavedScreenState();
+}
+
+class _SavedScreenState extends State<SavedScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = context.read<AuthProvider>().currentUser;
+      if (user != null) {
+        context.read<FavoritesProvider>().loadFavorites(user.id);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,45 +54,47 @@ class SavedScreen extends StatelessWidget {
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
         ),
       ),
-      body: savedProperties.isEmpty
-          ? Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: EmptyStateWidget(
-                  icon: Icons.favorite_border_rounded,
-                  title: 'No saved houses yet',
-                  description: 'Tap the heart icon on any house listing to save it here for quick access later.',
-                  buttonText: 'Explore Houses',
-                  onButtonPressed: onExploreTap,
-                ),
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: savedProperties.length,
-              itemBuilder: (context, index) {
-                final property = savedProperties[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 16.0),
-                  child: PropertyCard(
-                    property: property,
-                    isFavorite: true,
-                    onFavoriteToggle: () {
-                      if (user != null) {
-                        favoritesProvider.toggleFavorite(user.id, property.id);
-                      }
-                    },
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => PropertyDetailScreen(propertyId: property.id),
-                        ),
-                      );
-                    },
+      body: favoritesProvider.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : savedProperties.isEmpty
+              ? Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(24),
+                    child: EmptyStateWidget(
+                      icon: Icons.favorite_border_rounded,
+                      title: 'No saved houses yet',
+                      description: 'Tap the heart icon on any house listing to save it here for quick access later.',
+                      buttonText: 'Explore Houses',
+                      onButtonPressed: widget.onExploreTap,
+                    ),
                   ),
-                );
-              },
-            ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: savedProperties.length,
+                  itemBuilder: (context, index) {
+                    final property = savedProperties[index];
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: PropertyCard(
+                        property: property,
+                        isFavorite: true,
+                        onFavoriteToggle: () {
+                          if (user != null) {
+                            favoritesProvider.toggleFavorite(user.id, property.id);
+                          }
+                        },
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => PropertyDetailScreen(propertyId: property.id),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
     );
   }
 }

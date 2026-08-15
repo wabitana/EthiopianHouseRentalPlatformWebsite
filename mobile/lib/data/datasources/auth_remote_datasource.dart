@@ -13,6 +13,8 @@ abstract class AuthRemoteDataSource {
     required UserRole role,
   });
   Future<void> logoutUser();
+  Future<UserModel> updateUserProfile(UserModel user);
+  Future<UserModel> verifyIdentity(String idType, String idNumber, {String? documentImage, String? selfieImage});
 }
 
 class MockAuthRemoteDataSource implements AuthRemoteDataSource {
@@ -78,5 +80,21 @@ class MockAuthRemoteDataSource implements AuthRemoteDataSource {
     // Simulate HTTP POST /api/v1/auth/logout
     await Future.delayed(const Duration(milliseconds: 200));
     _currentUser = null;
+  }
+
+  @override
+  Future<UserModel> updateUserProfile(UserModel user) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    _currentUser = user;
+    return user;
+  }
+
+  @override
+  Future<UserModel> verifyIdentity(String idType, String idNumber, {String? documentImage, String? selfieImage}) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (_currentUser != null) {
+      _currentUser = _currentUser!.copyWith(isVerified: true);
+    }
+    return _currentUser!;
   }
 }
