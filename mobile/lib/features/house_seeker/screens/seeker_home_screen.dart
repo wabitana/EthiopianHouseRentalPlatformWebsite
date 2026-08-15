@@ -86,93 +86,122 @@ class SeekerHomeScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // User Greeting Banner
+              // Unified Professional Dashboard Header Card with Primary Theme Color
               Container(
-                padding: const EdgeInsets.all(14),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.border),
-                  boxShadow: AppColors.cardShadow,
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 20,
-                      backgroundColor: AppColors.primaryContainer,
-                      backgroundImage: (user?.avatarUrl != null && user!.avatarUrl!.trim().isNotEmpty && user.avatarUrl!.startsWith('http'))
-                          ? NetworkImage(user.avatarUrl!.trim())
-                          : null,
-                      child: (user?.avatarUrl == null || user!.avatarUrl!.trim().isEmpty || !user.avatarUrl!.startsWith('http'))
-                          ? const Icon(Icons.person, color: AppColors.primary)
-                          : null,
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).primaryColor,
+                      Color.alphaBlend(Colors.black.withValues(alpha: 0.25), Theme.of(context).primaryColor),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Theme.of(context).primaryColor.withValues(alpha: 0.35),
+                      blurRadius: 16,
+                      offset: const Offset(0, 4),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Selam, ${user?.name.split(' ').first ?? 'Seeker'} 👋',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          const Text(
-                            'Find your next home in Ethiopia',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const CurrencySelectorWidget(isCompact: true),
                   ],
                 ),
-              ),
-              const SizedBox(height: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top Row: User Profile & Greeting + Currency Selector
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 22,
+                          backgroundColor: Colors.white.withValues(alpha: 0.25),
+                          backgroundImage: (user?.avatarUrl != null && user!.avatarUrl!.trim().isNotEmpty && user.avatarUrl!.startsWith('http'))
+                              ? NetworkImage(user.avatarUrl!.trim())
+                              : null,
+                          child: (user?.avatarUrl == null || user!.avatarUrl!.trim().isEmpty || !user.avatarUrl!.startsWith('http'))
+                              ? const Icon(Icons.person, color: Colors.white)
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Selam, ${user?.name.split(' ').first ?? 'Seeker'} 👋',
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Text(
+                                'Find your next home in Ethiopia',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.white.withValues(alpha: 0.85),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const CurrencySelectorWidget(isCompact: true),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Divider(height: 1, color: Colors.white.withValues(alpha: 0.2)),
+                    const SizedBox(height: 12),
 
-              // 12 Feature Quick Shortcuts Bar
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    ActionChip(
-                      avatar: const Icon(Icons.compare_arrows_rounded, size: 14, color: AppColors.primary),
-                      label: const Text('Compare Houses', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                      onPressed: () {
-                        showModalBottomSheet(
-                          context: context,
-                          isScrollControlled: true,
-                          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-                          builder: (_) => PropertyComparisonSheet(properties: propertyProvider.properties.take(3).toList()),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 6),
-                    ActionChip(
-                      avatar: const Icon(Icons.notifications_active_outlined, size: 14, color: AppColors.secondary),
-                      label: const Text('Saved Search Alerts', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const SavedSearchesScreen()));
-                      },
-                    ),
-                    const SizedBox(width: 6),
-                    ActionChip(
-                      avatar: const Icon(Icons.build_outlined, size: 14, color: Colors.purple),
-                      label: const Text('Tenant Repairs', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                      onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenancePortalScreen()));
-                      },
+                    // Integrated Quick Action Buttons Row inside Primary Card
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildQuickActionButton(
+                            icon: Icons.compare_arrows_rounded,
+                            label: 'Compare',
+                            color: Colors.white,
+                            isDarkTheme: true,
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+                                builder: (_) => PropertyComparisonSheet(properties: propertyProvider.properties.take(3).toList()),
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildQuickActionButton(
+                            icon: Icons.notifications_active_outlined,
+                            label: 'Saved Alerts',
+                            color: Colors.white,
+                            isDarkTheme: true,
+                            onTap: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => const SavedSearchesScreen()));
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildQuickActionButton(
+                            icon: Icons.build_outlined,
+                            label: 'Repairs',
+                            color: Colors.white,
+                            isDarkTheme: true,
+                            onTap: () {
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenancePortalScreen()));
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 16),
 
                 // City Selector Banner
                 Container(
@@ -421,6 +450,52 @@ class SeekerHomeScreen extends StatelessWidget {
         onSelected: (selected) {
           provider.setPropertyType(selected ? type : 'All');
         },
+      ),
+    );
+  }
+
+  Widget _buildQuickActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+    bool isDarkTheme = false,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isDarkTheme
+              ? Colors.white.withValues(alpha: 0.18)
+              : color.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDarkTheme
+                ? Colors.white.withValues(alpha: 0.3)
+                : color.withValues(alpha: 0.2),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: isDarkTheme ? Colors.white : color),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: isDarkTheme ? Colors.white : color,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
