@@ -1,0 +1,20 @@
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load environment variables from .env file
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+
+export const env = {
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  PORT: parseInt(process.env.PORT || '5000', 10),
+  API_PREFIX: process.env.API_PREFIX || '/api/v1',
+  DATABASE_URL: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/ethiopian_property_db?schema=public',
+  REDIS_URL: process.env.REDIS_URL || 'redis://localhost:6379',
+  JWT_SECRET: process.env.JWT_SECRET || 'super_secret_jwt_key_change_in_production',
+  JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '1d',
+  REFRESH_TOKEN_SECRET: process.env.REFRESH_TOKEN_SECRET || 'super_secret_refresh_key_change_in_production',
+  REFRESH_TOKEN_EXPIRES_IN: process.env.REFRESH_TOKEN_EXPIRES_IN || '7d',
+  OTP_TTL_SECONDS: parseInt(process.env.OTP_TTL_SECONDS || '300', 10), // 5 minutes
+  UPLOAD_DIR: process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'),
+  CHAPA_SECRET_KEY: process.env.CHAPA_SECRET_KEY || 'CHASECK_TEST_SIMULATION',
+};

@@ -1,0 +1,367 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  OWNER
+  RENTER
+  BUYER
+}
+
+enum VerificationStatus {
+  PENDING
+  UNDER_REVIEW
+  VERIFIED
+  REJECTED
+  EXPIRED
+  SUSPENDED
+}
+
+enum TransactionType {
+  RENT
+  SALE
+}
+
+enum PropertyStatus {
+  DRAFT
+  PENDING_REVIEW
+  APPROVED
+  PUBLISHED
+  REJECTED
+  SUSPENDED
+  SOLD
+  RENTED
+  ARCHIVED
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  FAILED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum RentalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  ACTIVE
+  COMPLETED
+  TERMINATED
+}
+
+enum SaleStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  UNDER_REVIEW
+  LEGAL_PROCESS
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id                 String             @id @default(uuid())
+  name               String
+  email              String             @unique
+  phone              String             @unique
+  passwordHash       String
+  roles              Role[]             @default([RENTER])
+  avatarUrl          String?
+  isPhoneVerified    Boolean            @default(false)
+  isEmailVerified    Boolean            @default(false)
+  isIdentityVerified Boolean            @default(false)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  identityDocuments  IdentityDocument[]
+  licenses           License[]
+  properties         Property[]         @relation("OwnerProperties")
+  subscriptions      Subscription[]
+  payments           Payment[]
+  rentalRequestsSent RentalRequest[]     @relation("RenterRequests")
+  rentalRequestsRecv RentalRequest[]     @relation("OwnerRentalRequests")
+  saleRequestsSent   SaleRequest[]       @relation("BuyerRequests")
+  saleRequestsRecv   SaleRequest[]       @relation("OwnerSaleRequests")
+  favorites          Favorite[]
+  messagesSent       Message[]          @relation("SentMessages")
+  messagesReceived   Message[]          @relation("ReceivedMessages")
+  notifications      Notification[]
+  reviews            Review[]
+  reports            Report[]
+  auditLogs          AuditLog[]
+  analyticsEvents    AnalyticsEvent[]
+}
+
+model IdentityDocument {
+  id              String             @id @default(uuid())
+  userId          String
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documentType    String             // e.g. National ID, Passport
+  documentNumber  String
+  documentUrl     String             // Private path
+  status          VerificationStatus @default(PENDING)
+  rejectionReason String?
+  verifiedAt      DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model License {
+  id              String             @id @default(uuid())
+  ownerId         String
+  owner           User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  licenseNumber   String
+  documentUrl     String             // Private path
+  status          VerificationStatus @default(PENDING)
+  rejectionReason String?
+  verifiedAt      DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model Property {
+  id              String          @id @default(uuid())
+  ownerId         String
+  owner           User            @relation("OwnerProperties", fields: [ownerId], references: [id], onDelete: Cascade)
+  title           String
+  description     String
+  propertyType    String          // Apartment, Villa, Studio, Condominium, Commercial
+  transactionType TransactionType
+  price           Float
+  area            Float           // in sq. meters
+  bedrooms        Int
+  bathrooms       Int
+  city            String
+  areaName        String
+  neighborhood    String?
+  addressDetails  String?
+  availability    Boolean         @default(true)
+  status          PropertyStatus  @default(PENDING_REVIEW)
+  viewsCount      Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  images          PropertyImage[]
+  documents       PropertyDocument[]
+  rentalRequests  RentalRequest[]
+  saleRequests    SaleRequest[]
+  favorites       Favorite[]
+  messages        Message[]
+  reviews         Review[]
+  reports         Report[]
+  analyticsEvents AnalyticsEvent[]
+}
+
+model PropertyImage {
+  id         String   @id @default(uuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  url        String
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+}
+
+model PropertyDocument {
+  id           String             @id @default(uuid())
+  propertyId   String
+  property     Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  documentType String             // Title Deed, Ownership Certificate, Map
+  documentUrl  String             // Private storage path
+  status       VerificationStatus @default(PENDING)
+  createdAt    DateTime           @default(now())
+}
+
+model SubscriptionPlan {
+  id            String         @id @default(uuid())
+  name          String         // Basic, Professional, Business
+  price         Float
+  durationDays  Int            @default(30)
+  maxListings   Int            @default(5)
+  features      String         @default("[]") // JSON string of features
+  isActive      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id        String             @id @default(uuid())
+  ownerId   String
+  owner     User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  planId    String
+  plan      SubscriptionPlan   @relation(fields: [planId], references: [id])
+  status    SubscriptionStatus @default(PENDING)
+  startDate DateTime?
+  endDate   DateTime?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  payments  Payment[]
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  ownerId        String
+  owner          User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
+  amount         Float
+  currency       String        @default("ETB")
+  provider       String        @default("CHAPA_SIMULATION")
+  transactionRef String        @unique
+  status         PaymentStatus @default(PENDING)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model RentalRequest {
+  id             String            @id @default(uuid())
+  propertyId     String
+  property       Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  renterId       String
+  renter         User              @relation("RenterRequests", fields: [renterId], references: [id], onDelete: Cascade)
+  ownerId        String
+  owner          User              @relation("OwnerRentalRequests", fields: [ownerId], references: [id], onDelete: Cascade)
+  status         RentalStatus      @default(PENDING)
+  message        String?
+  moveInDate     DateTime?
+  durationMonths Int               @default(12)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  agreements     RentalAgreement[]
+}
+
+model RentalAgreement {
+  id              String        @id @default(uuid())
+  rentalRequestId String        @unique
+  rentalRequest   RentalRequest @relation(fields: [rentalRequestId], references: [id], onDelete: Cascade)
+  agreementUrl    String?
+  terms           String?
+  startDate       DateTime
+  endDate         DateTime
+  createdAt       DateTime      @default(now())
+}
+
+model SaleRequest {
+  id         String     @id @default(uuid())
+  propertyId String
+  property   Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  buyerId    String
+  buyer      User       @relation("BuyerRequests", fields: [buyerId], references: [id], onDelete: Cascade)
+  ownerId    String
+  owner      User       @relation("OwnerSaleRequests", fields: [ownerId], references: [id], onDelete: Cascade)
+  status     SaleStatus @default(PENDING)
+  offerPrice Float?
+  message    String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+}
+
+model Favorite {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, propertyId])
+}
+
+model Message {
+  id         String    @id @default(uuid())
+  senderId   String
+  sender     User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiverId String
+  receiver   User      @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  content    String
+  isRead     Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("SYSTEM")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Review {
+  id         String   @id @default(uuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  rating     Int      @default(5)
+  comment    String?
+  createdAt  DateTime @default(now())
+}
+
+model Report {
+  id         String   @id @default(uuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  reporterId String
+  reporter   User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  reason     String
+  details    String?
+  status     String   @default("PENDING")
+  createdAt  DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  adminId    String
+  admin      User     @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  action     String
+  entityName String
+  entityId   String
+  details    String?  // JSON formatted details
+  createdAt  DateTime @default(now())
+}
+
+model AIVerification {
+  id             String   @id @default(uuid())
+  entityType     String   // IdentityDocument, PropertyDocument, License
+  entityId       String
+  riskScore      Float    @default(0.0) // 0 to 100
+  ocrData        String?  // JSON string
+  warnings       String?  // JSON string
+  recommendation String   @default("MANUAL_REVIEW_REQUIRED")
+  createdAt      DateTime @default(now())
+}
+
+model AnalyticsEvent {
+  id         String    @id @default(uuid())
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  eventType  String    // PROPERTY_VIEW, SEARCH, FAVORITE_ADD, RENTAL_REQUEST, SALE_REQUEST
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  metadata   String?   // JSON string
+  createdAt  DateTime  @default(now())
+}
