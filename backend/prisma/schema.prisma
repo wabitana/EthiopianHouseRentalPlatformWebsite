@@ -365,3 +365,5 @@ model AnalyticsEvent {
   metadata   String?   // JSON string
   createdAt  DateTime  @default(now())
 }
+
+
