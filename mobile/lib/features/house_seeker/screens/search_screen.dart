@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/utils/ethiopian_coordinates.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../shared/models/property_model.dart';
 import '../../../shared/widgets/property_card.dart';
 import '../../../shared/widgets/empty_state_widget.dart';
 import '../../../shared/widgets/skeleton_loader.dart';
@@ -21,6 +25,9 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
+  bool _isMapView = false;
+  bool _isSatellite = false;
+  PropertyModel? _selectedMapProperty;
 
   @override
   void initState() {
@@ -115,7 +122,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Sort Dropdown & Filter Pills Row
+                // View Mode Toggle & Sort Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -129,13 +136,61 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                     Row(
                       children: [
-                        const Text('Sort: ', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                        // List vs Map View Mode Segmented Switch
+                        Container(
+                          height: 32,
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceVariant,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: AppColors.border),
+                          ),
+                          child: Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () => setState(() => _isMapView = false),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: !_isMapView ? AppColors.primary : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.format_list_bulleted, size: 13, color: !_isMapView ? Colors.white : AppColors.textSecondary),
+                                      const SizedBox(width: 4),
+                                      Text('List', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: !_isMapView ? Colors.white : AppColors.textSecondary)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                              GestureDetector(
+                                onTap: () => setState(() => _isMapView = true),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: _isMapView ? AppColors.primary : Colors.transparent,
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.map_rounded, size: 13, color: _isMapView ? Colors.white : AppColors.textSecondary),
+                                      const SizedBox(width: 4),
+                                      Text('Map', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _isMapView ? Colors.white : AppColors.textSecondary)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
                         DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
                             value: propertyProvider.sortBy,
                             isDense: true,
                             style: const TextStyle(
-                              fontSize: 13,
+                              fontSize: 12,
                               fontWeight: FontWeight.bold,
                               color: AppColors.primary,
                             ),
@@ -183,7 +238,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
 
-          // Results List
+          // Results Section (List View or Interactive Map View)
           Expanded(
             child: propertyProvider.isLoading
                 ? ListView.builder(
@@ -198,35 +253,214 @@ class _SearchScreenState extends State<SearchScreen> {
                         buttonText: 'Reset Filters',
                         onButtonPressed: () => propertyProvider.resetFilters(),
                       )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: propertyProvider.properties.length,
-                        itemBuilder: (context, index) {
-                          final property = propertyProvider.properties[index];
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 16.0),
-                            child: PropertyCard(
-                              property: property,
-                              isFavorite: favoritesProvider.isFavorite(property.id),
-                              onFavoriteToggle: () {
-                                if (user != null) {
-                                  favoritesProvider.toggleFavorite(user.id, property.id);
-                                }
-                              },
-                              onTap: () {
-                                Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => PropertyDetailScreen(propertyId: property.id),
-                                  ),
-                                );
-                              },
-                            ),
-                          );
-                        },
-                      ),
+                    : _isMapView
+                        ? _buildMapView(propertyProvider, favoritesProvider, user)
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: propertyProvider.properties.length,
+                            itemBuilder: (context, index) {
+                              final property = propertyProvider.properties[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 16.0),
+                                child: PropertyCard(
+                                  property: property,
+                                  isFavorite: favoritesProvider.isFavorite(property.id),
+                                  onFavoriteToggle: () {
+                                    if (user != null) {
+                                      favoritesProvider.toggleFavorite(user.id, property.id);
+                                    }
+                                  },
+                                  onTap: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => PropertyDetailScreen(propertyId: property.id),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              );
+                            },
+                          ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMapView(PropertyProvider provider, FavoritesProvider favoritesProvider, dynamic user) {
+    final properties = provider.properties;
+    final streetUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+    final satelliteUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+
+    // Calculate map center
+    LatLng mapCenter = EthiopianCoordinates.defaultCenter;
+    if (properties.isNotEmpty) {
+      mapCenter = EthiopianCoordinates.resolveLocation(
+        latitude: properties.first.latitude,
+        longitude: properties.first.longitude,
+        city: properties.first.city,
+        area: properties.first.area,
+        neighborhood: properties.first.neighborhood,
+      );
+    }
+
+    return Stack(
+      children: [
+        // Real Live Interactive FlutterMap
+        FlutterMap(
+          options: MapOptions(
+            initialCenter: mapCenter,
+            initialZoom: 13.5,
+            maxZoom: 18.0,
+            minZoom: 6.0,
+            onTap: (position, latLng) {
+              setState(() {
+                _selectedMapProperty = null;
+              });
+            },
+          ),
+          children: [
+            TileLayer(
+              urlTemplate: _isSatellite ? satelliteUrl : streetUrl,
+              userAgentPackageName: 'com.ethiopianhouserental.app',
+            ),
+            MarkerLayer(
+              markers: properties.asMap().entries.map((entry) {
+                final index = entry.key;
+                final p = entry.value;
+
+                final basePoint = EthiopianCoordinates.resolveLocation(
+                  latitude: p.latitude,
+                  longitude: p.longitude,
+                  city: p.city,
+                  area: p.area,
+                  neighborhood: p.neighborhood,
+                );
+
+                // Add small offset per property index so pins in same area stand out
+                final latOffset = ((index % 5) - 2) * 0.003;
+                final lngOffset = (((index ~/ 5) % 5) - 2) * 0.003;
+                final point = LatLng(basePoint.latitude + latOffset, basePoint.longitude + lngOffset);
+                final isSelected = _selectedMapProperty?.id == p.id;
+
+                return Marker(
+                  point: point,
+                  width: 120,
+                  height: 52,
+                  alignment: Alignment.topCenter,
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedMapProperty = p;
+                      });
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.secondary : AppColors.primary,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 6, offset: Offset(0, 2))],
+                        border: Border.all(color: Colors.white, width: isSelected ? 2.5 : 1.5),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.home_work_rounded, color: Colors.white, size: 14),
+                          const SizedBox(width: 4),
+                          Text(
+                            Formatters.formatCurrency(p.price),
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+
+        // Map View Mode Switcher (Street vs Satellite)
+        Positioned(
+          top: 12,
+          right: 12,
+          child: GestureDetector(
+            onTap: () {
+              setState(() {
+                _isSatellite = !_isSatellite;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+              ),
+              child: Row(
+                children: [
+                  Icon(_isSatellite ? Icons.map_outlined : Icons.satellite_alt_rounded, color: Colors.white, size: 14),
+                  const SizedBox(width: 6),
+                  Text(
+                    _isSatellite ? 'Street View' : 'Satellite',
+                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // Selected Property Preview Bottom Floating Card
+        if (_selectedMapProperty != null)
+          Positioned(
+            bottom: 16,
+            left: 16,
+            right: 16,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 6.0),
+                    child: CircleAvatar(
+                      radius: 14,
+                      backgroundColor: Colors.black54,
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(Icons.close, size: 16, color: Colors.white),
+                        onPressed: () {
+                          setState(() {
+                            _selectedMapProperty = null;
+                          });
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+                PropertyCard(
+                  property: _selectedMapProperty!,
+                  isFavorite: favoritesProvider.isFavorite(_selectedMapProperty!.id),
+                  onFavoriteToggle: () {
+                    if (user != null) {
+                      favoritesProvider.toggleFavorite(user.id, _selectedMapProperty!.id);
+                    }
+                  },
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => PropertyDetailScreen(propertyId: _selectedMapProperty!.id),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 }
