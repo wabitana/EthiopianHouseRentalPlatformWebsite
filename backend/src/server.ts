@@ -3,16 +3,18 @@ import cors from 'cors';
 import path from 'path';
 import dotenv from 'dotenv';
 
-import authRoutes from './routes/auth.routes';
-import propertyRoutes from './routes/property.routes';
-import providerRoutes from './routes/provider.routes';
-import favoritesRoutes from './routes/favorites.routes';
-import inquiriesRoutes from './routes/inquiries.routes';
-import notificationsRoutes from './routes/notifications.routes';
-import reportRoutes from './routes/report.routes';
-import adminRoutes from './routes/admin.routes';
-import uploadRoutes from './routes/upload.routes';
-import aiRoutes from './routes/ai.routes';
+import {
+  authRoutes,
+  propertyRoutes,
+  providerRoutes,
+  favoritesRoutes,
+  inquiriesRoutes,
+  notificationsRoutes,
+  reportRoutes,
+  adminRoutes,
+  uploadRoutes,
+  aiRoutes,
+} from './modules';
 
 dotenv.config();
 
@@ -27,9 +29,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 const uploadsPath = path.join(__dirname, '../uploads');
 app.use('/uploads', express.static(uploadsPath));
 
-// REST API v1 Routes
+// REST API v1 Modular Routes
 app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/users', authRoutes); // /me endpoint aliased
+app.use('/api/v1/users', authRoutes);
 app.use('/api/v1/properties', propertyRoutes);
 app.use('/api/v1/provider', providerRoutes);
 app.use('/api/v1/favorites', favoritesRoutes);
@@ -42,7 +44,7 @@ app.use('/api/v1/ai', aiRoutes);
 
 // Health check endpoint
 app.get('/api/v1/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'Ethiopian House Rental Backend', version: 'v1' });
+  res.json({ status: 'ok', service: 'Ethiopian House Rental Modular Backend', version: 'v1' });
 });
 
 app.listen(PORT, () => {
