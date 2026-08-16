@@ -1,26 +1,35 @@
 import { apiClient } from './api';
-import { ApiResponse } from '../types/api';
-import { Property } from '../types/property';
+
+export interface PropertyFilters {
+  page?: number;
+  limit?: number;
+  listingType?: 'RENT' | 'SALE';
+  city?: string;
+  minPrice?: number;
+  maxPrice?: number;
+  bedrooms?: number;
+  propertyType?: string;
+  search?: string;
+}
 
 export const propertyService = {
-  async getPublished(page = 1, limit = 10): Promise<ApiResponse<Property[]>> {
-    return apiClient.get(`/properties/published?page=${page}&limit=${limit}`);
+  getPublicProperties: (filters: PropertyFilters = {}) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([k, v]) => { if (v !== undefined) params.append(k, String(v)); });
+    return apiClient.get('/properties?' + params.toString());
   },
 
-  async getById(id: string): Promise<ApiResponse<Property>> {
-    return apiClient.get(`/properties/${id}`);
+  getPropertyById: (id: string) => apiClient.get('/properties/' + id),
+
+  getMyProperties: (filters: PropertyFilters = {}) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([k, v]) => { if (v !== undefined) params.append(k, String(v)); });
+    return apiClient.get('/users/me/properties?' + params.toString(), true);
   },
 
-  async create(data: any): Promise<ApiResponse<Property>> {
-    return apiClient.post('/properties', data);
-  },
+  createProperty: (data: any) => apiClient.post('/properties', data, true),
 
-  async update(id: string, data: any): Promise<ApiResponse<Property>> {
-    return apiClient.patch(`/properties/${id}`, data);
-  },
+  updateProperty: (id: string, data: any) => apiClient.put('/properties/' + id, data, true),
 
-  async search(params: Record<string, any>): Promise<ApiResponse<Property[]>> {
-    const query = new URLSearchParams(params).toString();
-    return apiClient.get(`/search?${query}`);
-  },
+  deleteProperty: (id: string) => apiClient.delete('/properties/' + id, true),
 };

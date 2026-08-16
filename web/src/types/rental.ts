@@ -6,8 +6,6 @@ export interface RentalRequest {
   renterId: string;
   ownerId: string;
   status: RentalStatus;
-  message?: string | null;
-  moveInDate?: string | null;
-  durationMonths: number;
+  message?: string;
   createdAt: string;
 }

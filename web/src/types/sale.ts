@@ -6,7 +6,6 @@ export interface SaleRequest {
   buyerId: string;
   ownerId: string;
   status: SaleStatus;
-  offerPrice?: number | null;
-  message?: string | null;
+  message?: string;
   createdAt: string;
 }

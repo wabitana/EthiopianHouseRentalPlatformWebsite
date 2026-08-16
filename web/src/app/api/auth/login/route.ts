@@ -1,39 +1,28 @@
-import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
-import { prisma } from "@/lib/prisma";
-import { verifyPassword, createToken, setAuthCookie, toRole } from "@/lib/auth";
+import { NextRequest, NextResponse } from 'next/server';
 
-const schema = z.object({
-  email: z.string().email(),
-  password: z.string(),
-});
+const BACKEND = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const data = schema.parse(body);
-
-    const user = await prisma.user.findUnique({ where: { email: data.email } });
-    if (!user || !(await verifyPassword(data.password, user.passwordHash))) {
-      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
-    }
-
-    const userRole = toRole(user.roles);
-    const token = await createToken({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: userRole,
+    const res = await fetch(`${BACKEND}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     });
-    await setAuthCookie(token);
-
-    return NextResponse.json({
-      user: { id: user.id, email: user.email, name: user.name, role: userRole, roles: user.roles },
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.issues[0].message }, { status: 400 });
+    const data = await res.json();
+    const response = NextResponse.json(data, { status: res.status });
+    if (res.ok && data.data?.tokens?.accessToken) {
+      response.cookies.set('delala_token', data.data.tokens.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7,
+        path: '/',
+      });
     }
-    return NextResponse.json({ error: "Login failed" }, { status: 500 });
+    return response;
+  } catch {
+    return NextResponse.json({ success: false, message: 'Backend unreachable' }, { status: 503 });
   }
 }

@@ -11,6 +11,7 @@ import searchRoutes from '../modules/search/search.routes';
 import favoriteRoutes from '../modules/favorites/favorite.routes';
 import messagingRoutes from '../modules/messaging/message.routes';
 import adminRoutes from '../modules/admin/admin.routes';
+import cmsRoutes from '../modules/cms/cms.routes';
 
 const router = Router();
 
@@ -61,5 +62,6 @@ router.use('/search', searchRoutes);
 router.use('/favorites', favoriteRoutes);
 router.use('/messaging', messagingRoutes);
 router.use('/admin', adminRoutes);
+router.use('/cms', cmsRoutes);
 
 export default router;

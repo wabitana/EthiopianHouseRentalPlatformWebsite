@@ -16,6 +16,7 @@ const search_routes_1 = __importDefault(require("../modules/search/search.routes
 const favorite_routes_1 = __importDefault(require("../modules/favorites/favorite.routes"));
 const message_routes_1 = __importDefault(require("../modules/messaging/message.routes"));
 const admin_routes_1 = __importDefault(require("../modules/admin/admin.routes"));
+const cms_routes_1 = __importDefault(require("../modules/cms/cms.routes"));
 const router = (0, express_1.Router)();
 // Base API Index Route
 router.get('/', (req, res) => {
@@ -62,4 +63,5 @@ router.use('/search', search_routes_1.default);
 router.use('/favorites', favorite_routes_1.default);
 router.use('/messaging', message_routes_1.default);
 router.use('/admin', admin_routes_1.default);
+router.use('/cms', cms_routes_1.default);
 exports.default = router;

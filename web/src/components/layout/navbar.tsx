@@ -130,14 +130,14 @@ export function Navbar({ cmsNavbar = {} }: NavbarProps) {
           ) : (
             <div className="flex items-center gap-2">
               <Link
-                href="/login"
+                href="/auth/login"
                 className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
               >
                 <LogIn className="h-4 w-4 text-slate-500" />
                 <span>Sign In</span>
               </Link>
               <Link
-                href="/register"
+                href="/auth/register"
                 className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3.5 py-2 text-sm font-bold text-white shadow-sm transition-colors"
               >
                 <UserPlus className="h-4 w-4" />
@@ -193,14 +193,14 @@ export function Navbar({ cmsNavbar = {} }: NavbarProps) {
           ) : (
             <div className="pt-2 border-t flex gap-2">
               <Link
-                href="/login"
+                href="/auth/login"
                 onClick={() => setMobileOpen(false)}
                 className="flex-1 text-center py-2 border rounded-lg text-sm font-bold"
               >
                 Sign In
               </Link>
               <Link
-                href="/register"
+                href="/auth/register"
                 onClick={() => setMobileOpen(false)}
                 className="flex-1 text-center py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold"
               >

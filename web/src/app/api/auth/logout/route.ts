@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
-import { clearAuthCookie } from "@/lib/auth";
+import { NextResponse } from 'next/server';
 
 export async function POST() {
-  await clearAuthCookie();
-  return NextResponse.redirect(new URL("/", process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"));
+  const response = NextResponse.json({ success: true, message: 'Logged out' });
+  response.cookies.set('delala_token', '', { maxAge: 0, path: '/' });
+  return response;
 }

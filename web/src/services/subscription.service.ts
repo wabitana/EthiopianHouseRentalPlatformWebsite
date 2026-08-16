@@ -1,21 +1,8 @@
 import { apiClient } from './api';
-import { ApiResponse } from '../types/api';
-import { SubscriptionPlan, Subscription } from '../types/subscription';
 
 export const subscriptionService = {
-  async getPlans(): Promise<ApiResponse<SubscriptionPlan[]>> {
-    return apiClient.get('/subscriptions/plans');
-  },
-
-  async getMySubscription(): Promise<ApiResponse<Subscription>> {
-    return apiClient.get('/subscriptions/my-subscription');
-  },
-
-  async subscribe(planId: string): Promise<ApiResponse<{ subscription: Subscription; checkoutUrl: string }>> {
-    return apiClient.post('/subscriptions/subscribe', { planId });
-  },
-
-  async confirmPayment(txRef: string): Promise<ApiResponse<Subscription>> {
-    return apiClient.post('/subscriptions/confirm-payment', { txRef });
-  },
+  getPlans: () => apiClient.get('/subscriptions/plans'),
+  getMySubscription: () => apiClient.get('/subscriptions/my', true),
+  subscribe: (planId: string) => apiClient.post('/subscriptions', { planId }, true),
+  cancelSubscription: () => apiClient.delete('/subscriptions/my', true),
 };

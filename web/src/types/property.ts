@@ -1,37 +1,21 @@
-export type TransactionType = 'RENT' | 'SALE';
 export type PropertyStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'PUBLISHED' | 'REJECTED' | 'SUSPENDED' | 'SOLD' | 'RENTED' | 'ARCHIVED';
-
-export interface PropertyImage {
-  id: string;
-  url: string;
-  isPrimary: boolean;
-}
+export type ListingType = 'RENT' | 'SALE';
+export type PropertyType = 'APARTMENT' | 'HOUSE' | 'VILLA' | 'STUDIO' | 'ROOM' | 'COMMERCIAL' | 'LAND';
 
 export interface Property {
   id: string;
-  ownerId: string;
   title: string;
   description: string;
-  propertyType: string;
-  transactionType: TransactionType;
+  propertyType: PropertyType;
+  listingType: ListingType;
   price: number;
-  area: number;
-  bedrooms: number;
-  bathrooms: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  area?: number;
   city: string;
-  areaName: string;
-  neighborhood?: string | null;
-  addressDetails?: string | null;
-  availability: boolean;
+  subCity?: string;
+  address?: string;
   status: PropertyStatus;
-  viewsCount: number;
+  ownerId: string;
   createdAt: string;
-  updatedAt: string;
-  images?: PropertyImage[];
-  owner?: {
-    id?: string;
-    name: string;
-    phone: string;
-    isIdentityVerified?: boolean;
-  };
 }

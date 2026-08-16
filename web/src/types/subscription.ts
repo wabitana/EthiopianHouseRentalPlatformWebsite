@@ -6,17 +6,15 @@ export interface SubscriptionPlan {
   price: number;
   durationDays: number;
   maxListings: number;
-  features: string;
-  isActive: boolean;
+  features: string[];
 }
 
 export interface Subscription {
   id: string;
   ownerId: string;
   planId: string;
-  plan?: SubscriptionPlan;
   status: SubscriptionStatus;
-  startDate?: string | null;
-  endDate?: string | null;
-  createdAt: string;
+  startDate: string;
+  endDate: string;
+  plan: SubscriptionPlan;
 }

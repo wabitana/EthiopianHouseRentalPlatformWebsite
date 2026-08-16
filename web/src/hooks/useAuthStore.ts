@@ -1,38 +1,41 @@
+'use client';
 import { create } from 'zustand';
-import { UserResponse, Role } from '../types/user';
+import { persist } from 'zustand/middleware';
 
-interface AuthState {
-  user: UserResponse | null;
-  accessToken: string | null;
-  isAuthenticated: boolean;
-  setAuth: (user: UserResponse, accessToken: string, refreshToken: string) => void;
-  clearAuth: () => void;
-  hasRole: (role: Role) => boolean;
+export interface AuthUser {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  roles: string[];
+  isEmailVerified?: boolean;
+  isPhoneVerified?: boolean;
+  isIdentityVerified?: boolean;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
-  user: null,
-  accessToken: null,
-  isAuthenticated: false,
+interface AuthState {
+  user: AuthUser | null;
+  accessToken: string | null;
+  refreshToken: string | null;
+  isAuthenticated: boolean;
+  setAuth: (user: AuthUser, accessToken: string, refreshToken: string) => void;
+  clearAuth: () => void;
+}
 
-  setAuth: (user, accessToken, refreshToken) => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('accessToken', accessToken);
-      localStorage.setItem('refreshToken', refreshToken);
+export const useAuthStore = create<AuthState>()(
+  persist(
+    (set) => ({
+      user: null,
+      accessToken: null,
+      refreshToken: null,
+      isAuthenticated: false,
+      setAuth: (user, accessToken, refreshToken) =>
+        set({ user, accessToken, refreshToken, isAuthenticated: true }),
+      clearAuth: () =>
+        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false }),
+    }),
+    {
+      name: 'auth-storage',
     }
-    set({ user, accessToken, isAuthenticated: true });
-  },
-
-  clearAuth: () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-    }
-    set({ user: null, accessToken: null, isAuthenticated: false });
-  },
-
-  hasRole: (role) => {
-    const user = get().user;
-    return !!user && user.roles.includes(role);
-  },
-}));
+  )
+);

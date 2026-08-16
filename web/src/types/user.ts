@@ -1,15 +1,13 @@
-export type Role = 'ADMIN' | 'OWNER' | 'RENTER' | 'BUYER';
+export type Role = 'OWNER' | 'RENTER' | 'BUYER' | 'ADMIN';
 
-export interface UserResponse {
+export interface User {
   id: string;
   name: string;
   email: string;
-  phone: string;
+  phone?: string;
   roles: Role[];
-  avatarUrl?: string | null;
-  isPhoneVerified: boolean;
   isEmailVerified: boolean;
+  isPhoneVerified: boolean;
   isIdentityVerified: boolean;
   createdAt: string;
-  updatedAt: string;
 }

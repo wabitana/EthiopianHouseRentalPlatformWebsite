@@ -1,53 +1,49 @@
 import axios from 'axios';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
-export const apiClient = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+const axiosInstance = axios.create({
+  baseURL: BASE_URL,
+  headers: { 'Content-Type': 'application/json' },
   timeout: 15000,
 });
 
-// Request Interceptor: Attach JWT Access Token
-apiClient.interceptors.request.use(
-  (config) => {
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('accessToken');
-      if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
+// Attach JWT from Zustand persisted localStorage
+axiosInstance.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    try {
+      const zustandState = localStorage.getItem('auth-storage');
+      if (zustandState) {
+        const parsed = JSON.parse(zustandState);
+        const token = parsed?.state?.accessToken;
+        if (token && config.headers) {
+          config.headers['Authorization'] = 'Bearer ' + token;
+        }
       }
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+    } catch {}
+  }
+  return config;
+});
 
-// Response Interceptor: Handle Global API Errors & Auto Token Refresh
-apiClient.interceptors.response.use(
-  (response) => response.data,
+// Unwrap response.data and normalize errors
+axiosInstance.interceptors.response.use(
+  (res) => res.data,
   async (error) => {
-    const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (refreshToken) {
-          const res = await axios.post(`${API_URL}/auth/refresh`, { refreshToken });
-          const newAccessToken = res.data.data.accessToken;
-          localStorage.setItem('accessToken', newAccessToken);
-          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-          return apiClient(originalRequest);
-        }
-      } catch (refreshErr) {
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          window.location.href = '/auth/login';
-        }
-      }
-    }
-    return Promise.reject(error.response?.data || error);
+    const message =
+      error.response?.data?.error?.message ||
+      error.response?.data?.message ||
+      error.message ||
+      'Request failed';
+    return Promise.reject({ error: { message }, status: error.response?.status });
   }
 );
+
+export const apiClient = {
+  get: (url: string, _auth = false) => axiosInstance.get(url) as Promise<any>,
+  post: (url: string, data?: any, _auth = false) => axiosInstance.post(url, data) as Promise<any>,
+  put: (url: string, data?: any, _auth = false) => axiosInstance.put(url, data) as Promise<any>,
+  patch: (url: string, data?: any, _auth = false) => axiosInstance.patch(url, data) as Promise<any>,
+  delete: (url: string, _auth = false) => axiosInstance.delete(url) as Promise<any>,
+};
+
+export default axiosInstance;

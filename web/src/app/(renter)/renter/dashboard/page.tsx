@@ -1,66 +1,44 @@
 'use client';
-
-import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { rentalService } from '@/services/rental.service';
-import { saleService } from '@/services/sale.service';
+import { useAuthStore } from '@/hooks/useAuthStore';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function RenterDashboardPage() {
-  const { data: rentalsData } = useQuery({
-    queryKey: ['rentals', 'my-requests'],
-    queryFn: () => rentalService.getMyRequests(),
-  });
+  const { user, isAuthenticated } = useAuthStore();
+  const router = useRouter();
+  useEffect(() => {
+    if (!isAuthenticated) router.push('/auth/login');
+  }, [isAuthenticated, router]);
 
-  const { data: salesData } = useQuery({
-    queryKey: ['sales', 'my-requests'],
-    queryFn: () => saleService.getMyRequests(),
-  });
-
-  const rentals = rentalsData?.data || [];
-  const sales = salesData?.data || [];
+  if (!user) return null;
 
   return (
-    <div className="max-w-7xl mx-auto px-6 py-12">
-      <h1 className="text-3xl font-bold text-slate-900 mb-8">Renter & Buyer Dashboard</h1>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900 mb-4">Rental Requests ({rentals.length})</h2>
-          {rentals.length === 0 ? (
-            <p className="text-slate-500 text-sm">No active rental requests sent yet.</p>
-          ) : (
-            <div className="space-y-4">
-              {rentals.map((r: any) => (
-                <div key={r.id} className="p-4 bg-slate-50 rounded-lg flex justify-between items-center">
-                  <div>
-                    <h4 className="font-bold text-slate-900">{r.property?.title}</h4>
-                    <p className="text-xs text-slate-500">Status: {r.status}</p>
-                  </div>
-                  <span className="text-sm font-semibold text-blue-600">ETB {r.property?.price?.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-          )}
+    <div className="min-h-screen bg-slate-50 py-10 px-4">
+      <div className="mx-auto max-w-6xl">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-slate-900">My Dashboard</h1>
+          <p className="text-slate-500 mt-1">Welcome back, {user.name}</p>
         </div>
-
-        <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-900 mb-4">Purchase Offers ({sales.length})</h2>
-          {sales.length === 0 ? (
-            <p className="text-slate-500 text-sm">No active purchase offers sent yet.</p>
-          ) : (
-            <div className="space-y-4">
-              {sales.map((s: any) => (
-                <div key={s.id} className="p-4 bg-slate-50 rounded-lg flex justify-between items-center">
-                  <div>
-                    <h4 className="font-bold text-slate-900">{s.property?.title}</h4>
-                    <p className="text-xs text-slate-500">Status: {s.status}</p>
-                  </div>
-                  <span className="text-sm font-semibold text-emerald-600">ETB {s.offerPrice?.toLocaleString()}</span>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-10">
+          {[
+            { label: 'Saved Properties', value: '0', icon: '❤️', href: '/renter/favorites' },
+            { label: 'Rental Requests', value: '0', icon: '📋', href: '/renter/rental-requests' },
+            { label: 'Purchase Requests', value: '0', icon: '💰', href: '/renter/purchase-requests' },
+            { label: 'Messages', value: '0', icon: '💬', href: '/renter/messages' },
+          ].map((item) => (
+            <Link key={item.label} href={item.href}
+              className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+              <p className="text-3xl mb-3">{item.icon}</p>
+              <p className="text-2xl font-bold text-slate-900">{item.value}</p>
+              <p className="text-sm text-slate-500 mt-1">{item.label}</p>
+            </Link>
+          ))}
         </div>
+        <Link href="/properties"
+          className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-6 py-3 rounded-xl transition-colors inline-block">
+          Browse Properties
+        </Link>
       </div>
     </div>
   );

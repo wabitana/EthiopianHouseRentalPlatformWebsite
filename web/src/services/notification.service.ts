@@ -1,12 +1,7 @@
 import { apiClient } from './api';
-import { ApiResponse } from '../types/api';
 
 export const notificationService = {
-  async getUserNotifications(): Promise<ApiResponse<any[]>> {
-    return apiClient.get('/notifications');
-  },
-
-  async markAsRead(id: string): Promise<ApiResponse> {
-    return apiClient.patch(`/notifications/${id}/read`, {});
-  },
+  getMyNotifications: (page = 1) => apiClient.get('/notifications?page=' + page, true),
+  markRead: (id: string) => apiClient.patch('/notifications/' + id + '/read', {}, true),
+  markAllRead: () => apiClient.patch('/notifications/read-all', {}, true),
 };
