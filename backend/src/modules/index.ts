@@ -1,0 +1,17 @@
+export { default as authRoutes } from './auth/auth.routes';
+export { default as propertyRoutes } from './properties/property.routes';
+export { default as providerRoutes } from './provider/provider.routes';
+export { default as favoritesRoutes } from './favorites/favorites.routes';
+export { default as inquiriesRoutes } from './inquiries/inquiries.routes';
+export { default as notificationsRoutes } from './notifications/notifications.routes';
+export { default as reportRoutes } from './reports/report.routes';
+export { default as adminRoutes } from './admin/admin.routes';
+export { default as uploadRoutes } from './upload/upload.routes';
+export { default as aiRoutes } from './ai/ai.routes';
+export { default as subscriptionRoutes } from './subscriptions/subscription.routes';
+export { default as verificationRoutes } from './verification/verification.routes';
+export { default as rentalRoutes } from './rentals/rental.routes';
+export { default as saleRoutes } from './sales/sale.routes';
+export { default as cmsRoutes } from './cms/cms.routes';
+export { default as vendorServicesRoutes } from './vendor-services/vendor-services.routes';
+export * from './email/email.service';

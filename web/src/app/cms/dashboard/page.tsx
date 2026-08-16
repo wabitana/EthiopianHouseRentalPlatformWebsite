@@ -59,10 +59,10 @@ export default function CMSDashboard() {
   const handleSave = async (key: string, value: any) => {
     setSaving(key);
     try {
-      const res = await fetch("/api/config", {
-        method: "PATCH",
+      const res = await fetch(`/api/cms/${key}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key, value: JSON.stringify(value) }),
+        body: JSON.stringify({ key, value }),
       });
       if (res.ok) alert("✅ Saved successfully!");
       else alert("❌ Failed to save.");

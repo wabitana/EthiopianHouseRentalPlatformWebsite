@@ -9,7 +9,7 @@ export default async function CMSLayout({
   children: React.ReactNode;
 }) {
   const session = await getSession();
-  if (!session || session.role !== "ADMIN") redirect("/cms/login");
+  if (!session || session.role?.toLowerCase() !== "admin") redirect("/cms/login");
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">

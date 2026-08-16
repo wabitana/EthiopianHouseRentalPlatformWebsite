@@ -162,14 +162,17 @@ class PropertyProvider extends ChangeNotifier {
     }
   }
 
-  Future<PropertyModel> createProperty(PropertyModel newProperty) async {
+  Future<bool> createProperty(PropertyModel newProperty) async {
     _isLoading = true;
     notifyListeners();
     try {
       final created = await _propertyRepository.createProperty(newProperty);
       _properties.insert(0, created);
       _providerProperties.insert(0, created);
-      return created;
+      return true;
+    } catch (e) {
+      debugPrint('Error creating property: $e');
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();

@@ -114,7 +114,14 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    fetch("/api/cms").then(res => res.json()).then(data => setCmsConfig(data.config)).catch(console.error);
+    fetch("/api/cms", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.config) {
+          setCmsConfig((prev: any) => ({ ...prev, ...data.config }));
+        }
+      })
+      .catch(console.error);
   }, []);
 
   // Set up scroll tracking state for the About Us Section
@@ -194,15 +201,15 @@ export default function HomePage() {
   return (
     <div className="bg-slate-50">
       {/* HERO */}
-      <section 
+      <section
         className={`relative overflow-hidden px-4 pt-24 pb-52 text-white sm:px-6 lg:pt-32 lg:pb-64 ${(!hero.backgroundType || hero.backgroundType === 'animation') ? 'gradient-hero' : ''}`}
         style={hero.backgroundType === 'color' ? { backgroundColor: hero.backgroundColor || '#059669' } : {}}
       >
         {(!hero.backgroundType || hero.backgroundType === 'animation') && <HeroAnimationWrapper />}
         {hero.backgroundType === 'image' && hero.backgroundImage && (
           <div className="absolute inset-0 z-0">
-             <img src={hero.backgroundImage} alt="Hero Background" className="w-full h-full object-cover" />
-             <div className="absolute inset-0 bg-black/40" />
+            <img src={hero.backgroundImage} alt="Hero Background" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/40" />
           </div>
         )}
         {hero.backgroundType === 'video' && hero.backgroundVideo && (
@@ -261,7 +268,7 @@ export default function HomePage() {
                 <CardContent className="p-6">
                   {f.image ? (
                     <div className="mb-4 h-16 w-16">
-                       <img src={f.image} alt={f.title} className="h-full w-full object-contain" />
+                      <img src={f.image} alt={f.title} className="h-full w-full object-contain" />
                     </div>
                   ) : (
                     <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
@@ -384,7 +391,7 @@ export default function HomePage() {
                 <Card className="card-hover overflow-hidden h-full flex flex-col">
                   {highlight.image ? (
                     <div className="h-40 w-full bg-slate-50">
-                       <img src={highlight.image} alt={highlight.name} className="w-full h-full object-cover" />
+                      <img src={highlight.image} alt={highlight.name} className="w-full h-full object-cover" />
                     </div>
                   ) : (
                     <div className="flex h-40 items-center justify-center bg-gradient-to-br from-emerald-50 to-slate-100">
@@ -699,27 +706,28 @@ export default function HomePage() {
               const gradient = gradients[i % 4];
               const StepIcon = icons[i % 4];
               return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 40 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: i * 0.15 }}
-                viewport={{ once: true }}
-                className="relative z-10 group"
-              >
-                <div className="bg-white border border-slate-200 hover:border-slate-300 rounded-3xl p-7 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-slate-200/50 h-full flex flex-col">
-                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                    <StepIcon className="w-6 h-6 text-white" />
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 40 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: i * 0.15 }}
+                  viewport={{ once: true }}
+                  className="relative z-10 group"
+                >
+                  <div className="bg-white border border-slate-200 hover:border-slate-300 rounded-3xl p-7 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-slate-200/50 h-full flex flex-col">
+                    <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center mb-6 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+                      <StepIcon className="w-6 h-6 text-white" />
+                    </div>
+                    <span className={`text-[10px] font-black uppercase tracking-[0.2em] bg-gradient-to-r ${gradient} bg-clip-text text-transparent mb-3`}>
+                      Step {item.step}
+                    </span>
+                    <h3 className="text-xl font-bold text-slate-900 mb-3 tracking-tight">{item.title}</h3>
+                    <p className="text-sm text-slate-600 leading-relaxed flex-1">{item.description}</p>
+                    <div className={`mt-6 h-1 w-12 rounded-full bg-gradient-to-r ${gradient} opacity-40 group-hover:opacity-100 group-hover:w-full transition-all duration-500`} />
                   </div>
-                  <span className={`text-[10px] font-black uppercase tracking-[0.2em] bg-gradient-to-r ${gradient} bg-clip-text text-transparent mb-3`}>
-                    Step {item.step}
-                  </span>
-                  <h3 className="text-xl font-bold text-slate-900 mb-3 tracking-tight">{item.title}</h3>
-                  <p className="text-sm text-slate-600 leading-relaxed flex-1">{item.description}</p>
-                  <div className={`mt-6 h-1 w-12 rounded-full bg-gradient-to-r ${gradient} opacity-40 group-hover:opacity-100 group-hover:w-full transition-all duration-500`} />
-                </div>
-              </motion.div>
-            );})}
+                </motion.div>
+              );
+            })}
           </div>
 
           {/* Bottom CTA */}

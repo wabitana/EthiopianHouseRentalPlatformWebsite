@@ -1,24 +1,20 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma as prismaClient } from './config/database';
 
-export const prisma = new PrismaClient({
-  log: ['error', 'warn'],
-});
+export const prisma = prismaClient;
 
-// Helper for database queries with automatic retry for transient connection issues (P1001)
-export async function withDbRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
-  let attempts = 0;
-  while (attempts < maxRetries) {
+export async function withDbRetry<T>(fn: () => Promise<T>, retries = 3, delayMs = 1000): Promise<T> {
+  let attempt = 0;
+  while (attempt < retries) {
     try {
       return await fn();
-    } catch (error: any) {
-      attempts++;
-      if (error?.code === 'P1001' && attempts < maxRetries) {
-        console.warn(`⚠️ Database connection warning (P1001). Retrying attempt ${attempts}/${maxRetries}...`);
-        await new Promise((resolve) => setTimeout(resolve, 1000 * attempts));
-      } else {
-        throw error;
-      }
+    } catch (err: any) {
+      attempt++;
+      if (attempt >= retries) throw err;
+      console.warn(`[Prisma Retry] Database query failed (attempt ${attempt}/${retries}). Retrying in ${delayMs}ms... Error: ${err?.message || err}`);
+      await new Promise((res) => setTimeout(res, delayMs));
     }
   }
-  throw new Error('Database connection failed after maximum retries');
+  throw new Error('Database operation failed after max retries');
 }
+
+export default prisma;

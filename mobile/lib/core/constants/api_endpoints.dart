@@ -26,6 +26,10 @@ class ApiEndpoints {
 
   // Auth endpoints
   static String get register => '$baseUrl/auth/register';
+  static String get verifyEmail => '$baseUrl/auth/verify-email';
+  static String get sendPhoneOtp => '$baseUrl/auth/send-phone-otp';
+  static String get verifyPhoneOtp => '$baseUrl/auth/verify-phone-otp';
+  static String get refreshToken => '$baseUrl/auth/refresh-token';
   static String get login => '$baseUrl/auth/login';
   static String get google => '$baseUrl/auth/google';
   static String get logout => '$baseUrl/auth/logout';

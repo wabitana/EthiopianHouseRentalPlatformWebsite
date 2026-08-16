@@ -13,9 +13,10 @@ import {
   X,
   MessageSquare,
   Info,
-  Image,
   Building2,
   Home,
+  LogIn,
+  UserPlus,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -38,7 +39,6 @@ const customerLinks = [
   { href: "/about", label: "About", icon: Info },
   { href: "/browse-houses", label: "Browse Houses", icon: Building2 },
   { href: "/services", label: "Services", icon: Wrench },
-  // Updated to link to the anchor ID on the home page
   { href: "/#contact", label: "Contact", icon: MessageSquare },
   { href: "/launch-app", label: "Launch App", icon: LayoutDashboard },
 ];
@@ -58,8 +58,8 @@ export function Navbar({ user, cartCount = 0, cmsNavbar = {} }: NavbarProps) {
             <Home className="h-5 w-5 text-white" />
           </div>
           <div className="hidden sm:block">
-            <p className="text-sm font-bold text-slate-900">{cmsNavbar.siteName || "Delala Rentals"}</p>
-            <p className="text-[10px] text-slate-500">{cmsNavbar.siteTagline || "Ethiopian Home Rental Platform"}</p>
+            <p className="text-sm font-bold text-slate-900">{cmsNavbar.siteName || "Ethiopian Property Platform"}</p>
+            <p className="text-[10px] text-slate-500">{cmsNavbar.siteTagline || "Ethiopian Home & Commercial Property Rental & Sale Platform"}</p>
           </div>
         </Link>
 
@@ -70,7 +70,6 @@ export function Navbar({ user, cartCount = 0, cmsNavbar = {} }: NavbarProps) {
               href={link.href}
               className={cn(
                 "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                // Note: startsWith('/') check handles homepage links correctly
                 pathname === link.href
                   ? "bg-emerald-50 text-emerald-700"
                   : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
@@ -103,26 +102,32 @@ export function Navbar({ user, cartCount = 0, cmsNavbar = {} }: NavbarProps) {
             <div className="hidden items-center gap-2 sm:flex">
               <Link
                 href="/profile"
-                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
               >
-                <User className="h-4 w-4" />
+                <User className="h-4 w-4 text-emerald-600" />
                 {user.name}
               </Link>
-              <form action="/api/auth/logout" method="POST">
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  document.cookie = "delala_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                  try {
+                    await fetch('/api/auth/logout', { method: 'POST' });
+                  } catch (_) {}
+                  window.location.href = '/cms/login';
+                }}
+              >
                 <button
                   type="submit"
-                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
+                  className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50"
                   title="Logout"
                 >
                   <LogOut className="h-4 w-4" />
+                  Logout
                 </button>
               </form>
             </div>
-          ) : (
-            <div className="hidden items-center gap-2 sm:flex">
-
-            </div>
-          )}
+          ) : null}
 
           <button
             className="rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:hidden"
@@ -134,7 +139,7 @@ export function Navbar({ user, cartCount = 0, cmsNavbar = {} }: NavbarProps) {
       </div>
 
       {mobileOpen && (
-        <div className="border-t border-slate-100 bg-white px-4 py-3 md:hidden">
+        <div className="border-t border-slate-100 bg-white px-4 py-3 md:hidden space-y-2">
           {customerLinks.map((link) => (
             <Link
               key={link.href}
@@ -146,8 +151,26 @@ export function Navbar({ user, cartCount = 0, cmsNavbar = {} }: NavbarProps) {
               {link.label}
             </Link>
           ))}
-          {!user && (
-            <div className="mt-2 border-t pt-2">
+          {user && (
+            <div className="mt-3 border-t pt-3 flex flex-col gap-2">
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  document.cookie = "delala_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+                  try {
+                    await fetch('/api/auth/logout', { method: 'POST' });
+                  } catch (_) {}
+                  window.location.href = '/cms/login';
+                }}
+              >
+                <button
+                  type="submit"
+                  className="w-full flex items-center justify-center gap-2 rounded-lg bg-rose-50 py-2 text-sm font-semibold text-rose-600 hover:bg-rose-100"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </button>
+              </form>
             </div>
           )}
         </div>

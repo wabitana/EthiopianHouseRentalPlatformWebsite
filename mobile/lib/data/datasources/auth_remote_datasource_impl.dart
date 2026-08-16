@@ -129,6 +129,42 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
       requireAuth: false,
     );
 
+    if (res != null) {
+      if (res['token'] != null && res['user'] != null) {
+        await TokenStorage.saveToken(res['token'] as String);
+        final userMap = res['user'] as Map<String, dynamic>;
+        await TokenStorage.saveUserData(userMap);
+        final user = UserModel.fromJson(userMap);
+        await TokenStorage.saveUserRole(user.role.code);
+        return user;
+      }
+      if (res['requiresEmailVerification'] == true || res['email'] != null) {
+        return UserModel(
+          id: 'pending-${DateTime.now().millisecondsSinceEpoch}',
+          name: name,
+          email: email,
+          phone: phone,
+          role: role,
+          isVerified: false,
+          isEmailVerified: false,
+          isPhoneVerified: false,
+          createdAt: DateTime.now(),
+        );
+      }
+    }
+    throw ApiException('Failed to parse registration response');
+  }
+
+  Future<UserModel> verifyEmail(String email, String code) async {
+    final res = await ApiClient.post(
+      ApiEndpoints.verifyEmail,
+      body: {
+        'email': email,
+        'code': code,
+      },
+      requireAuth: false,
+    );
+
     if (res != null && res['token'] != null && res['user'] != null) {
       await TokenStorage.saveToken(res['token'] as String);
       final userMap = res['user'] as Map<String, dynamic>;
@@ -137,7 +173,25 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
       await TokenStorage.saveUserRole(user.role.code);
       return user;
     }
-    throw ApiException('Failed to parse registration response');
+    throw ApiException('Invalid email verification code');
+  }
+
+  Future<bool> sendPhoneOtp(String phone) async {
+    final res = await ApiClient.post(
+      ApiEndpoints.sendPhoneOtp,
+      body: {'phone': phone},
+      requireAuth: true,
+    );
+    return res != null && res['message'] != null;
+  }
+
+  Future<bool> verifyPhoneOtp(String code) async {
+    final res = await ApiClient.post(
+      ApiEndpoints.verifyPhoneOtp,
+      body: {'code': code},
+      requireAuth: true,
+    );
+    return res != null && (res['isPhoneVerified'] == true || res['message'] != null);
   }
 
   @override

@@ -37,6 +37,8 @@ class UserModel {
   final UserRole role;
   final String? avatarUrl;
   final bool isVerified;
+  final bool isEmailVerified;
+  final bool isPhoneVerified;
   final double rating;
   final int totalListings;
   final DateTime createdAt;
@@ -49,6 +51,8 @@ class UserModel {
     required this.role,
     this.avatarUrl,
     this.isVerified = false,
+    this.isEmailVerified = false,
+    this.isPhoneVerified = false,
     this.rating = 4.8,
     this.totalListings = 0,
     DateTime? createdAt,
@@ -62,6 +66,8 @@ class UserModel {
     UserRole? role,
     String? avatarUrl,
     bool? isVerified,
+    bool? isEmailVerified,
+    bool? isPhoneVerified,
     double? rating,
     int? totalListings,
   }) {
@@ -73,6 +79,8 @@ class UserModel {
       role: role ?? this.role,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       isVerified: isVerified ?? this.isVerified,
+      isEmailVerified: isEmailVerified ?? this.isEmailVerified,
+      isPhoneVerified: isPhoneVerified ?? this.isPhoneVerified,
       rating: rating ?? this.rating,
       totalListings: totalListings ?? this.totalListings,
       createdAt: createdAt,
@@ -88,6 +96,8 @@ class UserModel {
       'role': role.code,
       'avatarUrl': avatarUrl,
       'isVerified': isVerified,
+      'isEmailVerified': isEmailVerified,
+      'isPhoneVerified': isPhoneVerified,
       'rating': rating,
       'totalListings': totalListings,
       'createdAt': createdAt.toIso8601String(),
@@ -103,6 +113,8 @@ class UserModel {
       role: UserRoleExtension.fromCode(json['role'] as String),
       avatarUrl: json['avatarUrl'] as String?,
       isVerified: json['isVerified'] as bool? ?? false,
+      isEmailVerified: json['isEmailVerified'] as bool? ?? false,
+      isPhoneVerified: json['isPhoneVerified'] as bool? ?? false,
       rating: (json['rating'] as num?)?.toDouble() ?? 4.8,
       totalListings: json['totalListings'] as int? ?? 0,
       createdAt: json['createdAt'] != null
