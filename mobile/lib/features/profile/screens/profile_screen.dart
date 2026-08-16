@@ -14,6 +14,8 @@ import '../../../core/constants/app_strings.dart';
 import '../../../core/services/user_settings_service.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/screens/welcome_screen.dart';
+import '../../auth/screens/phone_verification_screen.dart';
+import '../../verification/screens/document_verification_screen.dart';
 import 'theme_settings_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
@@ -692,13 +694,10 @@ class ProfileScreen extends StatelessWidget {
   }
 
   // 4. Account Verification Status Modal Sheet
-  // 4. Account Verification Status Modal Sheet with Real Document Upload & API Verification
+  // 4. Account Verification Status Modal Sheet with Independent Seeker vs Provider Workflows
   void _showAccountVerificationModal(BuildContext context, UserModel user) {
-    String selectedIdType = 'Ethiopian Fayda ID (ፋይዳ)';
-    final idNumberController = TextEditingController(text: 'FIN-9082-4112-09');
-    bool isUploading = false;
-    bool showDocumentForm = !user.isVerified;
-    bool hasUploadedFrontPhoto = true;
+    final authProvider = context.read<AuthProvider>();
+    final isProvider = authProvider.isProvider;
 
     showModalBottomSheet(
       context: context,
@@ -725,9 +724,9 @@ class ProfileScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text(
-                        'Account & Identity Verification',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                      Text(
+                        isProvider ? 'Owner & Property Verification' : 'Account & Identity Verification',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                       ),
                       IconButton(
                         icon: const Icon(Icons.close, color: AppColors.textMuted),
@@ -738,7 +737,7 @@ class ProfileScreen extends StatelessWidget {
                   const Divider(color: Color(0xFFE2E8F0)),
                   const SizedBox(height: 12),
 
-                  // Verification Status Banner
+                  // Mode Header Info Card
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -754,7 +753,7 @@ class ProfileScreen extends StatelessWidget {
                             color: user.isVerified ? const Color(0xFF10B981) : Colors.amber.shade700,
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(user.isVerified ? Icons.verified_rounded : Icons.shield_moon_rounded, color: Colors.white, size: 22),
+                          child: Icon(user.isVerified ? Icons.verified_rounded : Icons.shield_outlined, color: Colors.white, size: 22),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -762,7 +761,7 @@ class ProfileScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                user.isVerified ? 'Fully Verified Account ✓' : 'Verification Pending Audit',
+                                user.isVerified ? 'Fully Verified Account ✓' : (isProvider ? 'Owner Verification Required' : 'Optional Verification Status'),
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
@@ -771,9 +770,9 @@ class ProfileScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                user.isVerified
-                                    ? 'Your Fayda / Kebele National ID has been verified by Express API.'
-                                    : 'Upload your Fayda National ID or Kebele ID to receive your Verified Badge.',
+                                isProvider
+                                    ? 'Providers must submit National ID + Ownership Deed for AI Pre-check & Admin approval to post rentals.'
+                                    : 'House Seekers can use all search and inquiry features freely without verification.',
                                 style: TextStyle(fontSize: 12, color: user.isVerified ? const Color(0xFF047857) : Colors.amber.shade800),
                               ),
                             ],
@@ -782,156 +781,80 @@ class ProfileScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
-                  if (!showDocumentForm && user.isVerified) ...[
-                    // Verification Items Checklist
-                    _buildVerificationTile(
-                      icon: Icons.phone_iphone_rounded,
-                      title: 'Phone Number',
-                      subtitle: user.phone,
-                      isVerified: true,
-                    ),
-                    const SizedBox(height: 10),
-                    _buildVerificationTile(
-                      icon: Icons.email_rounded,
-                      title: 'Email Address',
-                      subtitle: user.email,
-                      isVerified: true,
-                    ),
-                    const SizedBox(height: 10),
-                    _buildVerificationTile(
-                      icon: Icons.badge_rounded,
-                      title: 'Ethiopian National / Kebele ID',
-                      subtitle: 'Verified ✓ Record FIN-9082-4112-09',
-                      isVerified: true,
-                    ),
-                    const SizedBox(height: 20),
-                    CustomButton(
-                      text: 'Update National ID Document',
-                      variant: CustomButtonVariant.outline,
-                      icon: Icons.upload_file_rounded,
-                      onPressed: () {
-                        setModalState(() {
-                          showDocumentForm = true;
-                        });
-                      },
-                    ),
-                  ] else ...[
-                    // Document Details Form
-                    const Text('Select Document Type', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedIdType,
-                      decoration: const InputDecoration(border: OutlineInputBorder()),
-                      items: [
-                        'Ethiopian Fayda ID (ፋይዳ)',
-                        'Kebele ID (የቀበሌ መታወቂያ)',
-                        'Ethiopian Passport / Resident Permit',
-                      ].map((type) => DropdownMenuItem(value: type, child: Text(type))).toList(),
-                      onChanged: (val) => setModalState(() => selectedIdType = val!),
-                    ),
-                    const SizedBox(height: 14),
+                  // Independent Trust Badges Checklist for Seekers & Providers
+                  _buildVerificationTile(
+                    icon: Icons.phone_android_rounded,
+                    title: 'Phone Number Verification',
+                    subtitle: user.isPhoneVerified
+                        ? 'Verified ✓ ${user.phone}'
+                        : 'Not Verified • Click to verify via SMS OTP',
+                    isVerified: user.isPhoneVerified,
+                    onTap: user.isPhoneVerified
+                        ? null
+                        : () {
+                            Navigator.pop(ctx);
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const PhoneVerificationScreen()),
+                            );
+                          },
+                  ),
+                  const SizedBox(height: 12),
 
-                    CustomTextField(
-                      label: 'National ID Number',
-                      hint: 'e.g. FIN-9082-4112-09 or KBL-09-8472',
-                      controller: idNumberController,
-                      prefixIcon: Icons.badge_outlined,
-                    ),
-                    const SizedBox(height: 16),
+                  _buildVerificationTile(
+                    icon: Icons.badge_outlined,
+                    title: 'Identity Document (Fayda / Kebele)',
+                    subtitle: user.isVerified
+                        ? 'Verified ✓ Official Ethiopian ID on File'
+                        : 'Not Verified • Upload Fayda / Kebele ID photo',
+                    isVerified: user.isVerified,
+                    onTap: user.isVerified
+                        ? null
+                        : () {
+                            Navigator.pop(ctx);
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => DocumentVerificationScreen(isProvider: isProvider),
+                              ),
+                            );
+                          },
+                  ),
 
-                    // Document Image Upload Card
-                    const Text('Upload Document Photo', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-                    const SizedBox(height: 8),
-                    GestureDetector(
+                  if (isProvider) ...[
+                    const SizedBox(height: 12),
+                    _buildVerificationTile(
+                      icon: Icons.home_work_outlined,
+                      title: 'House Ownership & License Document',
+                      subtitle: user.isVerified
+                          ? 'Verified ✓ Title Deed & Property License Approved'
+                          : 'Pending Upload • Upload Deed / Site Plan for AI & Admin review',
+                      isVerified: user.isVerified,
                       onTap: () {
-                        setModalState(() {
-                          hasUploadedFrontPhoto = true;
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Front side ID photo selected ✓'), duration: Duration(seconds: 1)),
+                        Navigator.pop(ctx);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const DocumentVerificationScreen(isProvider: true),
+                          ),
                         );
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: hasUploadedFrontPhoto ? AppColors.primary : const Color(0xFFCBD5E1), width: 1.5),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: AppColors.primaryContainer,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Icon(Icons.document_scanner_rounded, color: AppColors.primary),
-                            ),
-                            const SizedBox(width: 14),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Fayda_National_ID_Front.jpg', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                  Text('Ready to submit • 2.4 MB', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                                ],
-                              ),
-                            ),
-                            const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 22),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    CustomButton(
-                      text: isUploading ? 'Submitting to Express Backend...' : 'Submit National ID for Verification',
-                      isLoading: isUploading,
-                      icon: Icons.shield_rounded,
-                      onPressed: () async {
-                        if (idNumberController.text.trim().isEmpty) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please enter your National ID Number')),
-                          );
-                          return;
-                        }
-
-                        setModalState(() => isUploading = true);
-
-                        // Call REAL Express Backend API POST /api/v1/auth/verify-identity
-                        final success = await context.read<AuthProvider>().verifyIdentity(
-                              selectedIdType,
-                              idNumberController.text.trim(),
-                              documentImage: 'https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=800&q=80',
-                            );
-
-                        if (ctx.mounted) {
-                          Navigator.of(ctx).pop();
-                          if (success) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('$selectedIdType verified successfully in PostgreSQL database! Verified User Badge granted ✓'),
-                                backgroundColor: AppColors.success,
-                                behavior: SnackBarBehavior.floating,
-                                duration: const Duration(seconds: 4),
-                              ),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Failed to complete verification. Please check backend connection.'),
-                                backgroundColor: AppColors.rejected,
-                              ),
-                            );
-                          }
-                        }
                       },
                     ),
                   ],
+
+                  const SizedBox(height: 24),
+
+                  CustomButton(
+                    text: user.isVerified ? 'View Submitted Verification Documents' : 'Proceed to Document Verification',
+                    icon: Icons.shield_rounded,
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => DocumentVerificationScreen(isProvider: isProvider),
+                        ),
+                      );
+                    },
+                  ),
                 ],
               ),
             ),
@@ -946,33 +869,37 @@ class ProfileScreen extends StatelessWidget {
     required String title,
     required String subtitle,
     required bool isVerified,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.primary, size: 22),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary)),
-                Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-              ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: isVerified ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: isVerified ? AppColors.primary : AppColors.textMuted, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary)),
+                  Text(subtitle, style: TextStyle(fontSize: 11, color: isVerified ? AppColors.success : AppColors.textSecondary)),
+                ],
+              ),
             ),
-          ),
-          Icon(
-            isVerified ? Icons.check_circle_rounded : Icons.pending_rounded,
-            color: isVerified ? AppColors.success : Colors.orange,
-            size: 20,
-          ),
-        ],
+            Icon(
+              isVerified ? Icons.check_circle_rounded : Icons.chevron_right_rounded,
+              color: isVerified ? AppColors.success : AppColors.textMuted,
+              size: 20,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1646,12 +1573,61 @@ class ProfileScreen extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            if (user.isVerified) const VerificationBadge(label: 'Verified User', isSmall: true),
+                            VerificationBadge(
+                              label: user.isVerified ? 'Verified User' : 'Not Verified ⚠️',
+                              isSmall: true,
+                              isUnverified: !user.isVerified,
+                            ),
                           ],
                         ),
                       ],
                     ),
                   ),
+                  if (!user.isVerified || !user.isPhoneVerified) ...[
+                    const SizedBox(height: 14),
+                    GestureDetector(
+                      onTap: () => _showAccountVerificationModal(context, user),
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF2F2),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFFCA5A5)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFFEF4444),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Action Required: Account Unverified',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF991B1B)),
+                                  ),
+                                  Text(
+                                    authProvider.isProvider
+                                        ? 'Submit National ID & House Deed to activate property posting.'
+                                        : 'Verify phone & National ID to earn your Verified Trust Badge.',
+                                    style: const TextStyle(fontSize: 11, color: Color(0xFFB91C1C)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF991B1B)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
 
                   // Account Mode Switcher Card

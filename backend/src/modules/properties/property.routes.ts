@@ -257,22 +257,23 @@ router.post('/', authenticateToken, async (req: AuthRequest, res) => {
     });
 
     try {
-      const allUsers = await prisma.user.findMany({
+      const seekers = await prisma.user.findMany({
+        where: { role: 'seeker' },
         select: { id: true, email: true },
       });
 
-      if (allUsers.length > 0) {
+      if (seekers.length > 0) {
         await prisma.notification.createMany({
-          data: allUsers.map((u) => ({
+          data: seekers.map((u) => ({
             userId: u.id,
-            title: `New Property Posted: ${title}`,
-            message: `A new ${propertyType} with ${rooms} rooms in ${area}, ${city} is now available for ${price} ETB/${rentalPeriod || 'Monthly'}.`,
+            title: `🏠 New Property Recommendation: ${title}`,
+            message: `A new ${propertyType} with ${rooms} rooms in ${area}, ${city} is now listed for ${price} ETB/${rentalPeriod || 'Monthly'}.`,
             type: 'PROPERTY',
           })),
         });
-        console.log(`🔔 Created in-app notification for ${allUsers.length} users.`);
+        console.log(`🔔 Created in-app recommendation notification for ${seekers.length} House Seekers.`);
 
-        const emails = allUsers.map((u) => u.email).filter(Boolean);
+        const emails = seekers.map((u) => u.email).filter(Boolean);
         sendNewPropertyEmailAlert(emails, {
           title,
           description,

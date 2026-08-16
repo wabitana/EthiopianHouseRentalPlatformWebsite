@@ -79,6 +79,65 @@ export async function sendVerificationEmail(email: string, code: string, name?: 
   }
 }
 
+export async function sendVerificationReminderEmail(email: string, name: string, isProvider: boolean): Promise<boolean> {
+  try {
+    const transporter = createTransporter();
+    const sender = process.env.SMTP_USER || 'astustun@gmail.com';
+
+    const subject = isProvider
+      ? '⚠️ Action Required: Submit National ID & House Deed to Activate Property Listing'
+      : '🛡️ Build Trust: Verify Your Phone Number & Fayda National ID';
+
+    const bodyText = isProvider
+      ? 'Your House Provider account is currently unverified. Submit your Ethiopian Fayda/Kebele ID and House Ownership Deed for AI Pre-check & Admin approval to unlock full rental posting capabilities.'
+      : 'Your House Seeker account is unverified. Verify your phone number via 6-digit SMS OTP and upload your Fayda National ID to earn your Verified Trust Badge on listings & inquiry messages.';
+
+    const htmlBody = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f8fafc; color: #0f172a; margin: 0; padding: 20px; }
+          .container { max-width: 520px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 32px; border: 1px solid #fee2e2; box-shadow: 0 4px 12px rgba(220,38,38,0.08); text-align: center; }
+          .logo { font-size: 20px; font-weight: 900; color: #0f172a; margin-bottom: 24px; }
+          .alert-badge { display: inline-block; background: #fef2f2; color: #dc2626; font-size: 12px; font-weight: 800; padding: 6px 16px; border-radius: 9999px; border: 1px solid #fca5a5; margin-bottom: 16px; }
+          .title { font-size: 20px; font-weight: 800; color: #991b1b; margin-bottom: 12px; }
+          .subtitle { font-size: 14px; color: #475569; line-height: 1.5; margin-bottom: 24px; }
+          .cta { display: inline-block; background: #0f172a; color: #ffffff; font-weight: 700; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-size: 14px; margin-top: 10px; }
+          .footer { font-size: 12px; color: #94a3b8; margin-top: 32px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="logo">🏠 ETHIOPIAN HOUSE RENTAL</div>
+          <span class="alert-badge">⚠️ UNVERIFIED ACCOUNT REMINDER</span>
+          <h2 class="title">Complete Your Account Verification</h2>
+          <p class="subtitle">Hello ${name || 'User'},<br><br>${bodyText}</p>
+          <a href="http://localhost:3000/profile" class="cta">Complete Verification Now</a>
+          <div class="footer">
+            © ${new Date().getFullYear()} Ethiopian House Rental Platform. All rights reserved.
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const info = await transporter.sendMail({
+      from: `"Ethiopian House Rental Security" <${sender}>`,
+      to: email,
+      subject,
+      html: htmlBody,
+    });
+
+    console.log(`✉️ Verification Reminder Email sent to ${email}. MessageId: ${info.messageId}`);
+    return true;
+  } catch (err) {
+    console.error('⚠️ Failed to send verification reminder email:', err);
+    return false;
+  }
+}
+
 export async function sendNewPropertyEmailAlert(
   recipientEmails: string[],
   property: NewPropertyEmailPayload
