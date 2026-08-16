@@ -86,7 +86,7 @@ export const defaultCmsConfig = {
   cms_vendor_cta: {
     badge: 'Landlord & Property Provider Portal',
     title: 'Are you a homeowner, landlord, or property manager?',
-    subtitle: "List your property on Ethiopia's leading platform. Reach thousands of verified tenants & buyers, manage subscription plans via Chapa, and track maintenance requests.",
+    subtitle: 'List your property on Ethiopia\'s leading platform. Reach thousands of verified tenants & buyers, manage subscription plans via Chapa, and track maintenance requests.',
     buttonText: 'Post Your Property Now',
     buttonLink: '/post-house',
   },
@@ -110,22 +110,4 @@ export const defaultCmsConfig = {
   },
 };
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
-
-export async function getCmsConfig() {
-  try {
-    const res = await fetch(`${BACKEND_URL}/cms`, {
-      cache: "no-store",
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.config) {
-        return { ...defaultCmsConfig, ...data.config };
-      }
-    }
-    return defaultCmsConfig;
-  } catch (error) {
-    console.warn("Main backend CMS fetch fallback to defaults:", error);
-    return defaultCmsConfig;
-  }
-}
+export const ALL_CMS_KEYS = Object.keys(defaultCmsConfig);

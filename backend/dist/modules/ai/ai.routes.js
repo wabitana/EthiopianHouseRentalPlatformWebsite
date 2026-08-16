@@ -13,7 +13,7 @@ const parseUserContext = (req, _res, next) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
     if (token) {
-        const secret = process.env.JWT_SECRET || 'ethiopian_house_rental_super_secret_jwt_key_2026';
+        const secret = process.env.JWT_SECRET || 'ethiopian-property-platform-jwt-secret-key-2026';
         try {
             const decoded = jsonwebtoken_1.default.verify(token, secret);
             req.user = decoded;
@@ -22,11 +22,16 @@ const parseUserContext = (req, _res, next) => {
     }
     next();
 };
-// POST /api/v1/ai/chat
+// POST /api/v1/ai/chat (Supports single message & web messages array format)
 router.post('/chat', parseUserContext, async (req, res) => {
     try {
-        const { message, conversationId } = req.body;
-        if (!message || typeof message !== 'string' || message.trim().length === 0) {
+        const { message, messages, conversationId } = req.body;
+        let userPrompt = message;
+        if (!userPrompt && Array.isArray(messages) && messages.length > 0) {
+            const lastMsg = messages[messages.length - 1];
+            userPrompt = lastMsg.text || lastMsg.content;
+        }
+        if (!userPrompt || typeof userPrompt !== 'string' || userPrompt.trim().length === 0) {
             return res.status(400).json({ error: 'Message text is required.' });
         }
         const context = {
@@ -35,17 +40,23 @@ router.post('/chat', parseUserContext, async (req, res) => {
             userName: req.user?.name,
         };
         const result = await (0, ai_service_1.processAiChat)({
-            message: message.trim(),
+            message: userPrompt.trim(),
             conversationId: conversationId || `conv-${Date.now()}`,
             context,
         });
-        return res.json(result);
+        return res.json({
+            ...result,
+            text: result.message || 'I am happy to assist you with properties in Ethiopia.',
+            reply: result.message || 'I am happy to assist you with properties in Ethiopia.',
+        });
     }
     catch (error) {
         console.error('AI Chat Route Error:', error);
         return res.status(500).json({
-            error: 'An error occurred while processing your AI housing request.',
-            message: 'Sorry, I am having trouble searching houses right now. Please try again.',
+            error: 'An error occurred while processing your AI request.',
+            message: 'Sorry, I am having trouble processing your request right now. Please try again.',
+            reply: 'Sorry, I am having trouble processing your request right now. Please try again.',
+            text: 'Sorry, I am having trouble processing your request right now. Please try again.',
             properties: [],
             actions: [],
         });

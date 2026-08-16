@@ -1,12 +1,12 @@
 import { SignJWT, jwtVerify } from "jose";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
-import { prisma } from "./prisma";
 import type { Role } from "@/types";
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "delala-fallback-secret"
-);
+const getSecretKey = () =>
+  new TextEncoder().encode(
+    process.env.JWT_SECRET || "ethiopian_house_rental_super_secret_jwt_key_2026"
+  );
 
 export interface SessionUser {
   id: string;
@@ -31,23 +31,24 @@ export function toRole(role: string): Role {
 }
 
 export async function createToken(user: SessionUser): Promise<string> {
-  return new SignJWT({ sub: user.id, email: user.email, name: user.name, role: user.role })
+  return new SignJWT({ sub: user.id, id: user.id, email: user.email, name: user.name, role: user.role })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
-    .sign(JWT_SECRET);
+    .setExpirationTime("30d")
+    .sign(getSecretKey());
 }
 
 export async function verifyToken(token: string): Promise<SessionUser | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getSecretKey());
     return {
-      id: payload.sub as string,
+      id: (payload.id || payload.sub) as string,
       email: payload.email as string,
-      name: payload.name as string,
-      role: payload.role as Role,
+      name: (payload.name || payload.email || "Admin User") as string,
+      role: (payload.role || "admin") as Role,
     };
-  } catch {
+  } catch (error) {
+    console.warn("JWT Verification failed in web/src/lib/auth.ts:", error);
     return null;
   }
 }
@@ -72,7 +73,7 @@ export async function setAuthCookie(token: string) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7,
+    maxAge: 60 * 60 * 24 * 30,
     path: "/",
   });
 }
@@ -80,11 +81,4 @@ export async function setAuthCookie(token: string) {
 export async function clearAuthCookie() {
   const cookieStore = await cookies();
   cookieStore.delete("delala_token");
-}
-
-export async function getUserWithVendor(userId: string) {
-  return prisma.user.findUnique({
-    where: { id: userId },
-    include: { vendor: true },
-  });
 }

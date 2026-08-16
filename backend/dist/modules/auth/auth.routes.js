@@ -164,10 +164,12 @@ router.post('/google', async (req, res) => {
         return res.status(500).json({ error: 'Failed to authenticate with Google' });
     }
 });
-// POST /api/v1/auth/logout
-router.post('/logout', auth_1.authenticateToken, (req, res) => {
+// POST & GET /api/v1/auth/logout
+const handleLogout = (_req, res) => {
     return res.json({ success: true, message: 'Logged out successfully' });
-});
+};
+router.post('/logout', handleLogout);
+router.get('/logout', handleLogout);
 // GET /api/v1/users/me
 router.get('/me', auth_1.authenticateToken, async (req, res) => {
     try {

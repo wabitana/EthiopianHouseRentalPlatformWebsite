@@ -66,16 +66,17 @@ router.post('/register', async (req, res) => {
 // POST /api/v1/auth/login
 router.post('/login', async (req, res) => {
   try {
-    const { emailOrPhone, password, role } = req.body;
+    const { emailOrPhone, email, phone, password, role } = req.body;
+    const identifier = emailOrPhone || email || phone;
 
-    if (!emailOrPhone || !password) {
+    if (!identifier || !password) {
       return res.status(400).json({ error: 'Email/Phone and password are required' });
     }
 
     const user = await withDbRetry(() =>
       prisma.user.findFirst({
         where: {
-          OR: [{ email: emailOrPhone }, { phone: emailOrPhone }],
+          OR: [{ email: identifier }, { phone: identifier }],
         },
       })
     );
@@ -106,6 +107,13 @@ router.post('/login', async (req, res) => {
       JWT_SECRET,
       { expiresIn: '30d' }
     );
+
+    res.cookie('delala_token', token, {
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
 
     return res.json({
       token,
@@ -193,10 +201,19 @@ router.post('/google', async (req, res) => {
   }
 });
 
-// POST /api/v1/auth/logout
-router.post('/logout', authenticateToken, (req, res) => {
+// POST & GET /api/v1/auth/logout
+const handleLogout = (req: any, res: any) => {
+  res.clearCookie('delala_token', { path: '/' });
+  res.setHeader('Set-Cookie', 'delala_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly');
+  
+  const isHtmlRequest = req.headers['accept']?.includes('text/html') || req.query?.redirect === 'true';
+  if (isHtmlRequest) {
+    return res.redirect('/login');
+  }
   return res.json({ success: true, message: 'Logged out successfully' });
-});
+};
+router.post('/logout', handleLogout);
+router.get('/logout', handleLogout);
 
 // GET /api/v1/users/me
 router.get('/me', authenticateToken, async (req: AuthRequest, res) => {

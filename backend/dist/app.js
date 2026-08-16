@@ -30,6 +30,18 @@ app.use('/api/v1/subscriptions', modules_1.subscriptionRoutes);
 app.use('/api/v1/verification', modules_1.verificationRoutes);
 app.use('/api/v1/rentals', modules_1.rentalRoutes);
 app.use('/api/v1/sales', modules_1.saleRoutes);
+app.use('/api/v1/cms', modules_1.cmsRoutes);
+app.use('/api/v1/services', modules_1.vendorServicesRoutes);
+app.use('/api/v1/addresses', modules_1.vendorServicesRoutes);
+// Backward compatibility proxies for web app legacy routes
+app.use('/api/cms', modules_1.cmsRoutes);
+app.use('/api/services', modules_1.vendorServicesRoutes);
+app.use('/api/addresses', modules_1.vendorServicesRoutes);
+app.use('/api/bookings', modules_1.vendorServicesRoutes);
+app.post('/api/chat', (req, res, next) => {
+    req.url = '/chat';
+    (0, modules_1.aiRoutes)(req, res, next);
+});
 // Health check endpoint
 app.get('/api/v1/health', (_req, res) => {
     res.json({ status: 'ok', service: 'Ethiopian Property Platform REST API', version: 'v1' });

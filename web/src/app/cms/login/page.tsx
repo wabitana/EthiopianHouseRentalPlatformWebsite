@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { LayoutDashboard } from "lucide-react";
 
 export default function CMSLoginPage() {
-  const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -18,31 +16,37 @@ export default function CMSLoginPage() {
     setError("");
 
     const form = new FormData(e.currentTarget);
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: form.get("email"),
-        password: form.get("password"),
-      }),
-    });
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: form.get("email"),
+          password: form.get("password"),
+        }),
+      });
 
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error || "Login failed");
-      setLoading(false);
-      return;
-    }
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Login failed");
+        setLoading(false);
+        return;
+      }
 
-    const role = data.user.role;
-    if (role === "ADMIN") {
-      router.push("/cms/dashboard");
-      router.refresh();
-    } else {
-      setError("Unauthorized. CMS Access is restricted to Administrators.");
+      if (data.token) {
+        document.cookie = `delala_token=${data.token}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`;
+      }
+
+      const role = (data.user?.role || "").toLowerCase();
+      if (role === "admin") {
+        window.location.href = "/cms/dashboard";
+      } else {
+        setError("Unauthorized. CMS Access is restricted to Administrators.");
+        setLoading(false);
+      }
+    } catch (err: any) {
+      setError("Network error. Could not connect to backend server.");
       setLoading(false);
-      // Wait, the API already logged them in via cookie. 
-      // If we really wanted strict security, we would clear the cookie here, but they can just access their regular portal.
     }
   }
 
@@ -62,7 +66,7 @@ export default function CMSLoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Admin Email</label>
-              <Input name="email" type="email" required placeholder="admin@delala.com" className="bg-white" />
+              <Input name="email" type="email" required placeholder="admin@ethiopianhouserental.et" className="bg-white" />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">Password</label>
@@ -74,7 +78,7 @@ export default function CMSLoginPage() {
             </Button>
           </form>
           <div className="mt-8 pt-6 border-t border-slate-100 text-center text-xs text-slate-400">
-            &copy; {new Date().getFullYear()} Delala Tech PLC.
+            &copy; {new Date().getFullYear()} Ethiopian Property Platform PLC.
           </div>
         </CardContent>
       </Card>

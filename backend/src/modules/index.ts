@@ -12,4 +12,6 @@ export { default as subscriptionRoutes } from './subscriptions/subscription.rout
 export { default as verificationRoutes } from './verification/verification.routes';
 export { default as rentalRoutes } from './rentals/rental.routes';
 export { default as saleRoutes } from './sales/sale.routes';
+export { default as cmsRoutes } from './cms/cms.routes';
+export { default as vendorServicesRoutes } from './vendor-services/vendor-services.routes';
 export * from './email/email.service';

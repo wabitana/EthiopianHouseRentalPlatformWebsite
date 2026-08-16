@@ -17,7 +17,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.saleRoutes = exports.rentalRoutes = exports.verificationRoutes = exports.subscriptionRoutes = exports.aiRoutes = exports.uploadRoutes = exports.adminRoutes = exports.reportRoutes = exports.notificationsRoutes = exports.inquiriesRoutes = exports.favoritesRoutes = exports.providerRoutes = exports.propertyRoutes = exports.authRoutes = void 0;
+exports.vendorServicesRoutes = exports.cmsRoutes = exports.saleRoutes = exports.rentalRoutes = exports.verificationRoutes = exports.subscriptionRoutes = exports.aiRoutes = exports.uploadRoutes = exports.adminRoutes = exports.reportRoutes = exports.notificationsRoutes = exports.inquiriesRoutes = exports.favoritesRoutes = exports.providerRoutes = exports.propertyRoutes = exports.authRoutes = void 0;
 var auth_routes_1 = require("./auth/auth.routes");
 Object.defineProperty(exports, "authRoutes", { enumerable: true, get: function () { return __importDefault(auth_routes_1).default; } });
 var property_routes_1 = require("./properties/property.routes");
@@ -46,4 +46,8 @@ var rental_routes_1 = require("./rentals/rental.routes");
 Object.defineProperty(exports, "rentalRoutes", { enumerable: true, get: function () { return __importDefault(rental_routes_1).default; } });
 var sale_routes_1 = require("./sales/sale.routes");
 Object.defineProperty(exports, "saleRoutes", { enumerable: true, get: function () { return __importDefault(sale_routes_1).default; } });
+var cms_routes_1 = require("./cms/cms.routes");
+Object.defineProperty(exports, "cmsRoutes", { enumerable: true, get: function () { return __importDefault(cms_routes_1).default; } });
+var vendor_services_routes_1 = require("./vendor-services/vendor-services.routes");
+Object.defineProperty(exports, "vendorServicesRoutes", { enumerable: true, get: function () { return __importDefault(vendor_services_routes_1).default; } });
 __exportStar(require("./email/email.service"), exports);

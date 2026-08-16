@@ -17,6 +17,8 @@ import {
   verificationRoutes,
   rentalRoutes,
   saleRoutes,
+  cmsRoutes,
+  vendorServicesRoutes,
 } from './modules';
 
 const app = express();
@@ -45,6 +47,19 @@ app.use('/api/v1/subscriptions', subscriptionRoutes);
 app.use('/api/v1/verification', verificationRoutes);
 app.use('/api/v1/rentals', rentalRoutes);
 app.use('/api/v1/sales', saleRoutes);
+app.use('/api/v1/cms', cmsRoutes);
+app.use('/api/v1/services', vendorServicesRoutes);
+app.use('/api/v1/addresses', vendorServicesRoutes);
+
+// Backward compatibility proxies for web app legacy routes
+app.use('/api/cms', cmsRoutes);
+app.use('/api/services', vendorServicesRoutes);
+app.use('/api/addresses', vendorServicesRoutes);
+app.use('/api/bookings', vendorServicesRoutes);
+app.post('/api/chat', (req, res, next) => {
+  req.url = '/chat';
+  aiRoutes(req, res, next);
+});
 
 // Health check endpoint
 app.get('/api/v1/health', (_req, res) => {
