@@ -3,13 +3,41 @@
 :root {
   --background: #f8fafc;
   --foreground: #0f172a;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --border-light: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  
   --primary: #059669;
   --primary-dark: #047857;
+}
+
+.dark {
+  --background: #090d16;
+  --foreground: #f8fafc;
+  --card: #111827;
+  --border: #1f2937;
+  --border-light: #1f2937;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  
+  /* Map standard slate shades to our CSS variables for dynamic theme switching */
+  --color-slate-50: var(--background);
+  --color-white: var(--card);
+  --color-slate-900: var(--text-primary);
+  --color-slate-800: var(--text-primary);
+  --color-slate-700: var(--text-secondary);
+  --color-slate-600: var(--text-secondary);
+  --color-slate-500: var(--text-secondary);
+  --color-slate-200: var(--border);
+  --color-slate-100: var(--border-light);
+  
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -18,6 +46,13 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+body, header, footer, section, div, p, h1, h2, h3, span, a, button, input, select, textarea {
+  transition-property: background-color, border-color, color;
+  transition-duration: 250ms;
+  transition-timing-function: ease;
 }
 
 .gradient-hero {
@@ -39,9 +74,4 @@ body {
 }
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
-}
-
-.dark {
-  --background: #090d16;
-  --foreground: #f8fafc;
 }
