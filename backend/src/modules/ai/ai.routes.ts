@@ -21,8 +21,8 @@ const parseUserContext = (req: AuthRequest, _res: Response, next: any) => {
   next();
 };
 
-// POST /api/v1/ai/chat (Supports single message & web messages array format)
-router.post('/chat', parseUserContext, async (req: AuthRequest, res: Response) => {
+// POST /api/v1/ai/chat or /api/v1/chat
+router.post(['/', '/chat'], parseUserContext, async (req: AuthRequest, res: Response) => {
   try {
     const { message, messages, conversationId } = req.body;
 

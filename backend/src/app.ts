@@ -43,6 +43,7 @@ app.use('/api/v1/reports', reportRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/upload', uploadRoutes);
 app.use('/api/v1/ai', aiRoutes);
+app.use('/api/v1/chat', aiRoutes);
 app.use('/api/v1/subscriptions', subscriptionRoutes);
 app.use('/api/v1/verification', verificationRoutes);
 app.use('/api/v1/rentals', rentalRoutes);
@@ -56,10 +57,7 @@ app.use('/api/cms', cmsRoutes);
 app.use('/api/services', vendorServicesRoutes);
 app.use('/api/addresses', vendorServicesRoutes);
 app.use('/api/bookings', vendorServicesRoutes);
-app.post('/api/chat', (req, res, next) => {
-  req.url = '/chat';
-  aiRoutes(req, res, next);
-});
+app.use('/api/chat', aiRoutes);
 
 // Health check endpoint
 app.get('/api/v1/health', (_req, res) => {
