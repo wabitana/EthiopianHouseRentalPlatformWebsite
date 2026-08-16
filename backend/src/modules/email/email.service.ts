@@ -14,6 +14,71 @@ export interface NewPropertyEmailPayload {
   images: string[];
 }
 
+function createTransporter() {
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const port = Number(process.env.SMTP_PORT) || 465;
+  const user = process.env.SMTP_USER || 'astustun@gmail.com';
+  const pass = process.env.SMTP_PASS || 'hddh dzbs kalr uebf';
+
+  return nodemailer.createTransport({
+    host,
+    port,
+    secure: port === 465,
+    auth: { user, pass },
+  });
+}
+
+export async function sendVerificationEmail(email: string, code: string, name?: string): Promise<boolean> {
+  try {
+    const transporter = createTransporter();
+    const sender = process.env.SMTP_USER || 'astustun@gmail.com';
+
+    const htmlBody = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f8fafc; color: #0f172a; margin: 0; padding: 20px; }
+          .container { max-width: 500px; margin: 0 auto; background: #ffffff; border-radius: 16px; padding: 32px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center; }
+          .logo { font-size: 20px; font-weight: 900; color: #0f172a; margin-bottom: 24px; }
+          .title { font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 12px; }
+          .subtitle { font-size: 14px; color: #64748b; margin-bottom: 24px; }
+          .otp-box { background: #f0fdf4; border: 2px dashed #10b981; border-radius: 12px; padding: 20px; font-size: 32px; font-weight: 900; letter-spacing: 12px; color: #047857; margin-bottom: 24px; }
+          .footer { font-size: 12px; color: #94a3b8; margin-top: 24px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="logo">🏠 ETHIOPIAN HOUSE RENTAL</div>
+          <h2 class="title">Verify Your Email Address</h2>
+          <p class="subtitle">Hello ${name || 'User'}, use the 6-digit code below to complete your registration.</p>
+          <div class="otp-box">${code}</div>
+          <p style="font-size: 13px; color: #64748b;">This code will expire in 15 minutes.</p>
+          <div class="footer">
+            If you did not request this email, please ignore it.<br>
+            © ${new Date().getFullYear()} Ethiopian House Rental Platform. All rights reserved.
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const info = await transporter.sendMail({
+      from: `"Ethiopian House Rental" <${sender}>`,
+      to: email,
+      subject: `🔑 Your Verification Code: ${code}`,
+      html: htmlBody,
+    });
+
+    console.log(`✉️ Real Email OTP dispatched to ${email} via Nodemailer Gmail SMTP! MessageId: ${info.messageId}`);
+    return true;
+  } catch (err) {
+    console.error('⚠️ Failed to dispatch verification email via Nodemailer:', err);
+    return false;
+  }
+}
+
 export async function sendNewPropertyEmailAlert(
   recipientEmails: string[],
   property: NewPropertyEmailPayload
@@ -24,30 +89,8 @@ export async function sendNewPropertyEmailAlert(
   }
 
   try {
-    let transporter: nodemailer.Transporter;
-
-    if (process.env.SMTP_HOST && process.env.SMTP_USER) {
-      transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT) || 587,
-        secure: process.env.SMTP_SECURE === 'true',
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS,
-        },
-      });
-    } else {
-      const testAccount = await nodemailer.createTestAccount();
-      transporter = nodemailer.createTransport({
-        host: 'smtp.ethereal.email',
-        port: 587,
-        secure: false,
-        auth: {
-          user: testAccount.user,
-          pass: testAccount.pass,
-        },
-      });
-    }
+    const transporter = createTransporter();
+    const sender = process.env.SMTP_USER || 'astustun@gmail.com';
 
     const coverImage =
       property.images && property.images.length > 0
@@ -113,17 +156,13 @@ export async function sendNewPropertyEmailAlert(
     `;
 
     const info = await transporter.sendMail({
-      from: process.env.EMAIL_FROM || '"Ethiopian House Rental" <noreply@ethiopianhouserental.et>',
+      from: `"Ethiopian House Rental" <${sender}>`,
       to: recipientEmails.join(', '),
       subject: `🏠 New Property Listed: ${property.title} (${formattedPrice})`,
       html: htmlBody,
     });
 
     console.log(`📧 Dispatched notification email alert to ${recipientEmails.length} recipients. MessageId: ${info.messageId}`);
-    const previewUrl = nodemailer.getTestMessageUrl(info);
-    if (previewUrl) {
-      console.log(`🔗 Ethereal Email Preview URL: ${previewUrl}`);
-    }
   } catch (err) {
     console.error('⚠️ Failed to dispatch email alert:', err);
   }

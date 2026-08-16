@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../data/repositories/auth_repository.dart';
+import '../../../data/datasources/auth_remote_datasource_impl.dart';
 import '../../../shared/models/user_model.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -153,6 +154,70 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       _errorMessage = 'Failed to register account';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> verifyEmail(String email, String code) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      if (_authRepository is AuthRepositoryImpl) {
+        final remoteDs = ApiAuthRemoteDataSource();
+        final user = await remoteDs.verifyEmail(email, code);
+        _currentUser = user;
+        _registeredRole = user.role;
+        _activeRole = user.role;
+      } else {
+        await Future.delayed(const Duration(milliseconds: 400));
+      }
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Invalid email verification code';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> sendPhoneOtp(String phone) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final remoteDs = ApiAuthRemoteDataSource();
+      await remoteDs.sendPhoneOtp(phone);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Failed to send SMS OTP';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> verifyPhoneOtp(String code) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final remoteDs = ApiAuthRemoteDataSource();
+      final success = await remoteDs.verifyPhoneOtp(code);
+      if (success && _currentUser != null) {
+        _currentUser = _currentUser!.copyWith(isPhoneVerified: true);
+      }
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = 'Invalid phone SMS OTP code';
       _isLoading = false;
       notifyListeners();
       return false;

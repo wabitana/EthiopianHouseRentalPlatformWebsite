@@ -6,6 +6,7 @@ import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
 import '../providers/auth_provider.dart';
 import 'login_screen.dart';
+import 'email_verification_screen.dart';
 import '../../../shared/widgets/main_layout_wrapper.dart';
 import '../../../shared/widgets/google_account_picker_dialog.dart';
 
@@ -32,15 +33,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final success = await authProvider.register(
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
-        phone: _phoneController.text.trim(),
+        phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : '+251 90 000 0000',
         password: _passwordController.text,
         role: _selectedRole,
       );
 
       if (success && mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const MainLayoutWrapper()),
-          (route) => false,
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => EmailVerificationScreen(
+              email: _emailController.text.trim(),
+              role: _selectedRole,
+            ),
+          ),
         );
       }
     }
@@ -331,19 +336,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             return null;
                           },
                         ),
-                        const SizedBox(height: 16),
 
-                        CustomTextField(
-                          label: 'Phone Number (Ethiopia)',
-                          hint: 'e.g. +251 91 123 4567',
-                          controller: _phoneController,
-                          prefixIcon: Icons.phone_iphone_rounded,
-                          keyboardType: TextInputType.phone,
-                          validator: (val) {
-                            if (val == null || val.trim().isEmpty) return 'Please enter a valid phone number';
-                            return null;
-                          },
-                        ),
                         const SizedBox(height: 16),
 
                         CustomTextField(

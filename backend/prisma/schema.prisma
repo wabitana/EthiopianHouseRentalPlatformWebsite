@@ -19,14 +19,20 @@ model User {
   passwordHash  String
   role          String   @default("seeker") // seeker, provider, admin, CUSTOMER, VENDOR
   avatarUrl     String?
-  isVerified    Boolean  @default(false)
-  rating        Float    @default(4.8)
-  totalListings Int      @default(0)
-  active        Boolean  @default(true)
-  address       String?
-  city          String?  @default("Addis Ababa")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isVerified                 Boolean            @default(false)
+  isEmailVerified            Boolean            @default(false)
+  emailVerificationCode       String?
+  emailVerificationExpires    DateTime?
+  isPhoneVerified            Boolean            @default(false)
+  phoneVerificationCode       String?
+  phoneVerificationExpires    DateTime?
+  rating                     Float              @default(4.8)
+  totalListings              Int                @default(0)
+  active                     Boolean            @default(true)
+  address                    String?
+  city                       String?            @default("Addis Ababa")
+  createdAt                  DateTime           @default(now())
+  updatedAt                  DateTime           @updatedAt
 
   // Property Platform Relations
   properties        Property[]          @relation("ProviderProperties")
@@ -42,6 +48,7 @@ model User {
   rentalRequests    RentalRequest[]     @relation("RenterRequests")
   saleRequests      SaleRequest[]       @relation("BuyerRequests")
   auditLogs         AuditLog[]
+  refreshTokens     RefreshToken[]
 
   // Consolidated Web & Tenant Service Relations
   vendor               Vendor?
@@ -553,3 +560,14 @@ model PushSubscription {
 
   @@unique([userId, endpoint])
 }
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
