@@ -1,9 +1,8 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import {
-  ShoppingCart,
   Store,
   LayoutDashboard,
   Wrench,
@@ -13,17 +12,18 @@ import {
   X,
   MessageSquare,
   Info,
-  Image,
   Building2,
   Home,
-} from "lucide-react";
-import { useState } from "react";
-import { cn } from "@/lib/utils";
-import type { SessionUser } from "@/lib/auth";
-import { NotificationBell } from "@/components/customer/notification-bell";
+  LogIn,
+  UserPlus,
+  ShieldAlert,
+} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
+import { useAuthStore } from '@/hooks/useAuthStore';
 
 interface NavbarProps {
-  user: SessionUser | null;
+  user?: any;
   cartCount?: number;
   cmsNavbar?: {
     siteName?: string;
@@ -34,18 +34,43 @@ interface NavbarProps {
 }
 
 const customerLinks = [
-  { href: "/", label: "Home", icon: Store },
-  { href: "/about", label: "About", icon: Info },
-  { href: "/browse-houses", label: "Browse Houses", icon: Building2 },
-  { href: "/services", label: "Services", icon: Wrench },
-  // Updated to link to the anchor ID on the home page
-  { href: "/#contact", label: "Contact", icon: MessageSquare },
-  { href: "/launch-app", label: "Launch App", icon: LayoutDashboard },
+  { href: '/', label: 'Home', icon: Store },
+  { href: '/properties', label: 'Properties', icon: Building2 },
+  { href: '/about', label: 'About', icon: Info },
+  { href: '/services', label: 'Services', icon: Wrench },
+  { href: '/#contact', label: 'Contact', icon: MessageSquare },
 ];
 
-export function Navbar({ user, cartCount = 0, cmsNavbar = {} }: NavbarProps) {
+export function Navbar({ cmsNavbar = {} }: NavbarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const { user, isAuthenticated, clearAuth } = useAuthStore();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleLogout = () => {
+    clearAuth();
+    router.push('/login');
+  };
+
+  // Determine user dashboard link based on RBAC roles
+  let dashboardLink = '/renter/dashboard';
+  let dashboardLabel = 'Dashboard';
+  if (user?.roles?.includes('ADMIN')) {
+    dashboardLink = '/admin/dashboard';
+    dashboardLabel = 'Admin Dashboard';
+  } else if (user?.roles?.includes('OWNER')) {
+    dashboardLink = '/owner/dashboard';
+    dashboardLabel = 'Owner Control Panel';
+  } else if (user?.roles?.includes('RENTER') || user?.roles?.includes('BUYER')) {
+    dashboardLink = '/renter/dashboard';
+    dashboardLabel = 'My Dashboard';
+  }
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
@@ -53,27 +78,27 @@ export function Navbar({ user, cartCount = 0, cmsNavbar = {} }: NavbarProps) {
         <Link href="/" className="flex items-center gap-2">
           <div
             className="flex h-9 w-9 items-center justify-center rounded-lg text-sm font-bold text-white shadow-sm"
-            style={{ backgroundColor: cmsNavbar.logoColor || "#059669" }}
+            style={{ backgroundColor: cmsNavbar.logoColor || '#059669' }}
           >
             <Home className="h-5 w-5 text-white" />
           </div>
           <div className="hidden sm:block">
-            <p className="text-sm font-bold text-slate-900">{cmsNavbar.siteName || "Delala Rentals"}</p>
-            <p className="text-[10px] text-slate-500">{cmsNavbar.siteTagline || "Ethiopian Home Rental Platform"}</p>
+            <p className="text-sm font-bold text-slate-900">{cmsNavbar.siteName || 'Delala Rentals'}</p>
+            <p className="text-[10px] text-slate-500">{cmsNavbar.siteTagline || 'Ethiopian Property Platform'}</p>
           </div>
         </Link>
 
+        {/* Navigation Links */}
         <nav className="hidden items-center gap-1 md:flex">
           {customerLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               className={cn(
-                "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                // Note: startsWith('/') check handles homepage links correctly
+                'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                 pathname === link.href
-                  ? "bg-emerald-50 text-emerald-700"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               )}
             >
               {link.label}
@@ -81,46 +106,43 @@ export function Navbar({ user, cartCount = 0, cmsNavbar = {} }: NavbarProps) {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
-          {user && user.role === "CUSTOMER" && (
-            <>
-              <NotificationBell />
+        {/* Auth Action Buttons */}
+        <div className="flex items-center gap-3">
+          {mounted && isAuthenticated && user ? (
+            <div className="flex items-center gap-3">
               <Link
-                href="/cart"
-                className="relative hidden rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:flex"
+                href={dashboardLink}
+                className="flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 text-sm font-bold shadow-sm transition-colors"
               >
-                <ShoppingCart className="h-5 w-5" />
-                {cartCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-bold text-white">
-                    {cartCount}
-                  </span>
-                )}
+                <LayoutDashboard className="h-4 w-4" />
+                <span>{dashboardLabel}</span>
               </Link>
-            </>
-          )}
 
-          {user ? (
-            <div className="hidden items-center gap-2 sm:flex">
-              <Link
-                href="/profile"
-                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                title="Sign Out"
               >
-                <User className="h-4 w-4" />
-                {user.name}
-              </Link>
-              <form action="/api/auth/logout" method="POST">
-                <button
-                  type="submit"
-                  className="rounded-lg p-2 text-slate-500 hover:bg-slate-100"
-                  title="Logout"
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
-              </form>
+                <LogOut className="h-4 w-4 text-rose-500" />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
             </div>
           ) : (
-            <div className="hidden items-center gap-2 sm:flex">
-
+            <div className="flex items-center gap-2">
+              <Link
+                href="/login"
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <LogIn className="h-4 w-4 text-slate-500" />
+                <span>Sign In</span>
+              </Link>
+              <Link
+                href="/register"
+                className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3.5 py-2 text-sm font-bold text-white shadow-sm transition-colors"
+              >
+                <UserPlus className="h-4 w-4" />
+                <span>Sign Up</span>
+              </Link>
             </div>
           )}
 
@@ -133,8 +155,9 @@ export function Navbar({ user, cartCount = 0, cmsNavbar = {} }: NavbarProps) {
         </div>
       </div>
 
+      {/* Mobile Drawer */}
       {mobileOpen && (
-        <div className="border-t border-slate-100 bg-white px-4 py-3 md:hidden">
+        <div className="border-t border-slate-100 bg-white px-4 py-4 md:hidden space-y-2">
           {customerLinks.map((link) => (
             <Link
               key={link.href}
@@ -146,8 +169,43 @@ export function Navbar({ user, cartCount = 0, cmsNavbar = {} }: NavbarProps) {
               {link.label}
             </Link>
           ))}
-          {!user && (
-            <div className="mt-2 border-t pt-2">
+          {mounted && isAuthenticated && user ? (
+            <div className="pt-2 border-t space-y-2">
+              <Link
+                href={dashboardLink}
+                onClick={() => setMobileOpen(false)}
+                className="flex items-center gap-2 rounded-lg bg-emerald-600 text-white px-3 py-2.5 text-sm font-bold"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                {dashboardLabel}
+              </Link>
+              <button
+                onClick={() => {
+                  setMobileOpen(false);
+                  handleLogout();
+                }}
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </button>
+            </div>
+          ) : (
+            <div className="pt-2 border-t flex gap-2">
+              <Link
+                href="/login"
+                onClick={() => setMobileOpen(false)}
+                className="flex-1 text-center py-2 border rounded-lg text-sm font-bold"
+              >
+                Sign In
+              </Link>
+              <Link
+                href="/register"
+                onClick={() => setMobileOpen(false)}
+                className="flex-1 text-center py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold"
+              >
+                Sign Up
+              </Link>
             </div>
           )}
         </div>

@@ -1,105 +1,177 @@
-"use client";
+'use client';
 
-import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { authService } from '@/services/auth.service';
+import { useAuthStore } from '@/hooks/useAuthStore';
+import { Role } from '@/types/user';
 
-function RegisterForm() {
+export default function RegisterPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const isVendor = searchParams.get("role") === "vendor";
-  const [error, setError] = useState("");
+  const setAuth = useAuthStore((state) => state.setAuth);
+
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
+
+  // Business Rule: Users can only sign up as RENTER or OWNER (NO ADMIN option on public registration)
+  const [selectedRole, setSelectedRole] = useState<'RENTER' | 'OWNER'>('RENTER');
+
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
-    setError("");
+    setError('');
 
-    const form = new FormData(e.currentTarget);
-    const res = await fetch("/api/auth/register", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: form.get("email"),
-        password: form.get("password"),
-        name: form.get("name"),
-        phone: form.get("phone"),
-        role: isVendor ? "VENDOR" : "CUSTOMER",
-        businessName: form.get("businessName") || undefined,
-      }),
-    });
+    try {
+      const res = await authService.register({
+        name,
+        email,
+        phone,
+        password,
+        roles: [selectedRole as Role],
+      });
 
-    const data = await res.json();
-    if (!res.ok) {
-      setError(data.error || "Registration failed");
+      if (res.success && res.data) {
+        const { user, tokens } = res.data;
+        setAuth(user, tokens.accessToken, tokens.refreshToken);
+
+        // Role-Based Redirection
+        if (selectedRole === 'OWNER') {
+          router.push('/owner/dashboard');
+        } else {
+          router.push('/renter/dashboard');
+        }
+      } else {
+        setError(res.message || 'Registration failed');
+      }
+    } catch (err: unknown) {
+      const errorObj = err as { error?: { message?: string }; message?: string };
+      setError(errorObj?.error?.message || errorObj?.message || 'Registration failed. Please check your inputs.');
+    } finally {
       setLoading(false);
-      return;
     }
-
-    router.push("/login?registered=true");
-    router.refresh();
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>{isVendor ? "Landlord & Agent Registration" : "Create Tenant Account"}</CardTitle>
-        <p className="text-sm text-slate-500">
-          {isVendor
-            ? "List properties and collect rent on Delala Home Rentals"
-            : "Start searching, inspecting, and booking Ethiopian home rentals"}
-        </p>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium">Full Name</label>
-            <Input name="name" required placeholder="Your name" />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">Email</label>
-            <Input name="email" type="email" required placeholder="you@email.com" />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">Phone</label>
-            <Input name="phone" placeholder="09xxxxxxxx" />
-          </div>
-          {isVendor && (
-            <div>
-              <label className="mb-1 block text-sm font-medium">Business Name</label>
-              <Input name="businessName" required placeholder="Your business name" />
-            </div>
-          )}
-          <div>
-            <label className="mb-1 block text-sm font-medium">Password</label>
-            <Input name="password" type="password" required minLength={6} placeholder="Min 6 characters" />
-          </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Creating..." : "Create Account"}
-          </Button>
-        </form>
-        <p className="mt-4 text-center text-sm text-slate-600">
-          Already have an account?{" "}
-          <Link href="/login" className="font-semibold text-emerald-600 hover:underline">
-            Sign in
-          </Link>
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
+    <div className="flex min-h-[85vh] items-center justify-center px-4 py-12 bg-slate-50">
+      <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-100 p-8">
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-slate-900 mb-2">Create Your Account</h1>
+          <p className="text-sm text-slate-500">Join Ethiopia premier real estate platform for rentals & sales</p>
+        </div>
 
-export default function RegisterPage() {
-  return (
-    <div className="flex min-h-[70vh] items-center justify-center px-4 py-12">
-      <Suspense>
-        <RegisterForm />
-      </Suspense>
+        {error && (
+          <div className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-100 text-sm font-semibold text-rose-600">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Account Role Selector (Renter vs Owner Only - NO Admin Option) */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-2">I am registering as a:</label>
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setSelectedRole('RENTER')}
+                className={`p-4 rounded-xl border text-center font-bold transition-all ${
+                  selectedRole === 'RENTER'
+                    ? 'border-emerald-600 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-500/20'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span className="block text-xl mb-1">??</span>
+                <span className="text-sm">Renter / Buyer</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedRole('OWNER')}
+                className={`p-4 rounded-xl border text-center font-bold transition-all ${
+                  selectedRole === 'OWNER'
+                    ? 'border-blue-600 bg-blue-50 text-blue-800 ring-2 ring-blue-500/20'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                <span className="block text-xl mb-1">??</span>
+                <span className="text-sm">Property Owner</span>
+              </button>
+            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              * Note: Administrator accounts are created by invitation or backend seed setup only.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Full Name</label>
+            <input
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Abebe Kebede"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Email Address</label>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@example.com"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Phone Number</label>
+            <input
+              type="text"
+              required
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+251911000000"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-slate-700 mb-1">Password</label>
+            <input
+              type="password"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 6 characters"
+              className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-colors disabled:opacity-50"
+          >
+            {loading ? 'Creating Account...' : `Register as ${selectedRole === 'OWNER' ? 'Property Owner' : 'Renter'}`}
+          </button>
+        </form>
+
+        <div className="mt-8 pt-6 border-t border-slate-100 text-center text-sm text-slate-600">
+          Already have an account?{' '}
+          <Link href="/login" className="font-bold text-emerald-600 hover:underline">
+            Sign In
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }
