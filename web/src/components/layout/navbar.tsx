@@ -15,8 +15,9 @@ import {
   Building2,
   Home,
   LogIn,
-  UserPlus,
   ShieldAlert,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
@@ -48,6 +49,31 @@ export function Navbar({ cmsNavbar = {} }: NavbarProps) {
 
   const { user, isAuthenticated, clearAuth } = useAuthStore();
   const [mounted, setMounted] = useState(false);
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  useEffect(() => {
+    setMounted(true);
+    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+    const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    const activeTheme = savedTheme || systemTheme;
+    setTheme(activeTheme);
+    if (activeTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const nextTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(nextTheme);
+    localStorage.setItem('theme', nextTheme);
+    if (nextTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -73,7 +99,7 @@ export function Navbar({ cmsNavbar = {} }: NavbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-slate-200/80 dark:border-slate-800 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2">
           <div
@@ -83,7 +109,7 @@ export function Navbar({ cmsNavbar = {} }: NavbarProps) {
             <Home className="h-5 w-5 text-white" />
           </div>
           <div className="hidden sm:block">
-            <p className="text-sm font-bold text-slate-900">{cmsNavbar.siteName || 'Delala Rentals'}</p>
+            <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{cmsNavbar.siteName || 'Delala Rentals'}</p>
             <p className="text-[10px] text-slate-500">{cmsNavbar.siteTagline || 'Ethiopian Property Platform'}</p>
           </div>
         </Link>
@@ -97,8 +123,8 @@ export function Navbar({ cmsNavbar = {} }: NavbarProps) {
               className={cn(
                 'rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                 pathname === link.href
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400'
+                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-900 hover:text-slate-900 dark:hover:text-slate-100'
               )}
             >
               {link.label}
@@ -120,7 +146,7 @@ export function Navbar({ cmsNavbar = {} }: NavbarProps) {
 
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 transition-colors"
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-800 px-3 py-2 text-sm font-medium text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
                 title="Sign Out"
               >
                 <LogOut className="h-4 w-4 text-rose-500" />
@@ -131,19 +157,23 @@ export function Navbar({ cmsNavbar = {} }: NavbarProps) {
             <div className="flex items-center gap-2">
               <Link
                 href="/auth/login"
-                className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3.5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                className="flex items-center gap-1.5 rounded-lg border border-slate-200 dark:border-slate-800 px-3.5 py-2 text-sm font-semibold text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
               >
-                <LogIn className="h-4 w-4 text-slate-500" />
+                <LogIn className="h-4 w-4 text-slate-500 dark:text-slate-400" />
                 <span>Sign In</span>
               </Link>
-              <Link
-                href="/auth/register"
-                className="flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3.5 py-2 text-sm font-bold text-white shadow-sm transition-colors"
-              >
-                <UserPlus className="h-4 w-4" />
-                <span>Sign Up</span>
-              </Link>
             </div>
+          )}
+
+          {/* Theme Toggle */}
+          {mounted && (
+            <button
+              onClick={toggleTheme}
+              className="rounded-lg p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 transition-colors"
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+            >
+              {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5 text-amber-500" />}
+            </button>
           )}
 
           <button
@@ -157,20 +187,20 @@ export function Navbar({ cmsNavbar = {} }: NavbarProps) {
 
       {/* Mobile Drawer */}
       {mobileOpen && (
-        <div className="border-t border-slate-100 bg-white px-4 py-4 md:hidden space-y-2">
+        <div className="border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-950 px-4 py-4 md:hidden space-y-2">
           {customerLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
               onClick={() => setMobileOpen(false)}
-              className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              className="flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-900"
             >
               <link.icon className="h-4 w-4" />
               {link.label}
             </Link>
           ))}
           {mounted && isAuthenticated && user ? (
-            <div className="pt-2 border-t space-y-2">
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-2">
               <Link
                 href={dashboardLink}
                 onClick={() => setMobileOpen(false)}
@@ -184,27 +214,20 @@ export function Navbar({ cmsNavbar = {} }: NavbarProps) {
                   setMobileOpen(false);
                   handleLogout();
                 }}
-                className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
+                className="flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-rose-600 dark:text-rose-450 hover:bg-rose-50 dark:hover:bg-rose-950/20"
               >
                 <LogOut className="h-4 w-4" />
                 Logout
               </button>
             </div>
           ) : (
-            <div className="pt-2 border-t flex gap-2">
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex">
               <Link
                 href="/auth/login"
                 onClick={() => setMobileOpen(false)}
-                className="flex-1 text-center py-2 border rounded-lg text-sm font-bold"
+                className="w-full text-center py-2.5 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold text-slate-750 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors"
               >
                 Sign In
-              </Link>
-              <Link
-                href="/auth/register"
-                onClick={() => setMobileOpen(false)}
-                className="flex-1 text-center py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold"
-              >
-                Sign Up
               </Link>
             </div>
           )}

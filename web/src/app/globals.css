@@ -40,3 +40,8 @@ body {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+.dark {
+  --background: #090d16;
+  --foreground: #f8fafc;
+}
