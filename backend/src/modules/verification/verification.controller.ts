@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { VerificationService } from './verification.service';
 import { sendSuccess } from '../../utils/response';
 import { BadRequestError } from '../../utils/errors';
+import { CloudinaryService } from '../../services/cloudinary.service';
 
 export class VerificationController {
   static async uploadIdentity(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -12,7 +13,7 @@ export class VerificationController {
 
       const userId = req.user!.userId;
       const { documentType, documentNumber } = req.body;
-      const documentUrl = `/uploads/private_documents/${req.file.filename}`;
+      const documentUrl = await CloudinaryService.uploadFile(req.file.path, 'identities');
 
       const result = await VerificationService.submitIdentityDocument(
         userId,
@@ -35,7 +36,7 @@ export class VerificationController {
 
       const ownerId = req.user!.userId;
       const { licenseNumber } = req.body;
-      const documentUrl = `/uploads/private_documents/${req.file.filename}`;
+      const documentUrl = await CloudinaryService.uploadFile(req.file.path, 'identities');
 
       const result = await VerificationService.submitOwnerLicense(
         ownerId,

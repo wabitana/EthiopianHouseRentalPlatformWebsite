@@ -1,0 +1,60 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { apiClient } from '@/services/api';
+
+export default function AdminUsersPage() {
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiClient.get('/users', true)
+      .then((res) => { if (res.success) setUsers(res.data.users || []); })
+      .catch(() => setUsers([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-10 px-4">
+      <div className="mx-auto max-w-6xl">
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-8">Registered Users</h1>
+        {loading ? (
+          <div className="flex justify-center py-20"><div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" /></div>
+        ) : (
+          <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <table className="w-full text-left text-sm text-slate-500 dark:text-slate-400">
+              <thead className="bg-slate-50 dark:bg-slate-950 text-xs font-bold text-slate-700 dark:text-slate-350 border-b border-slate-100 dark:border-slate-800">
+                <tr>
+                  <th className="px-6 py-4">Name</th>
+                  <th className="px-6 py-4">Email</th>
+                  <th className="px-6 py-4">Phone</th>
+                  <th className="px-6 py-4">Roles</th>
+                  <th className="px-6 py-4">Verification</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {users.map((u) => (
+                  <tr key={u.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
+                    <td className="px-6 py-4 font-bold text-slate-900 dark:text-slate-150">{u.name}</td>
+                    <td className="px-6 py-4">{u.email}</td>
+                    <td className="px-6 py-4">{u.phone || '-'}</td>
+                    <td className="px-6 py-4 text-xs font-bold">{u.roles?.join(', ')}</td>
+                    <td className="px-6 py-4">
+                      <span className={`px-2 py-0.5 rounded-full font-bold text-xs ${
+                        u.isIdentityVerified 
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' 
+                          : 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400'
+                      }`}>
+                        {u.isIdentityVerified ? 'ID Verified' : 'Unverified'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

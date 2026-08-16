@@ -16,6 +16,8 @@ const search_routes_1 = __importDefault(require("../modules/search/search.routes
 const favorite_routes_1 = __importDefault(require("../modules/favorites/favorite.routes"));
 const message_routes_1 = __importDefault(require("../modules/messaging/message.routes"));
 const admin_routes_1 = __importDefault(require("../modules/admin/admin.routes"));
+const upload_middleware_1 = require("../middleware/upload.middleware");
+const cloudinary_service_1 = require("../services/cloudinary.service");
 const cms_routes_1 = __importDefault(require("../modules/cms/cms.routes"));
 const router = (0, express_1.Router)();
 // Base API Index Route
@@ -63,5 +65,18 @@ router.use('/search', search_routes_1.default);
 router.use('/favorites', favorite_routes_1.default);
 router.use('/messaging', message_routes_1.default);
 router.use('/admin', admin_routes_1.default);
+// Public Upload Route for Property Images (direct to Cloudinary)
+router.post('/upload', upload_middleware_1.uploadPublic.single('file'), async (req, res, next) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'File is required' });
+        }
+        const secureUrl = await cloudinary_service_1.CloudinaryService.uploadFile(req.file.path, 'properties');
+        return (0, response_1.sendSuccess)(res, { url: secureUrl }, 'File uploaded successfully to Cloudinary');
+    }
+    catch (error) {
+        next(error);
+    }
+});
 router.use('/cms', cms_routes_1.default);
 exports.default = router;

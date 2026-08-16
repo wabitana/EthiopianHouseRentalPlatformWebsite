@@ -33,10 +33,8 @@ export default function RegisterPage() {
         setError(data.error?.message || data.message || 'Registration failed');
         return;
       }
-      const { user, tokens } = data.data;
-      setAuth(user, tokens.accessToken, tokens.refreshToken);
-      if (selectedRole === 'OWNER') router.push('/owner/dashboard');
-      else router.push('/renter/dashboard');
+      const { user } = data.data;
+      router.push(`/auth/verify?target=${encodeURIComponent(user.email)}`);
     } catch {
       setError('Registration failed. Please try again.');
     } finally {

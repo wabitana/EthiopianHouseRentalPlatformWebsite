@@ -11,6 +11,8 @@ import searchRoutes from '../modules/search/search.routes';
 import favoriteRoutes from '../modules/favorites/favorite.routes';
 import messagingRoutes from '../modules/messaging/message.routes';
 import adminRoutes from '../modules/admin/admin.routes';
+import { uploadPublic } from '../middleware/upload.middleware';
+import { CloudinaryService } from '../services/cloudinary.service';
 import cmsRoutes from '../modules/cms/cms.routes';
 
 const router = Router();
@@ -62,6 +64,19 @@ router.use('/search', searchRoutes);
 router.use('/favorites', favoriteRoutes);
 router.use('/messaging', messagingRoutes);
 router.use('/admin', adminRoutes);
+
+// Public Upload Route for Property Images (direct to Cloudinary)
+router.post('/upload', uploadPublic.single('file'), async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'File is required' });
+    }
+    const secureUrl = await CloudinaryService.uploadFile(req.file.path, 'properties');
+    return sendSuccess(res, { url: secureUrl }, 'File uploaded successfully to Cloudinary');
+  } catch (error) {
+    next(error);
+  }
+});
 router.use('/cms', cmsRoutes);
 
 export default router;

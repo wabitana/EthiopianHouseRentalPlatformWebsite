@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
-import { getSession } from "@/lib/auth";
+
+const BACKEND = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
 
 export async function POST(req: NextRequest) {
-  const session = await getSession();
-  if (!session || session.role !== "ADMIN") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -16,20 +10,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file uploaded" }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const ext = path.extname(file.name);
-    const filename = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-    
-    // Ensure public/uploads exists
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadDir, { recursive: true });
+    // Construct a new FormData to send to the backend
+    const backendFormData = new FormData();
+    backendFormData.append("file", file);
 
-    const filepath = path.join(uploadDir, filename);
-    await writeFile(filepath, buffer);
+    const res = await fetch(`${BACKEND}/upload`, {
+      method: "POST",
+      body: backendFormData,
+    });
 
-    return NextResponse.json({ url: `/uploads/${filename}` });
+    const data = await res.json();
+    return NextResponse.json(data, { status: res.status });
   } catch (error) {
-    console.error("Upload error:", error);
+    console.error("Proxy upload error:", error);
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 }

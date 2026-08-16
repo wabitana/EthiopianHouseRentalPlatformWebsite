@@ -4,6 +4,7 @@ exports.VerificationController = void 0;
 const verification_service_1 = require("./verification.service");
 const response_1 = require("../../utils/response");
 const errors_1 = require("../../utils/errors");
+const cloudinary_service_1 = require("../../services/cloudinary.service");
 class VerificationController {
     static async uploadIdentity(req, res, next) {
         try {
@@ -12,7 +13,7 @@ class VerificationController {
             }
             const userId = req.user.userId;
             const { documentType, documentNumber } = req.body;
-            const documentUrl = `/uploads/private_documents/${req.file.filename}`;
+            const documentUrl = await cloudinary_service_1.CloudinaryService.uploadFile(req.file.path, 'identities');
             const result = await verification_service_1.VerificationService.submitIdentityDocument(userId, documentType, documentNumber, documentUrl);
             (0, response_1.sendSuccess)(res, result, 'Identity document uploaded successfully for review', 201);
         }
@@ -27,7 +28,7 @@ class VerificationController {
             }
             const ownerId = req.user.userId;
             const { licenseNumber } = req.body;
-            const documentUrl = `/uploads/private_documents/${req.file.filename}`;
+            const documentUrl = await cloudinary_service_1.CloudinaryService.uploadFile(req.file.path, 'identities');
             const result = await verification_service_1.VerificationService.submitOwnerLicense(ownerId, licenseNumber, documentUrl);
             (0, response_1.sendSuccess)(res, result, 'House ownership license document uploaded for review', 201);
         }
