@@ -17,4 +17,8 @@ export const env = {
   OTP_TTL_SECONDS: parseInt(process.env.OTP_TTL_SECONDS || '300', 10), // 5 minutes
   UPLOAD_DIR: process.env.UPLOAD_DIR || path.join(process.cwd(), 'uploads'),
   CHAPA_SECRET_KEY: process.env.CHAPA_SECRET_KEY || 'CHASECK_TEST_SIMULATION',
+  SMTP_HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
+  SMTP_PORT: parseInt(process.env.SMTP_PORT || '587', 10),
+  SMTP_EMAIL: process.env.SMTP_EMAIL || 'shambel5110@gmail.com',
+  SMTP_PASSWORD: process.env.SMTP_PASSWORD || 'xqzf tdnd gwcx jbog',
 };

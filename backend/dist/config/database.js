@@ -7,7 +7,7 @@ const client_1 = require("@prisma/client");
 const env_1 = require("./env");
 exports.prisma = global.prisma ||
     new client_1.PrismaClient({
-        log: env_1.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+        log: ['error', 'warn'],
     });
 if (env_1.env.NODE_ENV !== 'production') {
     global.prisma = exports.prisma;
@@ -15,10 +15,10 @@ if (env_1.env.NODE_ENV !== 'production') {
 async function connectDatabase() {
     try {
         await exports.prisma.$connect();
-        console.log('✅ PostgreSQL database connected successfully via Prisma.');
+        console.log('PostgreSQL database connected successfully via Prisma.');
     }
     catch (error) {
-        console.error('❌ Database connection failed:', error);
+        console.error('Database connection failed:', error);
     }
 }
 async function disconnectDatabase() {

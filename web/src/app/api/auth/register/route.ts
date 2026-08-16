@@ -22,14 +22,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Email already registered" }, { status: 400 });
     }
 
+    const targetRole = data.role === "VENDOR" ? "OWNER" : "RENTER";
     const passwordHash = await hashPassword(data.password);
     const user = await prisma.user.create({
       data: {
         email: data.email,
+        phone: data.phone || "",
         passwordHash,
         name: data.name,
-        phone: data.phone,
-        role: data.role,
+        roles: [targetRole as any],
         ...(data.role === "VENDOR" && data.businessName
           ? {
               vendor: {
@@ -43,16 +44,17 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    const userRole = toRole(user.roles);
     const token = await createToken({
       id: user.id,
       email: user.email,
       name: user.name,
-      role: toRole(user.role),
+      role: userRole,
     });
     await setAuthCookie(token);
 
     return NextResponse.json({
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      user: { id: user.id, email: user.email, name: user.name, role: userRole, roles: user.roles },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

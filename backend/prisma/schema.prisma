@@ -51,6 +51,7 @@ enum SubscriptionStatus {
 enum PaymentStatus {
   PENDING
   SUCCESS
+  COMPLETED
   FAILED
   CANCELLED
   EXPIRED
@@ -83,30 +84,44 @@ model User {
   phone              String             @unique
   passwordHash       String
   roles              Role[]             @default([RENTER])
+  role               String?            @default("RENTER")
   avatarUrl          String?
+  avatar             String?
   isPhoneVerified    Boolean            @default(false)
   isEmailVerified    Boolean            @default(false)
   isIdentityVerified Boolean            @default(false)
+  address            String?
+  city               String?            @default("Addis Ababa")
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
 
-  identityDocuments  IdentityDocument[]
-  licenses           License[]
-  properties         Property[]         @relation("OwnerProperties")
-  subscriptions      Subscription[]
-  payments           Payment[]
-  rentalRequestsSent RentalRequest[]     @relation("RenterRequests")
-  rentalRequestsRecv RentalRequest[]     @relation("OwnerRentalRequests")
-  saleRequestsSent   SaleRequest[]       @relation("BuyerRequests")
-  saleRequestsRecv   SaleRequest[]       @relation("OwnerSaleRequests")
-  favorites          Favorite[]
-  messagesSent       Message[]          @relation("SentMessages")
-  messagesReceived   Message[]          @relation("ReceivedMessages")
-  notifications      Notification[]
-  reviews            Review[]
-  reports            Report[]
-  auditLogs          AuditLog[]
-  analyticsEvents    AnalyticsEvent[]
+  identityDocuments    IdentityDocument[]
+  licenses             License[]
+  properties           Property[]         @relation("OwnerProperties")
+  subscriptions        Subscription[]
+  payments             Payment[]
+  rentalRequestsSent   RentalRequest[]    @relation("RenterRequests")
+  rentalRequestsRecv   RentalRequest[]    @relation("OwnerRentalRequests")
+  saleRequestsSent     SaleRequest[]      @relation("BuyerRequests")
+  saleRequestsRecv     SaleRequest[]      @relation("OwnerSaleRequests")
+  favorites            Favorite[]
+  messagesSent         Message[]          @relation("SentMessages")
+  messagesReceived     Message[]          @relation("ReceivedMessages")
+  notifications        Notification[]
+  reviews              Review[]
+  reports              Report[]
+  auditLogs            AuditLog[]
+  analyticsEvents      AnalyticsEvent[]
+  savedAddresses       SavedAddress[]
+  pushSubscriptions   PushSubscription[]
+  serviceBookings      ServiceBooking[]
+  assignedServices     ServiceBooking[]   @relation("AssignedProvider")
+  serviceSubscriptions ServiceSubscription[]
+  vendor               Vendor?
+  orders               Order[]
+  cartItems            CartItem[]
+  complaints           Complaint[]
+  userReviews          Review[]           @relation("UserReviews")
 }
 
 model IdentityDocument {
@@ -217,18 +232,25 @@ model Subscription {
 }
 
 model Payment {
-  id             String        @id @default(uuid())
-  ownerId        String
-  owner          User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  subscriptionId String?
-  subscription   Subscription? @relation(fields: [subscriptionId], references: [id])
-  amount         Float
-  currency       String        @default("ETB")
-  provider       String        @default("CHAPA_SIMULATION")
-  transactionRef String        @unique
-  status         PaymentStatus @default(PENDING)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  id               String        @id @default(uuid())
+  ownerId          String?
+  owner            User?         @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  subscriptionId   String?
+  subscription     Subscription? @relation(fields: [subscriptionId], references: [id])
+  orderId          String?       @unique
+  order            Order?        @relation(fields: [orderId], references: [id])
+  serviceBookingId String?       @unique
+  serviceBooking   ServiceBooking? @relation(fields: [serviceBookingId], references: [id])
+  amount           Float
+  currency         String        @default("ETB")
+  provider         String        @default("CHAPA_SIMULATION")
+  transactionRef   String?       @unique
+  chapaTxRef       String?       @unique
+  chapaCheckoutUrl String?
+  method           String        @default("chapa")
+  status           PaymentStatus @default(PENDING)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 }
 
 model RentalRequest {
@@ -306,19 +328,29 @@ model Notification {
   title     String
   message   String
   type      String   @default("SYSTEM")
+  link      String?
   isRead    Boolean  @default(false)
+  read      Boolean  @default(false)
   createdAt DateTime @default(now())
 }
 
 model Review {
-  id         String   @id @default(uuid())
-  propertyId String
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  authorId   String
-  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  rating     Int      @default(5)
-  comment    String?
-  createdAt  DateTime @default(now())
+  id               String          @id @default(uuid())
+  propertyId       String?
+  property         Property?       @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  authorId         String?
+  author           User?           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  userId           String?
+  user             User?           @relation("UserReviews", fields: [userId], references: [id], onDelete: Cascade)
+  vendorId         String?
+  vendor           Vendor?         @relation(fields: [vendorId], references: [id])
+  productId        String?
+  product          Product?        @relation(fields: [productId], references: [id])
+  serviceBookingId String?         @unique
+  serviceBooking   ServiceBooking? @relation(fields: [serviceBookingId], references: [id])
+  rating           Int             @default(5)
+  comment          String?
+  createdAt        DateTime        @default(now())
 }
 
 model Report {
@@ -366,4 +398,253 @@ model AnalyticsEvent {
   createdAt  DateTime  @default(now())
 }
 
+model PlatformConfig {
+  id    String @id @default(cuid())
+  key   String @unique
+  value String
+}
 
+model SavedAddress {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String
+  address   String
+  city      String   @default("Addis Ababa")
+  lat       Float?
+  lng       Float?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String
+  keys      String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, endpoint])
+}
+
+model Vendor {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  businessName     String
+  description      String?
+  logo             String?
+  status           String   @default("PENDING")
+  subscriptionPlan String   @default("basic")
+  commissionRate   Float    @default(10)
+  revenue          Float    @default(0)
+  onboardingStep   Int      @default(0)
+  businessCategory String?
+  taxId            String?
+  bankAccount      String?
+  contactEmail     String?
+  offersServices   Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  products        Product[]
+  orders          Order[]
+  reviews         Review[]
+  messages        VendorMessage[]
+  providers       VendorProvider[]
+  serviceBookings ServiceBooking[] @relation("VendorBookings")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  vendorId    String
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  price       Float
+  stock       Int      @default(0)
+  category    String
+  image       String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+  reviews    Review[]
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int      @default(1)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  orderNumber     String   @unique
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  vendorId        String?
+  vendor          Vendor?  @relation(fields: [vendorId], references: [id])
+  status          String   @default("PENDING")
+  subtotal        Float
+  commission      Float    @default(0)
+  total           Float
+  notes           String?
+  shippingAddress String?
+  shippingCity    String?
+  shippingLat     Float?
+  shippingLng     Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  items    OrderItem[]
+  payment  Payment?
+  tracking TrackingEvent[]
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float
+  name      String
+}
+
+model ServiceBooking {
+  id                   String   @id @default(cuid())
+  bookingNumber        String   @unique
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id])
+  vendorId             String?
+  vendor               Vendor?  @relation("VendorBookings", fields: [vendorId], references: [id])
+  type                 String
+  status               String   @default("PENDING")
+  scheduledAt          DateTime
+  address              String
+  city                 String   @default("Addis Ababa")
+  propertySize         String?
+  rooms                Int?
+  distanceKm           Float?
+  estimatedPrice       Float
+  finalPrice           Float?
+  notes                String?
+  providerId           String?
+  provider             User?    @relation("AssignedProvider", fields: [providerId], references: [id])
+  packageName          String?
+  packageId            String?
+  package              ServicePackage? @relation(fields: [packageId], references: [id])
+  vendorProviderId     String?
+  assignedProviderName String?
+  subscriptionId       String?
+  subscription         ServiceSubscription? @relation(fields: [subscriptionId], references: [id])
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  lat Float?
+  lng Float?
+
+  payment  Payment?
+  review   Review?
+  tracking TrackingEvent[]
+}
+
+model ServicePackage {
+  id              String   @id @default(cuid())
+  type            String
+  slug            String   @unique
+  name            String
+  description     String?
+  basePrice       Float
+  features        String
+  isSubscription  Boolean  @default(false)
+  billingCycle    String?
+  discountPercent Float    @default(0)
+  active          Boolean  @default(true)
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  bookings      ServiceBooking[]
+  subscriptions ServiceSubscription[]
+}
+
+model ServiceSubscription {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  packageId     String
+  package       ServicePackage @relation(fields: [packageId], references: [id])
+  type          String
+  status        String   @default("ACTIVE")
+  price         Float
+  address       String
+  city          String   @default("Addis Ababa")
+  nextServiceAt DateTime?
+  startedAt     DateTime @default(now())
+  endsAt        DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  bookings ServiceBooking[]
+}
+
+model Complaint {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  subject     String
+  description String
+  status      String   @default("OPEN")
+  adminNotes  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model TrackingEvent {
+  id               String          @id @default(cuid())
+  orderId          String?
+  order            Order?          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  serviceBookingId String?
+  serviceBooking   ServiceBooking? @relation(fields: [serviceBookingId], references: [id], onDelete: Cascade)
+  status           String
+  message          String
+  createdAt        DateTime        @default(now())
+}
+
+model VendorMessage {
+  id          String   @id @default(cuid())
+  vendorId    String
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  senderId    String
+  recipientId String?
+  orderId     String?
+  subject     String
+  body        String
+  read        Boolean  @default(false)
+  direction   String   @default("OUTBOUND")
+  createdAt   DateTime @default(now())
+}
+
+model VendorProvider {
+  id         String   @id @default(cuid())
+  vendorId   String
+  vendor     Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  providerId String
+  name       String
+  phone      String?
+  email      String?
+  specialty  String
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+}

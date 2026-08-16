@@ -28,8 +28,11 @@ class AuthService {
                 roles,
             },
         });
-        // Send OTP automatically upon registration
-        await otp_service_1.OtpService.sendOtp(user.phone);
+        // Send OTP to email via Gmail SMTP upon registration
+        await otp_service_1.OtpService.sendOtp(user.email);
+        if (user.phone) {
+            await otp_service_1.OtpService.sendOtp(user.phone);
+        }
         const tokenPayload = { userId: user.id, email: user.email, roles: user.roles };
         const accessToken = token_service_1.TokenService.generateAccessToken(tokenPayload);
         const refreshToken = token_service_1.TokenService.generateRefreshToken(tokenPayload);
@@ -96,9 +99,10 @@ class AuthService {
             },
             data: {
                 isPhoneVerified: true,
+                isEmailVerified: true,
             },
         });
-        return { success: true, message: 'Phone number verified successfully' };
+        return { success: true, message: 'Verification successfully completed' };
     }
     static async refreshToken(refreshToken) {
         try {

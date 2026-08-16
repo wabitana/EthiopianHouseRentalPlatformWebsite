@@ -14,7 +14,7 @@ async function main() {
       passwordHash,
       name: "Platform Admin",
       phone: "0987888333",
-      role: "ADMIN",
+      roles: ["ADMIN"],
     },
   });
 
@@ -26,7 +26,7 @@ async function main() {
       passwordHash,
       name: "Delala Rentals PLC",
       phone: "0911819145",
-      role: "VENDOR",
+      roles: ["OWNER"],
     },
   });
 
@@ -56,7 +56,7 @@ async function main() {
       passwordHash,
       name: "Abebe Kebede",
       phone: "0911223344",
-      role: "CUSTOMER",
+      roles: ["RENTER"],
       city: "Addis Ababa",
     },
   });
@@ -69,7 +69,7 @@ async function main() {
       passwordHash,
       name: "Service Technician",
       phone: "0922334455",
-      role: "SERVICE_PROVIDER",
+      roles: ["RENTER"],
     },
   });
 

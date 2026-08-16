@@ -4,12 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "prisma:sync": "copy ..\\backend\\prisma\\schema.prisma prisma\\schema.prisma && prisma generate",
+    "build": "copy ..\\backend\\prisma\\schema.prisma prisma\\schema.prisma && prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
-    "db:push": "prisma db push",
+    "db:push": "prisma db push --schema=../backend/prisma/schema.prisma",
     "db:seed": "tsx prisma/seed.ts",
-    "db:setup": "prisma db push && tsx prisma/seed.ts"
+    "db:setup": "prisma db push --schema=../backend/prisma/schema.prisma && tsx prisma/seed.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -28,6 +29,7 @@
     "jose": "^6.2.3",
     "lucide-react": "^1.18.0",
     "next": "16.2.9",
+    "nodemailer": "^9.0.5",
     "prisma": "^5.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -42,6 +44,7 @@
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

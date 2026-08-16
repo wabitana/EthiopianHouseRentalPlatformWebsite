@@ -26,8 +26,11 @@ export async function verifyPassword(
   return bcrypt.compare(password, hash);
 }
 
-export function toRole(role: string): Role {
-  return role as Role;
+export function toRole(roles?: string[] | string | null): Role {
+  if (Array.isArray(roles)) {
+    return (roles[0] || "RENTER") as Role;
+  }
+  return (roles || "RENTER") as Role;
 }
 
 export async function createToken(user: SessionUser): Promise<string> {
