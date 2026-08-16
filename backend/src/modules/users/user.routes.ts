@@ -11,6 +11,7 @@ const router = Router();
 router.use(authenticate); // Require authentication for all user endpoints
 
 router.get('/me', UserController.getMe);
+router.get('/me/properties', UserController.getMyProperties);
 router.patch('/me', validateRequest(updateProfileSchema), UserController.updateMe);
 
 // Admin-only endpoints

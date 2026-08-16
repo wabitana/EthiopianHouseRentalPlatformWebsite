@@ -3,12 +3,23 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UserController = void 0;
 const user_service_1 = require("./user.service");
 const response_1 = require("../../utils/response");
+const property_repository_1 = require("../properties/property.repository");
 class UserController {
     static async getMe(req, res, next) {
         try {
             const userId = req.user.userId;
             const user = await user_service_1.UserService.getProfile(userId);
             (0, response_1.sendSuccess)(res, user, 'Profile fetched successfully');
+        }
+        catch (error) {
+            next(error);
+        }
+    }
+    static async getMyProperties(req, res, next) {
+        try {
+            const ownerId = req.user.userId;
+            const result = await property_repository_1.PropertyRepository.findMany({ ownerId });
+            (0, response_1.sendSuccess)(res, { properties: result.properties, total: result.total }, 'My properties retrieved');
         }
         catch (error) {
             next(error);

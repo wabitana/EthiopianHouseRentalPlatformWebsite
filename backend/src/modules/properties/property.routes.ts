@@ -10,6 +10,7 @@ const router = Router();
 
 // Public Property Endpoints
 router.get('/published', PropertyController.getPublished);
+router.get('/', PropertyController.getPublished);
 router.get('/:id', PropertyController.getById);
 
 // Authenticated Endpoints

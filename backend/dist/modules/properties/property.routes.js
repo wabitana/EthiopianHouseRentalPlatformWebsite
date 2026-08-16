@@ -10,6 +10,7 @@ const client_1 = require("@prisma/client");
 const router = (0, express_1.Router)();
 // Public Property Endpoints
 router.get('/published', property_controller_1.PropertyController.getPublished);
+router.get('/', property_controller_1.PropertyController.getPublished);
 router.get('/:id', property_controller_1.PropertyController.getById);
 // Authenticated Endpoints
 router.use(auth_middleware_1.authenticate);

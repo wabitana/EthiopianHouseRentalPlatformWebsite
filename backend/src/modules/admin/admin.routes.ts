@@ -10,5 +10,7 @@ router.use(authenticate, authorizeRoles(Role.ADMIN));
 
 router.get('/stats', AdminController.getStats);
 router.get('/audit-logs', AdminController.getAuditLogs);
+router.get('/properties', AdminController.getProperties);
+router.get('/payments', AdminController.getPayments);
 
 export default router;

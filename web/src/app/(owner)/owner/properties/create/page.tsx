@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { propertyService } from '@/services/property.service';
+import { verificationService } from '@/services/verification.service';
 
 export default function CreatePropertyPage() {
   const router = useRouter();
@@ -10,7 +11,7 @@ export default function CreatePropertyPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // Form states
+  // Form fields
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [propertyType, setPropertyType] = useState('APARTMENT');
@@ -23,8 +24,14 @@ export default function CreatePropertyPage() {
   const [areaName, setAreaName] = useState('');
   const [googleMapsUrl, setGoogleMapsUrl] = useState('');
   
-  // Image files list
-  const [imageFiles, setImageFiles] = useState<FileList | null>(null);
+  // Specific image files requirements
+  const [frontImage, setFrontImage] = useState<File | null>(null);
+  const [backImage, setBackImage] = useState<File | null>(null);
+  const [additionalImages, setAdditionalImages] = useState<FileList | null>(null);
+
+  // House License / Karta Government doc
+  const [licenseNumber, setLicenseNumber] = useState('');
+  const [kartaDocument, setKartaDocument] = useState<File | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,26 +39,67 @@ export default function CreatePropertyPage() {
     setError('');
     setSuccess('');
 
+    // Check front and back images are selected
+    if (!frontImage || !backImage) {
+      setError('Both Front View and Back View house images are required.');
+      setLoading(false);
+      return;
+    }
+
+    // Check additional images are selected (at least 1 required)
+    const extraCount = additionalImages ? additionalImages.length : 0;
+    if (extraCount < 1) {
+      setError('Please upload at least one additional interior/exterior image (minimum 3 images total).');
+      setLoading(false);
+      return;
+    }
+
+    // Check House License document is selected
+    if (!kartaDocument) {
+      setError('Government Karta / House License document is required.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      // 1. Upload Images to local frontend uploads path if selected
+      // 1. Upload House License (Karta) to verification service
+      const licenseFormData = new FormData();
+      licenseFormData.append('document', kartaDocument);
+      licenseFormData.append('licenseNumber', licenseNumber || `KARTA-${Date.now()}`);
+      const licenseRes = await verificationService.uploadOwnerLicense(licenseFormData);
+      if (!licenseRes.success) {
+        setError('House Karta upload failed: ' + licenseRes.message);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Upload Property Images to Cloudinary
       const uploadedUrls: string[] = [];
-      if (imageFiles && imageFiles.length > 0) {
-        for (let i = 0; i < imageFiles.length; i++) {
-          const file = imageFiles[i];
-          const formData = new FormData();
-          formData.append('file', file);
-          const uploadRes = await fetch('/api/upload', {
-            method: 'POST',
-            body: formData
-          });
-          if (uploadRes.ok) {
-            const uploadData = await uploadRes.json();
-            uploadedUrls.push(uploadData.data?.url || uploadData.url);
-          }
+      const imageFilesToUpload = [frontImage, backImage];
+      if (additionalImages) {
+        for (let i = 0; i < additionalImages.length; i++) {
+          imageFilesToUpload.push(additionalImages[i]);
         }
       }
 
-      // 2. Submit property payload to backend
+      for (const file of imageFilesToUpload) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData
+        });
+        if (uploadRes.ok) {
+          const uploadData = await uploadRes.json();
+          uploadedUrls.push(uploadData.data?.url || uploadData.url);
+        } else {
+          setError('Failed to upload property images.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 3. Create property payload
       const payload = {
         title,
         description,
@@ -63,14 +111,13 @@ export default function CreatePropertyPage() {
         bathrooms: parseInt(bathrooms),
         city,
         areaName,
-        // We pack the Google maps URL inside the addressDetails field for easy rendering later
         addressDetails: googleMapsUrl,
         images: uploadedUrls
       };
 
       const res = await propertyService.createProperty(payload);
       if (res.success) {
-        setSuccess('Property submitted for admin review successfully!');
+        setSuccess('Property and Karta license submitted successfully! Redirecting...');
         setTimeout(() => {
           router.push('/owner/properties');
         }, 1500);
@@ -89,7 +136,7 @@ export default function CreatePropertyPage() {
       <div className="mx-auto max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm">
         <div className="mb-8 border-b border-slate-100 dark:border-slate-800 pb-4">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Post New Property Listing</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Submit property details for admin review. Active subscription is required.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Submit property details, Karta document, and at least 3 images for admin review.</p>
         </div>
 
         {error && (
@@ -187,15 +234,48 @@ export default function CreatePropertyPage() {
               className="w-full px-3 py-2 border rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-150 text-sm focus:outline-none" />
           </div>
 
-          <div>
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-350 mb-1">Property Images (Multiple)</label>
-            <input type="file" multiple accept="image/*" onChange={(e) => setImageFiles(e.target.files)}
-              className="w-full px-3 py-2 border rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-150 text-sm focus:outline-none" />
+          {/* House License / Karta Government doc */}
+          <div className="p-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl space-y-4">
+            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">House License / Karta Document</h3>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Karta License Number</label>
+                <input type="text" required value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder="Karta Reg Number"
+                  className="w-full px-3 py-2 border rounded-xl bg-white dark:bg-slate-900 border-slate-250 dark:border-slate-800 text-slate-850 dark:text-slate-150 text-xs focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Upload Karta File (PDF/Image)</label>
+                <input type="file" required accept="image/*,application/pdf" onChange={(e) => setKartaDocument(e.target.files?.[0] || null)}
+                  className="w-full px-3 py-2 border rounded-xl bg-white dark:bg-slate-900 border-slate-250 dark:border-slate-800 text-slate-850 dark:text-slate-150 text-xs focus:outline-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Specific Images Requirements */}
+          <div className="p-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl space-y-4">
+            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">House Images Upload (Min 3 required)</h3>
+            <div className="grid sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Front House View *</label>
+                <input type="file" required accept="image/*" onChange={(e) => setFrontImage(e.target.files?.[0] || null)}
+                  className="w-full px-3 py-1.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-250 dark:border-slate-800 text-slate-850 dark:text-slate-150 text-xs focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Back House View *</label>
+                <input type="file" required accept="image/*" onChange={(e) => setBackImage(e.target.files?.[0] || null)}
+                  className="w-full px-3 py-1.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-250 dark:border-slate-800 text-slate-850 dark:text-slate-150 text-xs focus:outline-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Additional Images *</label>
+                <input type="file" required multiple accept="image/*" onChange={(e) => setAdditionalImages(e.target.files)}
+                  className="w-full px-3 py-1.5 border rounded-xl bg-white dark:bg-slate-900 border-slate-250 dark:border-slate-800 text-slate-850 dark:text-slate-150 text-xs focus:outline-none" />
+              </div>
+            </div>
           </div>
 
           <button type="submit" disabled={loading}
             className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl text-sm transition-colors disabled:opacity-50">
-            {loading ? 'Submitting Property...' : 'Submit Listing'}
+            {loading ? 'Submitting Listing...' : 'Submit Listing'}
           </button>
         </form>
       </div>

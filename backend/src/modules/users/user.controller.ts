@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { UserService } from './user.service';
 import { sendSuccess } from '../../utils/response';
+import { PropertyRepository } from '../properties/property.repository';
 
 export class UserController {
   static async getMe(req: Request, res: Response, next: NextFunction): Promise<void> {
@@ -8,6 +9,16 @@ export class UserController {
       const userId = req.user!.userId;
       const user = await UserService.getProfile(userId);
       sendSuccess(res, user, 'Profile fetched successfully');
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getMyProperties(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const ownerId = req.user!.userId;
+      const result = await PropertyRepository.findMany({ ownerId });
+      sendSuccess(res, { properties: result.properties, total: result.total }, 'My properties retrieved');
     } catch (error) {
       next(error);
     }
