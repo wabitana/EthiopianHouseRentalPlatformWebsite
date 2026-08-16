@@ -27,17 +27,7 @@ const serviceIcons = {
 
 
 export default async function ServicesPage() {
-  let reviews: any[] = [];
-  try {
-    reviews = await prisma.review.findMany({
-      where: { serviceBookingId: { not: null } },
-      include: { user: { select: { name: true } }, serviceBooking: { select: { type: true } } },
-      orderBy: { createdAt: "desc" },
-      take: 3,
-    });
-  } catch (error) {
-    console.warn("Failed to fetch reviews from database:", error);
-  }
+  const reviews: any[] = [];
 
 
 

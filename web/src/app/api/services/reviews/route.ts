@@ -4,29 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSession } from "@/lib/auth";
 
 export async function GET(req: NextRequest) {
-  const type = req.nextUrl.searchParams.get("type");
-
-  const reviews = await prisma.review.findMany({
-    where: {
-      serviceBookingId: { not: null },
-      ...(type
-        ? { serviceBooking: { type } }
-        : {}),
-    },
-    include: {
-      user: { select: { name: true } },
-      serviceBooking: { select: { type: true, bookingNumber: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
-
-  const avg =
-    reviews.length > 0
-      ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
-      : 0;
-
-  return NextResponse.json({ reviews, averageRating: Math.round(avg * 10) / 10 });
+  return NextResponse.json({ reviews: [], averageRating: 0 });
 }
 
 const reviewSchema = z.object({

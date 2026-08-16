@@ -163,29 +163,6 @@ export const defaultCmsConfig = {
 const ALL_CMS_KEYS = Object.keys(defaultCmsConfig);
 
 export async function getCmsConfig() {
-  try {
-    const configs = await prisma.platformConfig.findMany({
-      where: { key: { in: ALL_CMS_KEYS } },
-    });
-
-    const configMap = configs.reduce((acc, curr) => {
-      try {
-        acc[curr.key] = JSON.parse(curr.value);
-      } catch {
-        acc[curr.key] = curr.value;
-      }
-      return acc;
-    }, {} as Record<string, any>);
-
-    // Merge with defaults - each key falls back to its default if not in DB
-    const result: Record<string, any> = {};
-    for (const key of ALL_CMS_KEYS) {
-      result[key] = configMap[key] ?? (defaultCmsConfig as any)[key];
-    }
-    return result as typeof defaultCmsConfig;
-  } catch (error) {
-    console.warn("Failed to fetch CMS config from database, using defaults:", error);
-    return defaultCmsConfig;
-  }
+  return defaultCmsConfig;
 }
 
