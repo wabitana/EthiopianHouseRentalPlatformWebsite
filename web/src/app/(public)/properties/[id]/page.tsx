@@ -5,6 +5,9 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { propertyService } from '@/services/property.service';
 import { MapPin, ShieldCheck, Bed, Bath, Maximize } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
 export default function PropertyDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -33,7 +36,8 @@ export default function PropertyDetailPage() {
     </div>
   );
 
-  const isMapUrl = property.addressDetails?.startsWith('http');
+  const defaultMapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${property.city} ${property.areaName}`)}`;
+  const mapUrl = property.addressDetails?.startsWith('http') ? property.addressDetails : defaultMapUrl;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 py-10 px-4">
@@ -85,23 +89,24 @@ export default function PropertyDetailPage() {
             <p className="text-slate-600 dark:text-slate-350 text-sm leading-relaxed">{property.description}</p>
           </div>
 
-          {/* Google Location Map Link */}
-          {isMapUrl && (
-            <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-100/50 dark:border-emerald-900/30 rounded-xl flex items-center justify-between gap-4">
-              <div>
-                <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2"><MapPin className="h-4 w-4 text-emerald-600" /> Google Map Location</h4>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Easily track property location on Google Maps.</p>
-              </div>
-              <a 
-                href={property.addressDetails} 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors shadow-sm inline-block"
-              >
-                Track Place
-              </a>
+          {/* Integrated Map Location Display */}
+          <MapView value={mapUrl} />
+
+          {/* Map Location Link Button */}
+          <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-100/50 dark:border-emerald-900/30 rounded-xl flex items-center justify-between gap-4">
+            <div>
+              <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2"><MapPin className="h-4 w-4 text-emerald-600" /> Google Maps Link</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Click to view location map in external window.</p>
             </div>
-          )}
+            <a 
+              href={mapUrl} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-xs transition-colors shadow-sm inline-block"
+            >
+              Track Place
+            </a>
+          </div>
 
           <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex gap-4">
             <Link href="/auth/login" className="w-full block text-center bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl transition-colors">

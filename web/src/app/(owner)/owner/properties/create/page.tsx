@@ -1,15 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { propertyService } from '@/services/property.service';
 import { verificationService } from '@/services/verification.service';
+import { apiClient } from '@/services/api';
+import dynamic from 'next/dynamic';
+
+const MapPicker = dynamic(() => import('@/components/MapPicker'), { ssr: false });
 
 export default function CreatePropertyPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [userProfile, setUserProfile] = useState<any>(null);
 
   // Form fields
   const [title, setTitle] = useState('');
@@ -22,7 +27,7 @@ export default function CreatePropertyPage() {
   const [bathrooms, setBathrooms] = useState('0');
   const [city, setCity] = useState('Addis Ababa');
   const [areaName, setAreaName] = useState('');
-  const [googleMapsUrl, setGoogleMapsUrl] = useState('');
+  const [googleMapsUrl, setGoogleMapsUrl] = useState('https://www.google.com/maps/search/?api=1&query=9.03,38.74'); // default Addis Ababa
   
   // Specific image files requirements
   const [frontImage, setFrontImage] = useState<File | null>(null);
@@ -32,6 +37,15 @@ export default function CreatePropertyPage() {
   // House License / Karta Government doc
   const [licenseNumber, setLicenseNumber] = useState('');
   const [kartaDocument, setKartaDocument] = useState<File | null>(null);
+
+  useEffect(() => {
+    // Fetch profile to see if user is already verified
+    apiClient.get('/users/me', true)
+      .then((res) => { if (res.success) setUserProfile(res.data.user || res.data); })
+      .catch(console.error);
+  }, []);
+
+  const isVerified = userProfile?.isIdentityVerified;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -54,23 +68,25 @@ export default function CreatePropertyPage() {
       return;
     }
 
-    // Check House License document is selected
-    if (!kartaDocument) {
-      setError('Government Karta / House License document is required.');
+    // Check House License document is selected (Only required if NOT already verified/submitted)
+    if (!kartaDocument && !isVerified) {
+      setError('Government Karta / House License document is required for unverified accounts.');
       setLoading(false);
       return;
     }
 
     try {
-      // 1. Upload House License (Karta) to verification service
-      const licenseFormData = new FormData();
-      licenseFormData.append('document', kartaDocument);
-      licenseFormData.append('licenseNumber', licenseNumber || `KARTA-${Date.now()}`);
-      const licenseRes = await verificationService.uploadOwnerLicense(licenseFormData);
-      if (!licenseRes.success) {
-        setError('House Karta upload failed: ' + licenseRes.message);
-        setLoading(false);
-        return;
+      // 1. Upload House License (Karta) only if selected
+      if (kartaDocument) {
+        const licenseFormData = new FormData();
+        licenseFormData.append('document', kartaDocument);
+        licenseFormData.append('licenseNumber', licenseNumber || `KARTA-${Date.now()}`);
+        const licenseRes = await verificationService.uploadOwnerLicense(licenseFormData);
+        if (!licenseRes.success) {
+          setError('House Karta upload failed: ' + licenseRes.message);
+          setLoading(false);
+          return;
+        }
       }
 
       // 2. Upload Property Images to Cloudinary
@@ -136,7 +152,7 @@ export default function CreatePropertyPage() {
       <div className="mx-auto max-w-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-sm">
         <div className="mb-8 border-b border-slate-100 dark:border-slate-800 pb-4">
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Post New Property Listing</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Submit property details, Karta document, and at least 3 images for admin review.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Submit property details, pin map coordinates, and upload images for admin review.</p>
         </div>
 
         {error && (
@@ -222,10 +238,10 @@ export default function CreatePropertyPage() {
             </div>
           </div>
 
+          {/* Integrated Leaflet Map Picker */}
           <div>
-            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-350 mb-1">Google Maps / Location link</label>
-            <input type="url" value={googleMapsUrl} onChange={(e) => setGoogleMapsUrl(e.target.value)} placeholder="https://maps.google.com/?q=..."
-              className="w-full px-3 py-2 border rounded-xl bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-850 dark:text-slate-150 text-sm focus:outline-none" />
+            <label className="block text-sm font-semibold text-slate-700 dark:text-slate-350 mb-1">Pin Map Location</label>
+            <MapPicker value={googleMapsUrl} onChange={setGoogleMapsUrl} />
           </div>
 
           <div>
@@ -236,16 +252,21 @@ export default function CreatePropertyPage() {
 
           {/* House License / Karta Government doc */}
           <div className="p-4 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl space-y-4">
-            <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">House License / Karta Document</h3>
+            <div>
+              <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">House License / Karta Document</h3>
+              {isVerified && (
+                <p className="text-xs text-emerald-600 font-semibold mt-1">✓ Your account has verified land licenses. Uploading Karta is optional.</p>
+              )}
+            </div>
             <div className="grid sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Karta License Number</label>
-                <input type="text" required value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder="Karta Reg Number"
+                <input type="text" required={!isVerified} value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} placeholder="Karta Reg Number"
                   className="w-full px-3 py-2 border rounded-xl bg-white dark:bg-slate-900 border-slate-250 dark:border-slate-800 text-slate-850 dark:text-slate-150 text-xs focus:outline-none" />
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Upload Karta File (PDF/Image)</label>
-                <input type="file" required accept="image/*,application/pdf" onChange={(e) => setKartaDocument(e.target.files?.[0] || null)}
+                <input type="file" required={!isVerified} accept="image/*,application/pdf" onChange={(e) => setKartaDocument(e.target.files?.[0] || null)}
                   className="w-full px-3 py-2 border rounded-xl bg-white dark:bg-slate-900 border-slate-250 dark:border-slate-800 text-slate-850 dark:text-slate-150 text-xs focus:outline-none" />
               </div>
             </div>

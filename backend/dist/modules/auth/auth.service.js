@@ -9,9 +9,11 @@ const errors_1 = require("../../utils/errors");
 const client_1 = require("@prisma/client");
 class AuthService {
     static async register(dto) {
+        const normalizedEmail = dto.email.trim().toLowerCase();
+        const normalizedPhone = dto.phone.trim();
         const existingUser = await database_1.prisma.user.findFirst({
             where: {
-                OR: [{ email: dto.email }, { phone: dto.phone }],
+                OR: [{ email: normalizedEmail }, { phone: normalizedPhone }],
             },
         });
         if (existingUser) {
@@ -22,8 +24,8 @@ class AuthService {
         const user = await database_1.prisma.user.create({
             data: {
                 name: dto.name,
-                email: dto.email,
-                phone: dto.phone,
+                email: normalizedEmail,
+                phone: normalizedPhone,
                 passwordHash,
                 roles,
             },
@@ -55,9 +57,10 @@ class AuthService {
         };
     }
     static async login(dto) {
+        const normalizedInput = dto.emailOrPhone.trim().toLowerCase();
         const user = await database_1.prisma.user.findFirst({
             where: {
-                OR: [{ email: dto.emailOrPhone }, { phone: dto.emailOrPhone }],
+                OR: [{ email: normalizedInput }, { phone: normalizedInput }],
             },
         });
         if (!user) {

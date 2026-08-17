@@ -8,9 +8,11 @@ import { Role } from '@prisma/client';
 
 export class AuthService {
   static async register(dto: RegisterDTO): Promise<AuthResponse> {
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const normalizedPhone = dto.phone.trim();
     const existingUser = await prisma.user.findFirst({
       where: {
-        OR: [{ email: dto.email }, { phone: dto.phone }],
+        OR: [{ email: normalizedEmail }, { phone: normalizedPhone }],
       },
     });
 
@@ -24,8 +26,8 @@ export class AuthService {
     const user = await prisma.user.create({
       data: {
         name: dto.name,
-        email: dto.email,
-        phone: dto.phone,
+        email: normalizedEmail,
+        phone: normalizedPhone,
         passwordHash,
         roles,
       },
@@ -61,9 +63,10 @@ export class AuthService {
   }
 
   static async login(dto: LoginDTO): Promise<AuthResponse> {
+    const normalizedInput = dto.emailOrPhone.trim().toLowerCase();
     const user = await prisma.user.findFirst({
       where: {
-        OR: [{ email: dto.emailOrPhone }, { phone: dto.emailOrPhone }],
+        OR: [{ email: normalizedInput }, { phone: normalizedInput }],
       },
     });
 

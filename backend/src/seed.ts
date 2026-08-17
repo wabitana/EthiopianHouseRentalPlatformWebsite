@@ -9,7 +9,7 @@ async function seed() {
   const adminPassword = await PasswordService.hash('Admin@123456');
   const admin = await prisma.user.upsert({
     where: { email: 'admin@ethioproperty.et' },
-    update: {},
+    update: { passwordHash: adminPassword },
     create: {
       name: 'System Admin',
       email: 'admin@ethioproperty.et',
@@ -27,7 +27,7 @@ async function seed() {
   const ownerPassword = await PasswordService.hash('Owner@123456');
   const owner = await prisma.user.upsert({
     where: { email: 'owner@ethioproperty.et' },
-    update: {},
+    update: { passwordHash: ownerPassword },
     create: {
       name: 'Abebe Kebede',
       email: 'owner@ethioproperty.et',
@@ -45,7 +45,7 @@ async function seed() {
   const renterPassword = await PasswordService.hash('Renter@123456');
   const renter = await prisma.user.upsert({
     where: { email: 'renter@ethioproperty.et' },
-    update: {},
+    update: { passwordHash: renterPassword },
     create: {
       name: 'Tigist Alemu',
       email: 'renter@ethioproperty.et',
