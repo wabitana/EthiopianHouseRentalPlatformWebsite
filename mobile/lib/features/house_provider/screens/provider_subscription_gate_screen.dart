@@ -53,9 +53,9 @@ class _ProviderSubscriptionGateScreenState extends State<ProviderSubscriptionGat
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.amber.withOpacity(0.2),
+                  color: Colors.amber.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.amber.withOpacity(0.4)),
+                  border: Border.all(color: Colors.amber.withValues(alpha: 0.4)),
                 ),
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Building,
   Search,
@@ -19,12 +19,47 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import { mockProviders, ProviderItem, mockProperties } from "@/lib/portal-mock-data";
+import { apiFetch } from "@/lib/api";
+
+const mapBackendProvider = (u: any): ProviderItem => ({
+  id: u.id,
+  name: u.name,
+  avatar: u.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${u.id}`,
+  phone: u.phone,
+  email: u.email,
+  location: u.city || 'Addis Ababa',
+  verificationStatus: u.isVerified ? 'Verified' : 'Pending',
+  totalProperties: u.totalListings || 0,
+  activeListings: u.totalListings || 0,
+  accountStatus: u.active ? 'Active' : 'Suspended',
+  registrationDate: new Date(u.createdAt).toLocaleDateString(),
+  idNumber: 'N/A',
+  recentActivity: [],
+  reportsCount: 0,
+});
 
 export default function AdminProvidersPage() {
-  const [providers] = useState<ProviderItem[]>(mockProviders);
+  const [providers, setProviders] = useState<ProviderItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedProvider, setSelectedProvider] = useState<ProviderItem | null>(null);
   const [detailTab, setDetailTab] = useState<"profile" | "personal" | "verification" | "properties" | "activity" | "reports">("profile");
+
+  async function loadProviders() {
+    try {
+      setLoading(true);
+      const data = await apiFetch("/admin/users?role=provider");
+      setProviders(data.map(mapBackendProvider));
+    } catch (err) {
+      console.error("Failed to load providers:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadProviders();
+  }, []);
 
   const filteredProviders = providers.filter(
     (p) =>

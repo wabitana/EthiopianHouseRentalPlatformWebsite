@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   UserCheck2,
   Search,
@@ -16,11 +16,43 @@ import {
   Building2,
 } from "lucide-react";
 import { mockSeekers, SeekerItem } from "@/lib/portal-mock-data";
+import { apiFetch } from "@/lib/api";
+
+const mapBackendSeeker = (u: any): SeekerItem => ({
+  id: u.id,
+  name: u.name,
+  avatar: u.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${u.id}`,
+  phone: u.phone,
+  email: u.email,
+  preferredLocation: u.city || 'Addis Ababa',
+  savedPropertiesCount: 0,
+  inquiriesCount: 0,
+  accountStatus: u.active ? 'Active' : 'Suspended',
+  registrationDate: new Date(u.createdAt).toLocaleDateString(),
+  recentInquiries: [],
+});
 
 export default function AdminSeekersPage() {
-  const [seekers] = useState<SeekerItem[]>(mockSeekers);
+  const [seekers, setSeekers] = useState<SeekerItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSeeker, setSelectedSeeker] = useState<SeekerItem | null>(null);
+
+  async function loadSeekers() {
+    try {
+      setLoading(true);
+      const data = await apiFetch("/admin/users?role=seeker");
+      setSeekers(data.map(mapBackendSeeker));
+    } catch (err) {
+      console.error("Failed to load seekers:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadSeekers();
+  }, []);
 
   const filteredSeekers = seekers.filter(
     (s) =>

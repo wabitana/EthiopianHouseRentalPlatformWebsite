@@ -146,7 +146,7 @@ class _IdentityVerificationScreenState extends State<IdentityVerificationScreen>
               const Text('Document Type', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
-                value: _selectedIdType,
+                initialValue: _selectedIdType,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

@@ -1,14 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CreditCard, DollarSign, ArrowUpRight, CheckCircle2, Clock, Filter, Download } from "lucide-react";
+import { apiFetch } from "@/lib/api";
+
+const mapBackendPayment = (p: any) => ({
+  id: p.reference || p.id.substring(0, 8),
+  property: p.subscription ? "Subscription Plan Renewal" : "Platform Booking Payout",
+  provider: p.user?.name || "Anonymous Owner",
+  amount: p.amountETB,
+  commission: p.amountETB * 0.05,
+  gateway: p.paymentMethod,
+  date: new Date(p.createdAt).toLocaleDateString(),
+  status: p.status === 'SUCCESS' ? 'Completed' : p.status === 'PENDING' ? 'Pending Payout' : 'Failed',
+});
 
 export default function AdminPaymentsPage() {
-  const transactions = [
-    { id: "TXN-9012", property: "Bole Penthouse Apartment", provider: "Abebe Kebede", amount: 85000, commission: 4250, gateway: "Chapa ETB", date: "2024-03-15", status: "Completed" },
-    { id: "TXN-9013", property: "Old Airport Villa G+2", provider: "Abebe Kebede", amount: 180000, commission: 9000, gateway: "CBE Birr", date: "2024-03-14", status: "Completed" },
-    { id: "TXN-9014", property: "CMC Studio Flat", provider: "Selamawit Girma", amount: 32000, commission: 1600, gateway: "Telebirr", date: "2024-03-12", status: "Pending Payout" },
-  ];
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function loadPayments() {
+    try {
+      setLoading(true);
+      const data = await apiFetch("/admin/payments");
+      setTransactions(data.map(mapBackendPayment));
+    } catch (err) {
+      console.error("Failed to load payments:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadPayments();
+  }, []);
 
   return (
     <div className="space-y-6">

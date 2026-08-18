@@ -61,6 +61,21 @@ model User {
   savedAddresses       SavedAddress[]
   pushSubscriptions    PushSubscription[]
   serviceSubscriptions ServiceSubscription[]
+
+  // Agent Metadata & Relations
+  assignedArea          String?
+  propertiesManaged     Int                 @default(0)
+  verificationsCompleted Int                 @default(0)
+  activeTasks            Int                 @default(0)
+  performanceScore       Float               @default(100.0)
+  agentStatus            String              @default("Active")
+  joinedDate             DateTime            @default(now())
+
+  tasks                  Task[]              @relation("AgentTasks")
+  assistedTenants        AssistedTenant[]    @relation("AgentAssistedTenants")
+  assistedBookings       AssistedBooking[]   @relation("AgentAssistedBookings")
+  leaseAgreements        LeaseAgreement[]    @relation("AgentLeases")
+  featurePhoneSms        FeaturePhoneSms[]   @relation("AgentSms")
 }
 
 // ==========================================
@@ -110,6 +125,7 @@ model Property {
   propertyDocuments  PropertyDocument[]
   rentalRequests     RentalRequest[]
   saleRequests       SaleRequest[]
+  assistedBookings   AssistedBooking[]
 }
 
 model Favorite {
@@ -570,4 +586,95 @@ model RefreshToken {
   revoked   Boolean  @default(false)
   createdAt DateTime @default(now())
 }
+
+model Task {
+  id              String   @id @default(uuid())
+  title           String
+  type            String   // Verify property, Contact provider, Review documents, Inspect property, etc.
+  propertyId      String?
+  propertyTitle   String?
+  providerName    String?
+  assignedAgentId String
+  assignedAgent   User     @relation("AgentTasks", fields: [assignedAgentId], references: [id], onDelete: Cascade)
+  dueDate         DateTime
+  priority        String   @default("Medium") // High, Medium, Low
+  status          String   @default("Pending") // Pending, In Progress, Completed, Overdue
+  description     String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AssistedTenant {
+  id                 String            @id @default(uuid())
+  fullName           String
+  featurePhone       String            @unique
+  kebeleIdNumber     String
+  region             String
+  woreda             String
+  preferredHouseType String
+  maxBudgetETB       Float
+  familySize         Int
+  hasSmartphone      Boolean           @default(false)
+  status             String            @default("Active Search") // Active Search, House Matched, Lease Signed
+  agentId            String
+  agent              User              @relation("AgentAssistedTenants", fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  bookings           AssistedBooking[]
+}
+
+model AssistedBooking {
+  id             String          @id @default(uuid())
+  tenantId       String
+  tenant         AssistedTenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  propertyId     String
+  property       Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  monthlyRentETB Float
+  depositETB     Float
+  paymentMethod  String          // Cash collected by Agent, CBE Birr Agent Transfer, Telebirr Agent Voucher
+  receiptNumber  String          @unique
+  bookingDate    DateTime        @default(now())
+  status         String          @default("Pending Payment") // Confirmed & Signed, Pending Payment, Lease Generated
+  agentId        String
+  agent          User            @relation("AgentAssistedBookings", fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  leases         LeaseAgreement[]
+}
+
+model LeaseAgreement {
+  id                  String          @id @default(uuid())
+  bookingId           String
+  booking             AssistedBooking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  tenantName          String
+  tenantKebeleId      String
+  providerName        String
+  providerIdNumber    String
+  propertyTitle       String
+  location            String
+  monthlyRentETB      Float
+  startDate           DateTime
+  endDate             DateTime
+  kebeleWitnessName   String
+  kebeleWitnessStamp  String
+  status              String          @default("Official Draft") // Official Draft, Signed & Sealed
+  agentId             String
+  agent               User            @relation("AgentLeases", fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+}
+
+model FeaturePhoneSms {
+  id             String   @id @default(uuid())
+  recipientPhone String
+  recipientName  String
+  messageAmharic String
+  messageEnglish String
+  sentTime       DateTime @default(now())
+  status         String   @default("Queued") // Delivered (Feature Phone), Queued
+  agentId        String
+  agent          User     @relation("AgentSms", fields: [agentId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+}
+
 

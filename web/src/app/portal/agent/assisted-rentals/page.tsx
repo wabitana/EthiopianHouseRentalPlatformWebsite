@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   PhoneOff,
@@ -35,6 +35,66 @@ import {
   FeaturePhoneSmsItem,
   PropertyItem,
 } from "@/lib/portal-mock-data";
+import { apiFetch } from "@/lib/api";
+
+const mapBackendTenant = (t: any): AssistedTenantItem => ({
+  id: t.id,
+  fullName: t.fullName,
+  featurePhone: t.featurePhone,
+  kebeleIdNumber: t.kebeleIdNumber,
+  region: t.region,
+  woreda: t.woreda,
+  preferredHouseType: t.preferredHouseType as any,
+  maxBudgetETB: t.maxBudgetETB,
+  familySize: t.familySize,
+  hasSmartphone: false,
+  registeredDate: new Date(t.createdAt || t.registeredDate).toISOString().split('T')[0],
+  status: t.status as any,
+});
+
+const mapBackendBooking = (b: any): AssistedBookingItem => ({
+  id: b.id,
+  tenantId: b.tenantId,
+  tenantName: b.tenant?.fullName || 'Tenant',
+  tenantPhone: b.tenant?.featurePhone || '',
+  propertyId: b.propertyId,
+  propertyTitle: b.property?.title || 'Property',
+  providerName: b.property?.providerName || 'Landlord',
+  providerPhone: b.property?.providerPhone || '',
+  monthlyRentETB: b.monthlyRentETB,
+  depositETB: b.depositETB,
+  paymentMethod: b.paymentMethod as any,
+  receiptNumber: b.receiptNumber,
+  bookingDate: new Date(b.createdAt).toISOString().split('T')[0],
+  status: b.status as any,
+});
+
+const mapBackendLease = (l: any): LeaseAgreementItem => ({
+  id: l.id,
+  bookingId: l.bookingId || '',
+  tenantName: l.tenantName,
+  tenantKebeleId: l.tenantKebeleId,
+  providerName: l.providerName,
+  providerIdNumber: l.providerIdNumber,
+  propertyTitle: l.propertyTitle,
+  location: l.location,
+  monthlyRentETB: l.monthlyRentETB,
+  startDate: new Date(l.startDate).toISOString().split('T')[0],
+  endDate: new Date(l.endDate).toISOString().split('T')[0],
+  kebeleWitnessName: l.kebeleWitnessName,
+  kebeleWitnessStamp: l.kebeleWitnessStamp,
+  status: l.status as any,
+});
+
+const mapBackendSms = (s: any): FeaturePhoneSmsItem => ({
+  id: s.id,
+  recipientPhone: s.recipientPhone,
+  recipientName: s.recipientName,
+  messageAmharic: s.messageAmharic,
+  messageEnglish: s.messageEnglish,
+  sentTime: new Date(s.createdAt).toLocaleTimeString(),
+  status: s.status as any,
+});
 
 export default function AssistedRuralRentalsPage() {
   const [activeTab, setActiveTab] = useState<
@@ -42,10 +102,79 @@ export default function AssistedRuralRentalsPage() {
   >("matching");
 
   // State Collections
-  const [tenants, setTenants] = useState<AssistedTenantItem[]>(mockAssistedTenants);
-  const [bookings, setBookings] = useState<AssistedBookingItem[]>(mockAssistedBookings);
-  const [leases, setLeases] = useState<LeaseAgreementItem[]>(mockLeaseAgreements);
-  const [smsLogs, setSmsLogs] = useState<FeaturePhoneSmsItem[]>(mockSmsNotifications);
+  const [tenants, setTenants] = useState<AssistedTenantItem[]>([]);
+  const [bookings, setBookings] = useState<AssistedBookingItem[]>([]);
+  const [leases, setLeases] = useState<LeaseAgreementItem[]>([]);
+  const [smsLogs, setSmsLogs] = useState<FeaturePhoneSmsItem[]>([]);
+  const [properties, setProperties] = useState<PropertyItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function loadAllData() {
+    try {
+      setLoading(true);
+      const [tenantsData, bookingsData, leasesData, smsData, propertiesData] = await Promise.all([
+        apiFetch("/agent/assisted-tenants"),
+        apiFetch("/agent/assisted-bookings"),
+        apiFetch("/agent/lease-agreements"),
+        apiFetch("/agent/sms-logs"),
+        apiFetch("/properties")
+      ]);
+
+      setTenants(tenantsData.map(mapBackendTenant));
+      setBookings(bookingsData.map(mapBackendBooking));
+      setLeases(leasesData.map(mapBackendLease));
+      setSmsLogs(smsData.map(mapBackendSms));
+      
+      const mapBackendProperty = (p: any): PropertyItem => {
+        let imagesArr = [];
+        try {
+          imagesArr = typeof p.images === 'string' ? JSON.parse(p.images) : p.images || [];
+        } catch (e) {
+          // ignore
+        }
+        let amenitiesArr = [];
+        try {
+          amenitiesArr = typeof p.amenities === 'string' ? JSON.parse(p.amenities) : p.amenities || [];
+        } catch (e) {
+          // ignore
+        }
+        return {
+          id: p.id,
+          title: p.title,
+          images: imagesArr.length > 0 ? imagesArr : ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600'],
+          providerId: p.providerId || '',
+          providerName: p.providerName || p.provider?.name || 'Landlord',
+          providerPhone: p.providerPhone || p.provider?.phone || '',
+          providerAvatar: p.providerAvatar || p.provider?.avatarUrl || 'https://api.dicebear.com/7.x/adventurer/svg?seed=provider',
+          location: `${p.city}, ${p.area}`,
+          woreda: p.woreda || '',
+          propertyType: (p.propertyType === 'Apartment' || p.propertyType === 'Villa' || p.propertyType === 'Condo' || p.propertyType === 'Studio' || p.propertyType === 'Commercial' || p.propertyType === 'Land') ? p.propertyType : 'Apartment',
+          price: p.price,
+          period: p.rentalPeriod === 'Yearly' ? 'year' : 'month',
+          status: p.listingStatus === 'active' ? 'Published' : p.listingStatus === 'pending' ? 'Pending' : p.listingStatus === 'rejected' ? 'Rejected' : 'Rented',
+          verificationStatus: p.isVerified ? 'Verified' : 'Pending',
+          datePosted: new Date(p.createdAt).toLocaleDateString(),
+          bedrooms: p.rooms || 0,
+          bathrooms: p.bathrooms || 0,
+          areaSqM: p.area || p.areaSqM || 100,
+          description: p.description || '',
+          amenities: amenitiesArr,
+          documents: [],
+          listingHistory: [],
+          reportsCount: p.reportsCount || 0,
+        };
+      };
+      setProperties(propertiesData.map(mapBackendProperty));
+    } catch (err) {
+      console.error("Failed to load assisted rural hub data:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadAllData();
+  }, []);
 
   // Onboarding Modal State
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -79,101 +208,83 @@ export default function AssistedRuralRentalsPage() {
   const [smsSentSuccess, setSmsSentSuccess] = useState(false);
 
   // Handle Register Tenant Submit
-  const handleRegisterTenant = (e: React.FormEvent) => {
+  const handleRegisterTenant = async (e: React.FormEvent) => {
     e.preventDefault();
-    const created: AssistedTenantItem = {
-      id: `rur-${Date.now()}`,
-      ...newTenantData,
-      hasSmartphone: false,
-      registeredDate: new Date().toISOString().split("T")[0],
-      status: "Active Search",
-    };
-    setTenants((prev) => [created, ...prev]);
-    setShowRegisterModal(false);
-    setMatchingTenant(created);
-    setActiveTab("matching");
+    try {
+      const data = await apiFetch("/agent/assisted-tenants", {
+        method: "POST",
+        body: newTenantData
+      });
+      const created = mapBackendTenant(data);
+      setTenants((prev) => [created, ...prev]);
+      setShowRegisterModal(false);
+      setMatchingTenant(created);
+      setActiveTab("matching");
+    } catch (err) {
+      console.error("Failed to register tenant:", err);
+    }
   };
 
   // Handle Execute Direct Rent on Behalf
-  const handleConfirmDirectRent = () => {
+  const handleConfirmDirectRent = async () => {
     if (!matchingTenant || !selectedProperty) return;
+    try {
+      const result = await apiFetch("/agent/assisted-bookings", {
+        method: "POST",
+        body: {
+          tenantId: matchingTenant.id,
+          propertyId: selectedProperty.id,
+          monthlyRentETB: selectedProperty.price,
+          depositETB: selectedProperty.price * 3,
+          paymentMethod: paymentMethod,
+        }
+      });
 
-    const newBooking: AssistedBookingItem = {
-      id: `book-rur-${Date.now().toString().slice(-4)}`,
-      tenantId: matchingTenant.id,
-      tenantName: matchingTenant.fullName,
-      tenantPhone: matchingTenant.featurePhone,
-      propertyId: selectedProperty.id,
-      propertyTitle: selectedProperty.title,
-      providerName: selectedProperty.providerName,
-      providerPhone: selectedProperty.providerPhone,
-      monthlyRentETB: selectedProperty.price,
-      depositETB: selectedProperty.price * 3,
-      paymentMethod: paymentMethod,
-      receiptNumber: `REC-${Math.floor(100000 + Math.random() * 900000)}`,
-      bookingDate: new Date().toISOString().split("T")[0],
-      status: "Confirmed & Signed",
-    };
+      const newBooking = mapBackendBooking(result.booking);
+      const newLease = mapBackendLease(result.lease);
+      const newSms = mapBackendSms(result.sms);
 
-    const newLease: LeaseAgreementItem = {
-      id: `lease-${Math.floor(100 + Math.random() * 900)}`,
-      bookingId: newBooking.id,
-      tenantName: matchingTenant.fullName,
-      tenantKebeleId: matchingTenant.kebeleIdNumber,
-      providerName: selectedProperty.providerName,
-      providerIdNumber: "ETH-ID-VERIFIED",
-      propertyTitle: selectedProperty.title,
-      location: selectedProperty.location,
-      monthlyRentETB: selectedProperty.price,
-      startDate: new Date().toISOString().split("T")[0],
-      endDate: "2025-12-31",
-      kebeleWitnessName: "Ato Tesfaye Lemma (Kebele Administrator)",
-      kebeleWitnessStamp: "Official Stamp Verified",
-      status: "Signed & Sealed",
-    };
+      setBookings((prev) => [newBooking, ...prev]);
+      setLeases((prev) => [newLease, ...prev]);
+      setSmsLogs((prev) => [newSms, ...prev]);
+      setTenants((prev) =>
+        prev.map((t) => (t.id === matchingTenant.id ? { ...t, status: "Lease Signed" } : t))
+      );
 
-    const newSms: FeaturePhoneSmsItem = {
-      id: `sms-${Date.now()}`,
-      recipientPhone: matchingTenant.featurePhone,
-      recipientName: matchingTenant.fullName,
-      messageAmharic: `ሰላም ${matchingTenant.fullName} ፤ በወኪል ዳዊት በኩል ${selectedProperty.title} የተባለው ቤት ለእርስዎ ተከራይቷል። የባለቤት ስልክ፡ ${selectedProperty.providerPhone}`,
-      messageEnglish: `Selam ${matchingTenant.fullName}! Property '${selectedProperty.title}' has been booked on your behalf. Landlord contact: ${selectedProperty.providerPhone}`,
-      sentTime: "Just now",
-      status: "Delivered (Feature Phone)",
-    };
-
-    setBookings((prev) => [newBooking, ...prev]);
-    setLeases((prev) => [newLease, ...prev]);
-    setSmsLogs((prev) => [newSms, ...prev]);
-    setTenants((prev) =>
-      prev.map((t) => (t.id === matchingTenant.id ? { ...t, status: "Lease Signed" } : t))
-    );
-
-    setBookingSuccessModal(newBooking);
-    setSelectedProperty(null);
-    setMatchingTenant(null);
+      setBookingSuccessModal(newBooking);
+      setSelectedProperty(null);
+      setMatchingTenant(null);
+    } catch (err) {
+      console.error("Failed to execute direct rent:", err);
+    }
   };
 
   // Handle Send Custom Feature Phone SMS
-  const handleSendCustomSms = (e: React.FormEvent) => {
+  const handleSendCustomSms = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!smsPhoneInput || !smsAmharicInput) return;
 
-    const newSms: FeaturePhoneSmsItem = {
-      id: `sms-${Date.now()}`,
-      recipientPhone: smsPhoneInput,
-      recipientName: smsNameInput || "Rural Tenant",
-      messageAmharic: smsAmharicInput,
-      messageEnglish: smsEnglishInput || smsAmharicInput,
-      sentTime: "Just now",
-      status: "Delivered (Feature Phone)",
-    };
-
-    setSmsLogs((prev) => [newSms, ...prev]);
-    setSmsSentSuccess(true);
-    setTimeout(() => setSmsSentSuccess(false), 3000);
-    setSmsAmharicInput("");
-    setSmsEnglishInput("");
+    try {
+      const result = await apiFetch("/agent/sms-logs", {
+        method: "POST",
+        body: {
+          recipientPhone: smsPhoneInput,
+          recipientName: smsNameInput || "Rural Tenant",
+          messageAmharic: smsAmharicInput,
+          messageEnglish: smsEnglishInput || smsAmharicInput,
+        }
+      });
+      const newSms = mapBackendSms(result);
+      setSmsLogs((prev) => [newSms, ...prev]);
+      setSmsSentSuccess(true);
+      setTimeout(() => setSmsSentSuccess(false), 3000);
+      setSmsPhoneInput("+251 9");
+      setSmsNameInput("");
+      setSmsAmharicInput("");
+      setSmsEnglishInput("");
+    } catch (err) {
+      console.error("Failed to send custom SMS:", err);
+    }
   };
 
   return (
@@ -314,7 +425,7 @@ export default function AssistedRuralRentalsPage() {
 
           {/* Property Search & Google Map View Engine */}
           <PortalPropertyMap
-            properties={mockProperties}
+            properties={properties}
             matchingTenant={matchingTenant}
             onSelectRentOnBehalf={(prop) => {
               if (!matchingTenant) {

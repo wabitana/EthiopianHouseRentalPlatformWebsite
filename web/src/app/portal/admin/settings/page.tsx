@@ -1,16 +1,52 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Settings, User, Lock, Bell, Globe, DollarSign, Moon, Shield, Save, Check } from "lucide-react";
+import { apiFetch } from "@/lib/api";
 
 export default function AdminSettingsPage() {
   const [saved, setSaved] = useState(false);
   const [activeTab, setActiveTab] = useState<"profile" | "password" | "platform" | "security">("profile");
 
-  const handleSave = (e: React.FormEvent) => {
+  // State for platform configs
+  const [language, setLanguage] = useState("en");
+  const [currency, setCurrency] = useState("ETB");
+  const [commissionRate, setCommissionRate] = useState(5);
+  const [theme, setTheme] = useState("dark");
+
+  useEffect(() => {
+    async function loadSettings() {
+      try {
+        const configs = await apiFetch("/admin/cms/configs");
+        const platformConfig = configs.find((c: any) => c.key === "platform_settings");
+        if (platformConfig) {
+          const val = JSON.parse(platformConfig.value);
+          if (val.language) setLanguage(val.language);
+          if (val.currency) setCurrency(val.currency);
+          if (val.commissionRate !== undefined) setCommissionRate(Number(val.commissionRate));
+          if (val.theme) setTheme(val.theme);
+        }
+      } catch (err) {
+        console.error("Failed to load settings configs:", err);
+      }
+    }
+    loadSettings();
+  }, []);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      await apiFetch("/admin/cms/configs/platform_settings", {
+        method: "PUT",
+        body: {
+          value: { language, currency, commissionRate, theme }
+        }
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error("Failed to save settings configs:", err);
+    }
   };
 
   return (
@@ -135,14 +171,22 @@ export default function AdminSettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-slate-300 mb-1">Default Platform Language</label>
-                <select className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white">
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                >
                   <option value="en">English (US)</option>
                   <option value="am">Amharic (አማርኛ)</option>
                 </select>
               </div>
               <div>
                 <label className="block text-slate-300 mb-1">Default Display Currency</label>
-                <select className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white">
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                >
                   <option value="ETB">Ethiopian Birr (ETB)</option>
                   <option value="USD">US Dollar (USD)</option>
                 </select>
@@ -151,13 +195,18 @@ export default function AdminSettingsPage() {
                 <label className="block text-slate-300 mb-1">Commission Rate (%)</label>
                 <input
                   type="number"
-                  defaultValue={5}
+                  value={commissionRate}
+                  onChange={(e) => setCommissionRate(Number(e.target.value))}
                   className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white font-bold"
                 />
               </div>
               <div>
                 <label className="block text-slate-300 mb-1">Portal Color Theme</label>
-                <select className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white">
+                <select
+                  value={theme}
+                  onChange={(e) => setTheme(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                >
                   <option value="dark">Emerald Dark Mode (Default)</option>
                   <option value="light">Light Mode</option>
                 </select>

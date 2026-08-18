@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   FileText,
   AlertTriangle,
@@ -13,17 +13,54 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { mockReports, ReportItem } from "@/lib/portal-mock-data";
+import { apiFetch } from "@/lib/api";
+
+const mapBackendReport = (r: any): ReportItem => ({
+  id: r.id,
+  reporterName: r.reporter?.name || "Anonymous Seeker",
+  reporterEmail: r.reporter?.email || "",
+  reportedEntityId: r.propertyId || "",
+  reportedEntityName: r.property?.title || "Property Listing",
+  reportedEntityType: "Property",
+  reason: r.reason,
+  dateSubmitted: new Date(r.createdAt).toLocaleDateString(),
+  status: "Pending",
+  description: r.details || "No details provided.",
+  evidenceUrls: [],
+});
 
 export default function AdminReportsPage() {
-  const [reports, setReports] = useState<ReportItem[]>(mockReports);
+  const [reports, setReports] = useState<ReportItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedReport, setSelectedReport] = useState<ReportItem | null>(null);
 
-  const handleUpdateStatus = (id: string, newStatus: ReportItem["status"]) => {
-    setReports((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r))
-    );
-    if (selectedReport && selectedReport.id === id) {
-      setSelectedReport({ ...selectedReport, status: newStatus });
+  async function loadReports() {
+    try {
+      setLoading(true);
+      const data = await apiFetch("/admin/reports");
+      setReports(data.map(mapBackendReport));
+    } catch (err) {
+      console.error("Failed to load reports:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadReports();
+  }, []);
+
+  const handleUpdateStatus = async (id: string, newStatus: ReportItem["status"]) => {
+    try {
+      const action = newStatus === "Dismissed" ? "dismiss" : "delete_property";
+      await apiFetch(`/admin/reports/${id}/resolve`, {
+        method: "PATCH",
+        body: { action }
+      });
+      setReports((prev) => prev.filter((r) => r.id !== id));
+      setSelectedReport(null);
+    } catch (err) {
+      console.error("Failed to resolve report:", err);
     }
   };
 

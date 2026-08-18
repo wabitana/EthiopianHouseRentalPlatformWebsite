@@ -74,7 +74,7 @@ class PropertyComparisonSheet extends StatelessWidget {
                             height: 120,
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Container(
+                            errorBuilder: (_, _, _) => Container(
                               height: 120,
                               color: Colors.grey.shade200,
                               child: const Icon(Icons.home, size: 40, color: AppColors.primary),

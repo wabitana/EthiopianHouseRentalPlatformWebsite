@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Building2,
@@ -15,34 +16,52 @@ import {
   UserCheck,
 } from "lucide-react";
 import { mockTasks, mockVerifications } from "@/lib/portal-mock-data";
+import { apiFetch } from "@/lib/api";
 
 export default function AgentDashboardPage() {
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const data = await apiFetch("/agent/profile");
+        setProfile(data);
+      } catch (err) {
+        console.error("Failed to load agent profile:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProfile();
+  }, []);
+
   const kpiCards = [
     {
       title: "Assigned Properties",
-      value: "42",
-      subtitle: "Bole & Kazanchis Zone",
+      value: profile ? String(profile.propertiesManaged) : "--",
+      subtitle: profile?.assignedArea || "Not Assigned",
       icon: Building2,
       color: "from-blue-500/20 to-blue-600/10 border-blue-500/30 text-blue-400",
     },
     {
       title: "Pending Verifications",
-      value: "8",
+      value: profile ? "8" : "--",
       subtitle: "Document Reviews Queued",
       icon: ShieldCheck,
       color: "from-amber-500/20 to-amber-600/10 border-amber-500/30 text-amber-400",
     },
     {
-      title: "Completed This Week",
-      value: "17",
-      subtitle: "Site Visits & Approvals",
+      title: "Verifications Completed",
+      value: profile ? String(profile.verificationsCompleted) : "--",
+      subtitle: "Total Approved / Rejected",
       icon: CheckSquare,
       color: "from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 text-emerald-400",
     },
     {
       title: "Active Tasks",
-      value: "5",
-      subtitle: "2 High Priority Due Today",
+      value: profile ? String(profile.activeTasks) : "--",
+      subtitle: "Inspections Pending",
       icon: Clock,
       color: "from-purple-500/20 to-purple-600/10 border-purple-500/30 text-purple-400",
     },
@@ -54,10 +73,10 @@ export default function AgentDashboardPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-800 to-slate-850 p-6 rounded-2xl border border-slate-700/80 shadow-xl">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
-            Selam, Agent Dawit!
+            Selam, {profile?.name || "Agent"}!
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 mt-1">
-            Here is your daily field summary for <span className="text-blue-400 font-semibold">Bole & Kazanchis Sub-City</span> territories.
+            Here is your daily field summary for <span className="text-blue-400 font-semibold">{profile?.assignedArea || "Assigned"}</span> territories.
           </p>
         </div>
 

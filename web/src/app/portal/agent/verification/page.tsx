@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ShieldCheck,
   CheckCircle2,
@@ -16,30 +16,103 @@ import {
   Sparkles,
 } from "lucide-react";
 import { mockVerifications, VerificationItem } from "@/lib/portal-mock-data";
+import { apiFetch } from "@/lib/api";
+
+const mapBackendPropertyDoc = (d: any): VerificationItem => {
+  let imagesArr = [];
+  try {
+    imagesArr = typeof d.property?.images === 'string' ? JSON.parse(d.property.images) : d.property?.images || [];
+  } catch (e) {
+    // ignore
+  }
+  const imgUrl = imagesArr[0] || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=600';
+
+  return {
+    id: d.id,
+    propertyId: d.propertyId || '',
+    propertyTitle: d.property?.title || "Property Listing",
+    propertyImage: imgUrl,
+    providerId: d.property?.providerId || '',
+    providerName: d.property?.providerName || 'Landlord',
+    providerPhone: d.property?.providerPhone || '',
+    location: d.property ? `${d.property.city}, ${d.property.area}` : 'Addis Ababa',
+    status: d.status === 'VERIFIED' ? 'Approved' : d.status === 'REJECTED' ? 'Rejected' : d.status === 'UNDER_REVIEW' ? 'In Review' : 'Pending',
+    documentsCount: 1,
+    aiPreCheckScore: d.aiRiskScore || 90.0,
+    aiPreCheckDetails: {
+      ownershipDocsValid: true,
+      identityVerified: true,
+      locationMatch: true,
+      priceReasonable: true,
+    },
+    submittedDate: new Date(d.createdAt).toLocaleDateString(),
+    notes: d.aiNotes || '',
+    documents: [
+      {
+        title: `${d.docType} for ${d.property?.title || 'Listing'}`,
+        type: d.docType,
+        url: d.docUrl || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600',
+        preview: d.docUrl || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600',
+      }
+    ]
+  };
+};
 
 export default function AgentVerificationWorkspacePage() {
   const [activeTab, setActiveTab] = useState<"Pending" | "In Review" | "Approved" | "Rejected">("Pending");
-  const [verifications, setVerifications] = useState<VerificationItem[]>(mockVerifications);
-  const [selectedItem, setSelectedItem] = useState<VerificationItem | null>(mockVerifications[0]);
+  const [verifications, setVerifications] = useState<VerificationItem[]>([]);
+  const [selectedItem, setSelectedItem] = useState<VerificationItem | null>(null);
+  const [loading, setLoading] = useState(true);
   const [checklist, setChecklist] = useState({
     idMatch: true,
     titleDeedValid: true,
     siteVisitCompleted: true,
     priceValidated: true,
   });
-  const [agentNotes, setAgentNotes] = useState(selectedItem?.notes || "");
+  const [agentNotes, setAgentNotes] = useState("");
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
+
+  async function loadPendingVerifications() {
+    try {
+      setLoading(true);
+      const data = await apiFetch("/verification/admin/pending");
+      const list = (data.propertyDocs || []).map(mapBackendPropertyDoc);
+      setVerifications(list);
+      if (list.length > 0) {
+        setSelectedItem(list[0]);
+        setAgentNotes(list[0].notes || "");
+      }
+    } catch (err) {
+      console.error("Failed to load verification queue:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadPendingVerifications();
+  }, []);
 
   const filteredItems = verifications.filter((v) => v.status === activeTab);
 
-  const handleUpdateStatus = (newStatus: VerificationItem["status"]) => {
+  const handleUpdateStatus = async (newStatus: VerificationItem["status"]) => {
     if (!selectedItem) return;
-    setVerifications((prev) =>
-      prev.map((v) => (v.id === selectedItem.id ? { ...v, status: newStatus, notes: agentNotes } : v))
-    );
-    setSelectedItem((prev) => (prev ? { ...prev, status: newStatus, notes: agentNotes } : null));
-    setStatusBanner(`Verification updated to: ${newStatus}`);
-    setTimeout(() => setStatusBanner(null), 3000);
+    try {
+      const apiStatus = newStatus === 'Approved' ? 'VERIFIED' : newStatus === 'Rejected' ? 'REJECTED' : 'UNDER_REVIEW';
+      await apiFetch(`/verification/property-license/${selectedItem.id}/review`, {
+        method: "PATCH",
+        body: { status: apiStatus, adminNotes: agentNotes }
+      });
+
+      setVerifications((prev) =>
+        prev.map((v) => (v.id === selectedItem.id ? { ...v, status: newStatus, notes: agentNotes } : v))
+      );
+      setSelectedItem((prev) => (prev ? { ...prev, status: newStatus, notes: agentNotes } : null));
+      setStatusBanner(`Verification updated to: ${newStatus}`);
+      setTimeout(() => setStatusBanner(null), 3000);
+    } catch (err) {
+      console.error("Failed to update status:", err);
+    }
   };
 
   return (

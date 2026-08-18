@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Users,
@@ -20,10 +20,29 @@ import {
   Filter,
 } from "lucide-react";
 import { mockAnalyticsData, mockProperties, mockVerifications } from "@/lib/portal-mock-data";
+import { apiFetch } from "@/lib/api";
 
 export default function AdminDashboardPage() {
   const [timeFilter, setTimeFilter] = useState<"7d" | "30d" | "6m" | "1y">("6m");
-  const data = mockAnalyticsData;
+  const [data, setData] = useState(mockAnalyticsData);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const kpis = await apiFetch("/admin/analytics/kpis");
+        setData((prev) => ({
+          ...prev,
+          ...kpis,
+        }));
+      } catch (err) {
+        console.error("Failed to load admin dashboard stats:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
+  }, []);
 
   // KPI card array configuration
   const kpiCards = [

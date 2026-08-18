@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ShieldCheck,
   Search,
@@ -18,18 +18,86 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { mockVerifications, VerificationItem } from "@/lib/portal-mock-data";
+import { apiFetch } from "@/lib/api";
+
+const mapBackendPropertyDoc = (d: any): VerificationItem => {
+  let imagesArr = [];
+  try {
+    imagesArr = typeof d.property?.images === 'string' ? JSON.parse(d.property.images) : d.property?.images || [];
+  } catch (e) {
+    // ignore
+  }
+  const imgUrl = imagesArr[0] || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=600';
+
+  return {
+    id: d.id,
+    propertyId: d.propertyId || '',
+    propertyTitle: d.property?.title || "Property Listing",
+    propertyImage: imgUrl,
+    providerId: d.property?.providerId || '',
+    providerName: d.property?.providerName || 'Landlord',
+    providerPhone: d.property?.providerPhone || '',
+    location: d.property ? `${d.property.city}, ${d.property.area}` : 'Addis Ababa',
+    status: d.status === 'VERIFIED' ? 'Approved' : d.status === 'REJECTED' ? 'Rejected' : 'Pending',
+    documentsCount: 1,
+    aiPreCheckScore: d.aiRiskScore || 90.0,
+    aiPreCheckDetails: {
+      ownershipDocsValid: true,
+      identityVerified: true,
+      locationMatch: true,
+      priceReasonable: true,
+    },
+    submittedDate: new Date(d.createdAt).toLocaleDateString(),
+    notes: d.aiNotes || '',
+    documents: [
+      {
+        title: `${d.docType} for ${d.property?.title || 'Listing'}`,
+        type: d.docType,
+        url: d.docUrl || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600',
+        preview: d.docUrl || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600',
+      }
+    ]
+  };
+};
 
 export default function AdminVerificationPage() {
-  const [queue, setQueue] = useState<VerificationItem[]>(mockVerifications);
+  const [queue, setQueue] = useState<VerificationItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<VerificationItem | null>(null);
   const [notesInput, setNotesInput] = useState("");
 
-  const handleUpdateStatus = (id: string, newStatus: VerificationItem["status"]) => {
-    setQueue((prev) =>
-      prev.map((v) => (v.id === id ? { ...v, status: newStatus, notes: notesInput || v.notes } : v))
-    );
-    if (selectedItem && selectedItem.id === id) {
-      setSelectedItem({ ...selectedItem, status: newStatus, notes: notesInput || selectedItem.notes });
+  async function loadPendingVerifications() {
+    try {
+      setLoading(true);
+      const data = await apiFetch("/verification/admin/pending");
+      setQueue((data.propertyDocs || []).map(mapBackendPropertyDoc));
+    } catch (err) {
+      console.error("Failed to load verification queue:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadPendingVerifications();
+  }, []);
+
+  const handleUpdateStatus = async (id: string, newStatus: VerificationItem["status"]) => {
+    try {
+      const apiStatus = newStatus === 'Approved' ? 'VERIFIED' : newStatus === 'Rejected' ? 'REJECTED' : 'UNDER_REVIEW';
+      await apiFetch(`/verification/property-license/${id}/review`, {
+        method: "PATCH",
+        body: { status: apiStatus, adminNotes: notesInput }
+      });
+
+      setQueue((prev) =>
+        prev.map((v) => (v.id === id ? { ...v, status: newStatus, notes: notesInput || v.notes } : v))
+      );
+      if (selectedItem && selectedItem.id === id) {
+        setSelectedItem({ ...selectedItem, status: newStatus, notes: notesInput || selectedItem.notes });
+      }
+    } catch (err) {
+      console.error("Failed to review property document:", err);
     }
   };
 
