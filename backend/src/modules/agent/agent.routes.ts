@@ -326,4 +326,65 @@ router.post('/feature-phone-sms', authenticateToken, requireAgentOrAdmin, async 
   }
 });
 
+// PATCH /api/v1/agent/properties/:id/inspect - Record field inspection notes & verify property
+router.patch('/properties/:id/inspect', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { notes, documentUrl, listingStatus } = req.body;
+
+    // Verify property exists
+    const property = await prisma.property.findUnique({ where: { id } });
+    if (!property) return res.status(404).json({ error: 'Property not found' });
+
+    // Update property listingStatus, verification, etc.
+    const updatedProperty = await prisma.property.update({
+      where: { id },
+      data: {
+        isVerified: true,
+        listingStatus: listingStatus || 'active',
+      },
+    });
+
+    // If document URL is provided, record it in PropertyDocument
+    if (documentUrl) {
+      await prisma.propertyDocument.create({
+        data: {
+          propertyId: id,
+          ownerId: property.providerId,
+          docType: 'SITE_PLAN',
+          docUrl: documentUrl,
+          status: 'VERIFIED',
+          aiNotes: notes || 'Field inspection notes uploaded by agent.',
+        },
+      });
+    }
+
+    // Increment agent verifications completed
+    const userId = req.user?.id;
+    if (userId && req.user?.role?.toLowerCase() === 'agent') {
+      await prisma.user.update({
+        where: { id: userId },
+        data: {
+          verificationsCompleted: { increment: 1 },
+        },
+      });
+    }
+
+    // Create system notification
+    await prisma.notification.create({
+      data: {
+        userId: property.providerId,
+        title: 'Property Inspected and Verified 🎉',
+        message: `Your property listing "${property.title}" has been verified on-site by our agent.`,
+        type: 'PROPERTY',
+      },
+    });
+
+    return res.json({ success: true, property: updatedProperty, notes });
+  } catch (error) {
+    console.error('On-site inspection error:', error);
+    return res.status(500).json({ error: 'Failed to record on-site inspection' });
+  }
+});
+
 export default router;

@@ -7,6 +7,19 @@ async function main() {
   // Password hashes
   const passwordHash = await bcrypt.hash('password123', 10);
 
+  console.log('🧹 Clearing existing test data to ensure clean seeding...');
+  await prisma.featurePhoneSms.deleteMany({});
+  await prisma.leaseAgreement.deleteMany({});
+  await prisma.assistedBooking.deleteMany({});
+  await prisma.assistedTenant.deleteMany({});
+  await prisma.task.deleteMany({});
+  await prisma.propertyDocument.deleteMany({});
+  await prisma.identityDocument.deleteMany({});
+  await prisma.report.deleteMany({});
+  await prisma.payment.deleteMany({});
+  await prisma.notification.deleteMany({});
+  await prisma.property.deleteMany({});
+
   // 1. Create Users
   const seekerUser = await prisma.user.upsert({
     where: { email: 'seeker@delala.com' },

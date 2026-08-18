@@ -178,29 +178,78 @@ router.get('/users', authenticateToken, async (req: AuthRequest, res) => {
     const { role, active } = req.query;
 
     const where: any = {};
-    if (role) where.role = String(role).toLowerCase();
+    if (role) {
+      const roleLower = String(role).toLowerCase();
+      if (roleLower === 'house seeker') {
+        where.role = 'seeker';
+      } else if (roleLower === 'house provider') {
+        where.role = 'provider';
+      } else {
+        where.role = roleLower;
+      }
+    }
     if (active !== undefined) where.active = active === 'true';
 
-    const users = await prisma.user.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        role: true,
-        avatarUrl: true,
-        isVerified: true,
-        active: true,
-        createdAt: true,
-        assignedArea: true,
-        agentStatus: true,
-        joinedDate: true,
-      },
-    });
+    // Flat list fallback if no pagination params are specified
+    if (req.query.page === undefined && req.query.limit === undefined) {
+      const users = await prisma.user.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+          avatarUrl: true,
+          isVerified: true,
+          active: true,
+          createdAt: true,
+          assignedArea: true,
+          agentStatus: true,
+          joinedDate: true,
+        },
+      });
+      return res.json(users);
+    }
 
-    return res.json(users);
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 10;
+    const skip = (page - 1) * limit;
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+          avatarUrl: true,
+          isVerified: true,
+          active: true,
+          createdAt: true,
+          assignedArea: true,
+          agentStatus: true,
+          joinedDate: true,
+        },
+      }),
+      prisma.user.count({ where })
+    ]);
+
+    return res.json({
+      users,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to fetch users' });
   }
@@ -344,6 +393,245 @@ router.get('/payments', authenticateToken, async (req: AuthRequest, res) => {
     return res.json(payments);
   } catch (error) {
     return res.status(500).json({ error: 'Failed to fetch payments' });
+  }
+});
+
+// PUT /api/v1/admin/users/:id - Edit user profile info (Admin only)
+router.put('/users/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    const { name, email, phone, role, active, assignedArea, agentStatus } = req.body;
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: {
+        ...(name && { name }),
+        ...(email && { email }),
+        ...(phone && { phone }),
+        ...(role && { role }),
+        ...(active !== undefined && { active: Boolean(active) }),
+        ...(assignedArea && { assignedArea }),
+        ...(agentStatus && { agentStatus }),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        active: true,
+        assignedArea: true,
+        agentStatus: true,
+      }
+    });
+
+    return res.json({ success: true, user: updatedUser });
+  } catch (error) {
+    console.error('Update user error:', error);
+    return res.status(500).json({ error: 'Failed to update user profile' });
+  }
+});
+
+// DELETE /api/v1/admin/users/:id - Delete user account (Admin only)
+router.delete('/users/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+
+    // Delete user from database
+    await prisma.user.delete({
+      where: { id },
+    });
+
+    return res.json({ success: true, message: 'User account successfully deleted' });
+  } catch (error) {
+    console.error('Delete user error:', error);
+    return res.status(500).json({ error: 'Failed to delete user account' });
+  }
+});
+
+// PATCH /api/v1/admin/reports/:id/resolve - Action Body: action ('resolve', 'dismiss', 'delete_property')
+router.patch('/reports/:id/resolve', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    const { action } = req.body; // 'resolve', 'dismiss', 'delete_property'
+
+    if (!action) {
+      return res.status(400).json({ error: 'Action is required' });
+    }
+
+    const report = await prisma.report.findUnique({
+      where: { id },
+      include: { property: true },
+    });
+
+    if (!report) {
+      return res.status(404).json({ error: 'Report not found' });
+    }
+
+    if (action === 'delete_property') {
+      // Delete the reported property (cascades will delete associated reports)
+      await prisma.property.delete({
+        where: { id: report.propertyId },
+      });
+      return res.json({ success: true, message: 'Property deleted and associated reports resolved' });
+    } else if (action === 'resolve' || action === 'dismiss') {
+      // Resolve/dismiss by removing the report from the queue
+      await prisma.report.delete({
+        where: { id },
+      });
+      return res.json({ success: true, message: `Report marked as ${action}` });
+    } else {
+      return res.status(400).json({ error: 'Invalid resolve action' });
+    }
+  } catch (error) {
+    console.error('Resolve report error:', error);
+    return res.status(500).json({ error: 'Failed to resolve report' });
+  }
+});
+
+// POST /api/v1/admin/tasks - Assign / create a task for an agent
+router.post('/tasks', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { title, type, propertyId, assignedAgentId, dueDate, priority, description } = req.body;
+
+    if (!title || !type || !assignedAgentId || !dueDate || !description) {
+      return res.status(400).json({ error: 'Missing required task fields' });
+    }
+
+    // Check if agent exists
+    const agent = await prisma.user.findUnique({
+      where: { id: assignedAgentId, role: 'agent' },
+    });
+    if (!agent) {
+      return res.status(400).json({ error: 'Assigned user is not an agent or does not exist' });
+    }
+
+    let propertyTitle = null;
+    let providerName = null;
+    if (propertyId) {
+      const property = await prisma.property.findUnique({
+        where: { id: propertyId },
+      });
+      if (property) {
+        propertyTitle = property.title;
+        providerName = property.providerName;
+      }
+    }
+
+    const task = await prisma.task.create({
+      data: {
+        title,
+        type,
+        propertyId,
+        propertyTitle,
+        providerName,
+        assignedAgentId,
+        dueDate: new Date(dueDate),
+        priority: priority || 'Medium',
+        status: 'Pending',
+        description,
+      },
+    });
+
+    // Increment activeTasks count on the agent
+    await prisma.user.update({
+      where: { id: assignedAgentId },
+      data: {
+        activeTasks: {
+          increment: 1,
+        },
+      },
+    });
+
+    return res.status(201).json(task);
+  } catch (error) {
+    console.error('Create task error:', error);
+    return res.status(500).json({ error: 'Failed to assign task to agent' });
+  }
+});
+
+// GET /api/v1/admin/tasks - List all tasks for admin tracking
+router.get('/tasks', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const tasks = await prisma.task.findMany({
+      include: {
+        assignedAgent: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return res.json(tasks);
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch tasks' });
+  }
+});
+
+// GET /api/v1/admin/cms/configs - List all configurations
+router.get('/cms/configs', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const configs = await prisma.platformConfig.findMany();
+    return res.json(configs);
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch CMS configurations' });
+  }
+});
+
+// PUT /api/v1/admin/cms/configs/:key - Update system configuration
+router.put('/cms/configs/:key', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { key } = req.params;
+    const { value } = req.body;
+
+    if (value === undefined) {
+      return res.status(400).json({ error: 'Value is required' });
+    }
+
+    const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
+
+    const config = await prisma.platformConfig.upsert({
+      where: { key },
+      update: { value: valueStr },
+      create: { key, value: valueStr },
+    });
+
+    return res.json({ success: true, config });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to update CMS configuration' });
   }
 });
 
