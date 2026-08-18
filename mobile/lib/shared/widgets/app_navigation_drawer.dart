@@ -18,6 +18,7 @@ import '../../features/profile/screens/identity_verification_screen.dart';
 import '../../shared/models/user_model.dart';
 import '../../shared/widgets/verification_badge.dart';
 import '../../shared/widgets/custom_button.dart';
+import 'app_tutoring_overlay.dart';
 
 class AppNavigationDrawer extends StatelessWidget {
   const AppNavigationDrawer({super.key});
@@ -631,6 +632,18 @@ class AppNavigationDrawer extends StatelessWidget {
                     subtitle: 'Hotline: 9090 / +251 911 000 000',
                     primary: const Color(0xFFE11D48),
                     onTap: () => _showSupportDeskModal(context),
+                  ),
+                  _buildDrawerTile(
+                    context,
+                    icon: Icons.tour_rounded,
+                    title: 'Replay Interactive App Tour',
+                    subtitle: 'Replay guided onboarding tutorial for top & bottom navbar',
+                    primary: const Color(0xFFE07A5F),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      final role = context.read<AuthProvider>().isProvider ? 'provider' : 'seeker';
+                      AppTutorialService.replayTutorial(context, role);
+                    },
                   ),
                 ],
                 _buildDrawerTile(

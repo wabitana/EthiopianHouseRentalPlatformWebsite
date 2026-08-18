@@ -15,6 +15,8 @@ import 'features/auth/screens/splash_screen.dart';
 
 import 'core/services/currency_service.dart';
 
+import 'core/services/tutoring_provider.dart';
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const EthiopianHouseRentalApp());
@@ -37,6 +39,7 @@ class EthiopianHouseRentalApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => AiAssistantProvider()),
         ChangeNotifierProvider(create: (_) => AiRecommendationsProvider()),
+        ChangeNotifierProvider(create: (_) => TutoringProvider()),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
