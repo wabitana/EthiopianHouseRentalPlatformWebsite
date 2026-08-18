@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Building2,
   Search,
@@ -24,15 +24,103 @@ import {
   X,
 } from "lucide-react";
 import { mockProperties, PropertyItem } from "@/lib/portal-mock-data";
+import { apiFetch } from "@/lib/api";
+
+const mapBackendProperty = (p: any): PropertyItem => {
+  let imagesArr = [];
+  try {
+    imagesArr = typeof p.images === 'string' ? JSON.parse(p.images) : p.images || [];
+  } catch (e) {
+    // ignore
+  }
+  let amenitiesArr = [];
+  try {
+    amenitiesArr = typeof p.amenities === 'string' ? JSON.parse(p.amenities) : p.amenities || [];
+  } catch (e) {
+    // ignore
+  }
+
+  return {
+    id: p.id,
+    title: p.title,
+    images: imagesArr.length > 0 ? imagesArr : ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600'],
+    providerId: p.providerId || '',
+    providerName: p.providerName || p.provider?.name || 'Landlord',
+    providerPhone: p.providerPhone || p.provider?.phone || '',
+    providerAvatar: p.providerAvatar || p.provider?.avatarUrl || 'https://api.dicebear.com/7.x/adventurer/svg?seed=provider',
+    location: `${p.city}, ${p.area}`,
+    woreda: p.woreda || '',
+    propertyType: (p.propertyType === 'Apartment' || p.propertyType === 'Villa' || p.propertyType === 'Condo' || p.propertyType === 'Studio' || p.propertyType === 'Commercial' || p.propertyType === 'Land') ? p.propertyType : 'Apartment',
+    price: p.price,
+    period: p.rentalPeriod === 'Yearly' ? 'year' : 'month',
+    status: p.listingStatus === 'active' ? 'Published' : p.listingStatus === 'pending' ? 'Pending' : p.listingStatus === 'rejected' ? 'Rejected' : 'Rented',
+    verificationStatus: p.isVerified ? 'Verified' : 'Pending',
+    datePosted: new Date(p.createdAt).toLocaleDateString(),
+    bedrooms: p.rooms || 0,
+    bathrooms: p.bathrooms || 0,
+    areaSqM: p.area || p.areaSqM || 100,
+    description: p.description || '',
+    amenities: amenitiesArr,
+    documents: [],
+    listingHistory: [],
+    reportsCount: p.reportsCount || 0,
+  };
+};
 
 export default function AdminPropertiesPage() {
-  const [properties, setProperties] = useState<PropertyItem[]>(mockProperties);
+  const [properties, setProperties] = useState<PropertyItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [typeFilter, setTypeFilter] = useState<string>("All");
 
   const [selectedProperty, setSelectedProperty] = useState<PropertyItem | null>(null);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
+
+  async function loadProperties() {
+    try {
+      setLoading(true);
+      const data = await apiFetch("/properties");
+      setProperties(data.map(mapBackendProperty));
+    } catch (err) {
+      console.error("Failed to load properties:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadProperties();
+  }, []);
+
+  const handleUpdateStatus = async (propertyId: string, newStatus: PropertyItem["status"]) => {
+    try {
+      const endpoint = newStatus === 'Published' ? `/admin/properties/${propertyId}/approve` : `/admin/properties/${propertyId}/reject`;
+      await apiFetch(endpoint, {
+        method: "PATCH"
+      });
+      setProperties((prev) =>
+        prev.map((p) => (p.id === propertyId ? { ...p, status: newStatus } : p))
+      );
+      if (selectedProperty && selectedProperty.id === propertyId) {
+        setSelectedProperty({ ...selectedProperty, status: newStatus });
+      }
+    } catch (err) {
+      console.error("Failed to update property status:", err);
+    }
+  };
+
+  const handleDeleteProperty = async (propertyId: string) => {
+    try {
+      await apiFetch(`/properties/${propertyId}`, {
+        method: "DELETE"
+      });
+      setProperties((prev) => prev.filter((p) => p.id !== propertyId));
+      setSelectedProperty(null);
+    } catch (err) {
+      console.error("Failed to delete property:", err);
+    }
+  };
 
   const filteredProperties = properties.filter((p) => {
     const matchesSearch =
@@ -43,20 +131,6 @@ export default function AdminPropertiesPage() {
     const matchesType = typeFilter === "All" || p.propertyType === typeFilter;
     return matchesSearch && matchesStatus && matchesType;
   });
-
-  const handleUpdateStatus = (propertyId: string, newStatus: PropertyItem["status"]) => {
-    setProperties((prev) =>
-      prev.map((p) => (p.id === propertyId ? { ...p, status: newStatus } : p))
-    );
-    if (selectedProperty && selectedProperty.id === propertyId) {
-      setSelectedProperty({ ...selectedProperty, status: newStatus });
-    }
-  };
-
-  const handleDeleteProperty = (propertyId: string) => {
-    setProperties((prev) => prev.filter((p) => p.id !== propertyId));
-    setSelectedProperty(null);
-  };
 
   return (
     <div className="space-y-6">

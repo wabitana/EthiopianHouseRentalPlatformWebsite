@@ -1,21 +1,58 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CheckSquare, Clock, Filter, Plus, Calendar, AlertCircle, CheckCircle2, X } from "lucide-react";
 import { mockTasks, TaskItem } from "@/lib/portal-mock-data";
+import { apiFetch } from "@/lib/api";
+
+const mapBackendTask = (t: any): TaskItem => ({
+  id: t.id,
+  title: t.title,
+  type: t.type,
+  assignedAgentId: t.assignedAgentId || '',
+  status: t.status as TaskItem["status"],
+  dueDate: new Date(t.dueDate).toLocaleDateString(),
+  priority: t.priority as TaskItem["priority"],
+  description: t.description || '',
+});
 
 export default function AgentTasksPage() {
-  const [tasks, setTasks] = useState<TaskItem[]>(mockTasks);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("All");
+
+  async function loadTasks() {
+    try {
+      setLoading(true);
+      const data = await apiFetch("/agent/tasks");
+      setTasks(data.map(mapBackendTask));
+    } catch (err) {
+      console.error("Failed to load agent tasks:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadTasks();
+  }, []);
 
   const filteredTasks = tasks.filter(
     (t) => statusFilter === "All" || t.status === statusFilter
   );
 
-  const handleUpdateTaskStatus = (id: string, newStatus: TaskItem["status"]) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
-    );
+  const handleUpdateTaskStatus = async (id: string, newStatus: TaskItem["status"]) => {
+    try {
+      await apiFetch(`/agent/tasks/${id}/status`, {
+        method: "PATCH",
+        body: { status: newStatus }
+      });
+      setTasks((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, status: newStatus } : t))
+      );
+    } catch (err) {
+      console.error("Failed to update task status:", err);
+    }
   };
 
   return (

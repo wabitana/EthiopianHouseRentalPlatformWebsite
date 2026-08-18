@@ -1,29 +1,77 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   UserCheck,
   Search,
   MapPin,
-  Building2,
-  ShieldCheck,
   CheckCircle,
   Ban,
-  Edit,
-  Eye,
-  Activity,
-  Plus,
   X,
-  Award,
 } from "lucide-react";
-import { mockAgents, AgentItem } from "@/lib/portal-mock-data";
+import { AgentItem } from "@/lib/portal-mock-data";
+import { apiFetch } from "@/lib/api";
+
+interface BackendAgent {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  assignedArea?: string;
+  propertiesManaged?: number;
+  verificationsCompleted?: number;
+  activeTasks?: number;
+  performanceScore?: number;
+  agentStatus?: "Active" | "On Leave" | "Suspended";
+  avatarUrl?: string;
+  joinedDate?: string;
+}
+
+const mapBackendAgent = (a: BackendAgent): AgentItem => ({
+  id: a.id,
+  name: a.name,
+  email: a.email,
+  phone: a.phone,
+  assignedArea: a.assignedArea || 'Addis Ababa',
+  propertiesManaged: a.propertiesManaged || 0,
+  verificationsCompleted: a.verificationsCompleted || 0,
+  activeTasks: a.activeTasks || 0,
+  performanceScore: a.performanceScore || 100.0,
+  status: a.agentStatus || 'Active',
+  avatar: a.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${a.id}`,
+  joinedDate: a.joinedDate || new Date().toISOString(),
+});
+
 
 export default function AdminAgentsPage() {
-  const [agents, setAgents] = useState<AgentItem[]>(mockAgents);
+  const [agents, setAgents] = useState<AgentItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedAgent, setSelectedAgent] = useState<AgentItem | null>(null);
   const [assignAreaOpen, setAssignAreaOpen] = useState(false);
   const [newAreaInput, setNewAreaInput] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    async function loadAgents() {
+      try {
+        const data = await apiFetch("/admin/agents");
+        if (active) {
+          setAgents(data.map(mapBackendAgent));
+        }
+      } catch (err) {
+        console.error("Failed to load agents list:", err);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    }
+    loadAgents();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const filteredAgents = agents.filter(
     (a) =>
@@ -32,23 +80,48 @@ export default function AdminAgentsPage() {
       a.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleSaveArea = () => {
+  const handleSaveArea = async () => {
     if (!selectedAgent || !newAreaInput) return;
-    setAgents((prev) =>
-      prev.map((a) => (a.id === selectedAgent.id ? { ...a, assignedArea: newAreaInput } : a))
-    );
+    try {
+      await apiFetch(`/admin/users/${selectedAgent.id}`, {
+        method: "PUT",
+        body: { assignedArea: newAreaInput }
+      });
+      setAgents((prev) =>
+        prev.map((a) => (a.id === selectedAgent.id ? { ...a, assignedArea: newAreaInput } : a))
+      );
+    } catch (err) {
+      console.error("Failed to update agent area:", err);
+    }
     setAssignAreaOpen(false);
     setSelectedAgent(null);
     setNewAreaInput("");
   };
 
-  const handleToggleStatus = (id: string) => {
-    setAgents((prev) =>
-      prev.map((a) =>
-        a.id === id ? { ...a, status: a.status === "Active" ? "Suspended" : "Active" } : a
-      )
-    );
+  const handleToggleStatus = async (id: string, currentStatus: string) => {
+    const nextStatus = currentStatus === "Active" ? "Suspended" : "Active";
+    try {
+      await apiFetch(`/admin/users/${id}`, {
+        method: "PUT",
+        body: { agentStatus: nextStatus }
+      });
+      setAgents((prev) =>
+        prev.map((a) =>
+          a.id === id ? { ...a, status: nextStatus } : a
+        )
+      );
+    } catch (err) {
+      console.error("Failed to toggle agent status:", err);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -143,8 +216,8 @@ export default function AdminAgentsPage() {
                       >
                         Assign Area
                       </button>
-                      <button
-                        onClick={() => handleToggleStatus(agent.id)}
+                       <button
+                        onClick={() => handleToggleStatus(agent.id, agent.status)}
                         className={`p-1.5 rounded-lg transition-colors ${
                           agent.status === "Active"
                             ? "text-slate-400 hover:text-rose-400 hover:bg-slate-700"

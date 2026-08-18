@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Users,
   Search,
@@ -21,9 +21,25 @@ import {
   Check,
 } from "lucide-react";
 import { mockUsers, UserItem } from "@/lib/portal-mock-data";
+import { apiFetch } from "@/lib/api";
+
+const mapBackendUser = (u: any): UserItem => ({
+  id: u.id,
+  name: u.name,
+  role: u.role === 'seeker' ? 'House Seeker' : u.role === 'provider' ? 'House Provider' : u.role === 'agent' ? 'Agent' : u.role === 'admin' ? 'Admin' : u.role,
+  phone: u.phone,
+  email: u.email,
+  location: u.assignedArea || u.city || 'Addis Ababa',
+  verificationStatus: u.isVerified ? 'Verified' : 'Pending',
+  accountStatus: u.active ? 'Active' : 'Suspended',
+  registrationDate: new Date(u.createdAt).toLocaleDateString(),
+  avatar: u.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${u.id}`,
+  activityCount: 0,
+});
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<UserItem[]>(mockUsers);
+  const [users, setUsers] = useState<UserItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("All");
   const [statusFilter, setStatusFilter] = useState<string>("All");
@@ -34,6 +50,22 @@ export default function AdminUsersPage() {
     "none" | "view" | "edit" | "suspend" | "activate" | "verify" | "reject" | "delete" | "activity"
   >("none");
   const [editFormData, setEditFormData] = useState<Partial<UserItem>>({});
+
+  async function loadUsers() {
+    try {
+      setLoading(true);
+      const data = await apiFetch("/admin/users");
+      setUsers(data.map(mapBackendUser));
+    } catch (err) {
+      console.error("Failed to load users:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
   const filteredUsers = users.filter((u) => {
     const matchesSearch =
@@ -54,31 +86,64 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleConfirmAction = () => {
+  const handleConfirmAction = async () => {
     if (!selectedUser) return;
 
-    if (modalMode === "suspend") {
-      setUsers((prev) =>
-        prev.map((u) => (u.id === selectedUser.id ? { ...u, accountStatus: "Suspended" } : u))
-      );
-    } else if (modalMode === "activate") {
-      setUsers((prev) =>
-        prev.map((u) => (u.id === selectedUser.id ? { ...u, accountStatus: "Active" } : u))
-      );
-    } else if (modalMode === "verify") {
-      setUsers((prev) =>
-        prev.map((u) => (u.id === selectedUser.id ? { ...u, verificationStatus: "Verified" } : u))
-      );
-    } else if (modalMode === "reject") {
-      setUsers((prev) =>
-        prev.map((u) => (u.id === selectedUser.id ? { ...u, verificationStatus: "Rejected" } : u))
-      );
-    } else if (modalMode === "delete") {
-      setUsers((prev) => prev.filter((u) => u.id !== selectedUser.id));
-    } else if (modalMode === "edit") {
-      setUsers((prev) =>
-        prev.map((u) => (u.id === selectedUser.id ? ({ ...u, ...editFormData } as UserItem) : u))
-      );
+    try {
+      if (modalMode === "suspend") {
+        await apiFetch(`/admin/users/${selectedUser.id}/status`, {
+          method: "PATCH",
+          body: { active: false }
+        });
+        setUsers((prev) =>
+          prev.map((u) => (u.id === selectedUser.id ? { ...u, accountStatus: "Suspended" } : u))
+        );
+      } else if (modalMode === "activate") {
+        await apiFetch(`/admin/users/${selectedUser.id}/status`, {
+          method: "PATCH",
+          body: { active: true }
+        });
+        setUsers((prev) =>
+          prev.map((u) => (u.id === selectedUser.id ? { ...u, accountStatus: "Active" } : u))
+        );
+      } else if (modalMode === "verify") {
+        await apiFetch(`/admin/users/${selectedUser.id}`, {
+          method: "PUT",
+          body: { isVerified: true }
+        });
+        setUsers((prev) =>
+          prev.map((u) => (u.id === selectedUser.id ? { ...u, verificationStatus: "Verified" } : u))
+        );
+      } else if (modalMode === "reject") {
+        await apiFetch(`/admin/users/${selectedUser.id}`, {
+          method: "PUT",
+          body: { isVerified: false }
+        });
+        setUsers((prev) =>
+          prev.map((u) => (u.id === selectedUser.id ? { ...u, verificationStatus: "Rejected" } : u))
+        );
+      } else if (modalMode === "delete") {
+        await apiFetch(`/admin/users/${selectedUser.id}`, {
+          method: "DELETE"
+        });
+        setUsers((prev) => prev.filter((u) => u.id !== selectedUser.id));
+      } else if (modalMode === "edit") {
+        const backendRole = editFormData.role === 'House Seeker' ? 'seeker' : editFormData.role === 'House Provider' ? 'provider' : editFormData.role === 'Agent' ? 'agent' : 'admin';
+        await apiFetch(`/admin/users/${selectedUser.id}`, {
+          method: "PUT",
+          body: {
+            name: editFormData.name,
+            email: editFormData.email,
+            phone: editFormData.phone,
+            role: backendRole,
+            assignedArea: editFormData.location,
+          }
+        });
+        await loadUsers();
+      }
+    } catch (err) {
+      console.error("Failed to perform user action:", err);
+      alert(err instanceof Error ? err.message : "Action failed");
     }
 
     setModalMode("none");

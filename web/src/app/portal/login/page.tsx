@@ -50,7 +50,7 @@ export default function PortalLoginPage() {
     }
   };
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (errorState !== "none") {
@@ -59,15 +59,38 @@ export default function PortalLoginPage() {
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
-      const cleanEmail = email.trim().toLowerCase();
-      if (cleanEmail.includes("agent") || role === "agent") {
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
+      const response = await fetch(`${backendUrl}/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Invalid credentials");
+      }
+
+      const data = await response.json();
+      const token = data.token;
+      
+      // Store token in cookie
+      document.cookie = `delala_token=${token}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`;
+
+      const userRole = data.user?.role;
+      if (userRole === "agent") {
         router.push("/portal/agent");
       } else {
         router.push("/portal/admin");
       }
-    }, 900);
+    } catch (err) {
+      console.error("Login failed:", err);
+      setErrorState("invalid");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleForgotPasswordSubmit = (e: React.FormEvent) => {
