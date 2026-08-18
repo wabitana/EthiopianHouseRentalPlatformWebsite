@@ -20,6 +20,7 @@ export default function CMSLoginPage() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include", // Allows backend to set HttpOnly refresh token cookie
         body: JSON.stringify({
           email: form.get("email"),
           password: form.get("password"),
@@ -34,7 +35,8 @@ export default function CMSLoginPage() {
       }
 
       if (data.token) {
-        document.cookie = `delala_token=${data.token}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`;
+        // Short-lived access token — refresh token is set HttpOnly by backend
+        document.cookie = `delala_token=${data.token}; path=/; max-age=${15 * 60}; SameSite=Lax`;
       }
 
       const role = (data.user?.role || "").toLowerCase();
@@ -48,6 +50,7 @@ export default function CMSLoginPage() {
       setError("Network error. Could not connect to backend server.");
       setLoading(false);
     }
+
   }
 
   return (

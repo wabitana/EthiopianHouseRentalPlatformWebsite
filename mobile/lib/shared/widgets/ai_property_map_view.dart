@@ -154,7 +154,7 @@ class _AiPropertyMapViewState extends State<AiPropertyMapView> {
                 initialZoom: 13.0,
                 maxZoom: 18.0,
                 minZoom: 5.0,
-                onTap: (_, __) {
+                onTap: (_, _) {
                   setState(() {
                     _selectedProperty = null;
                   });
@@ -274,7 +274,7 @@ class _AiPropertyMapViewState extends State<AiPropertyMapView> {
                           width: 48,
                           height: 48,
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
+                          errorBuilder: (_, _, _) => Container(
                             width: 48,
                             height: 48,
                             color: Colors.grey[300],
@@ -476,7 +476,7 @@ class _AiPropertyMapScreenState extends State<AiPropertyMapScreen> {
               initialZoom: 13.5,
               maxZoom: 18.0,
               minZoom: 5.0,
-              onTap: (_, __) {
+              onTap: (_, _) {
                 setState(() {
                   _selectedProperty = null;
                 });
