@@ -7,6 +7,19 @@ async function main() {
   // Password hashes
   const passwordHash = await bcrypt.hash('password123', 10);
 
+  console.log('🧹 Clearing existing test data to ensure clean seeding...');
+  await prisma.featurePhoneSms.deleteMany({});
+  await prisma.leaseAgreement.deleteMany({});
+  await prisma.assistedBooking.deleteMany({});
+  await prisma.assistedTenant.deleteMany({});
+  await prisma.task.deleteMany({});
+  await prisma.propertyDocument.deleteMany({});
+  await prisma.identityDocument.deleteMany({});
+  await prisma.report.deleteMany({});
+  await prisma.payment.deleteMany({});
+  await prisma.notification.deleteMany({});
+  await prisma.property.deleteMany({});
+
   // 1. Create Users
   const seekerUser = await prisma.user.upsert({
     where: { email: 'seeker@delala.com' },
@@ -162,7 +175,211 @@ async function main() {
 
   console.log(`✅ Seeded ${sampleProperties.length} Ethiopian properties successfully.`);
 
-  // 3. Create Sample Notification for Seeker
+  // 3. Create Portal Agent Account
+  const agentHash = await bcrypt.hash('agent123456', 10);
+  const portalAgent = await prisma.user.upsert({
+    where: { email: 'agent@example.com' },
+    update: { passwordHash: agentHash },
+    create: {
+      name: 'Dawit Wolde',
+      email: 'agent@example.com',
+      phone: '+251 91 123 7890',
+      passwordHash: agentHash,
+      role: 'agent',
+      isVerified: true,
+      assignedArea: 'Bole, Addis Ababa',
+      propertiesManaged: 12,
+      verificationsCompleted: 48,
+      activeTasks: 4,
+      performanceScore: 98.2,
+      agentStatus: 'Active',
+    },
+  });
+
+  // 4. Create Portal Admin Account matching web defaults
+  const adminHash = await bcrypt.hash('admin123456', 10);
+  await prisma.user.upsert({
+    where: { email: 'admin@example.com' },
+    update: { passwordHash: adminHash },
+    create: {
+      name: 'Portal Administrator',
+      email: 'admin@example.com',
+      phone: '+251 90 000 0001',
+      passwordHash: adminHash,
+      role: 'admin',
+      isVerified: true,
+    },
+  });
+
+  console.log('✅ Created Portal Agent (agent@example.com) & Portal Admin (admin@example.com)');
+
+  // 5. Create some properties for agent inspections
+  const boleProperty = await prisma.property.findFirst({ where: { area: 'Bole' } });
+  if (boleProperty) {
+    // Create verification document requests for it
+    await prisma.propertyDocument.upsert({
+      where: { id: 'doc-prop-1' },
+      update: {},
+      create: {
+        id: 'doc-prop-1',
+        propertyId: boleProperty.id,
+        ownerId: providerUser.id,
+        docType: 'TITLE_DEED',
+        docUrl: 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=600',
+        status: 'UNDER_REVIEW',
+        aiRiskScore: 92.0,
+        aiNotes: 'Title deed format matches Ministry specifications. Signature verification pending.',
+      },
+    });
+
+    // Create a task for agent to inspect
+    await prisma.task.create({
+      data: {
+        title: 'Verify Property in Bole Atlas',
+        type: 'Inspect property',
+        propertyId: boleProperty.id,
+        propertyTitle: boleProperty.title,
+        providerName: providerUser.name,
+        assignedAgentId: portalAgent.id,
+        dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000), // 2 days
+        priority: 'High',
+        status: 'Pending',
+        description: 'Perform physical onsite property walkthrough, capture high quality room photos, and verify utility connections.',
+      },
+    });
+  }
+
+  // Create Identity verification request for provider
+  await prisma.identityDocument.upsert({
+    where: { id: 'doc-identity-1' },
+    update: {},
+    create: {
+      id: 'doc-identity-1',
+      userId: providerUser.id,
+      idType: 'NATIONAL_ID',
+      idNumber: 'ID-ET-990812',
+      documentUrl: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600',
+      status: 'UNDER_REVIEW',
+      aiRiskScore: 95.5,
+      aiNotes: 'OCR verified Ethiopian National ID. Name matches system profile.',
+    },
+  });
+
+  // Create tasks for agent
+  await prisma.task.createMany({
+    data: [
+      {
+        title: 'Review National ID for Tigist Alemu',
+        type: 'Review documents',
+        assignedAgentId: portalAgent.id,
+        dueDate: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
+        priority: 'Medium',
+        status: 'In Progress',
+        description: 'Verify national ID documents submitted by provider and double check OCR accuracy.',
+      },
+      {
+        title: 'Call Owner of Coz Studio Sarbet',
+        type: 'Contact provider',
+        assignedAgentId: portalAgent.id,
+        dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        priority: 'Low',
+        status: 'Pending',
+        description: 'Follow up with owner regarding missing water utility proof details.',
+      },
+    ],
+  });
+
+  // 6. Create Assisted Rural / Offline Entities
+  const assistedTenant = await prisma.assistedTenant.create({
+    data: {
+      fullName: 'Alemayehu Tadese',
+      featurePhone: '+251 91 122 3344',
+      kebeleIdNumber: 'KB-88271',
+      region: 'Oromia',
+      woreda: 'Adaa',
+      preferredHouseType: 'Apartment',
+      maxBudgetETB: 12000,
+      familySize: 3,
+      hasSmartphone: false,
+      status: 'Active Search',
+      agentId: portalAgent.id,
+    },
+  });
+
+  const HawkProperty = await prisma.property.findFirst({ where: { city: 'Hawassa' } });
+  if (HawkProperty) {
+    const assistedBooking = await prisma.assistedBooking.create({
+      data: {
+        tenantId: assistedTenant.id,
+        propertyId: HawkProperty.id,
+        monthlyRentETB: 25000,
+        depositETB: 25000,
+        paymentMethod: 'Cash collected by Agent',
+        receiptNumber: 'REC-2026-9081',
+        bookingDate: new Date(),
+        status: 'Pending Payment',
+        agentId: portalAgent.id,
+      },
+    });
+
+    await prisma.leaseAgreement.create({
+      data: {
+        bookingId: assistedBooking.id,
+        tenantName: assistedTenant.fullName,
+        tenantKebeleId: assistedTenant.kebeleIdNumber,
+        providerName: providerUser.name,
+        providerIdNumber: 'PRV-ET-9182',
+        propertyTitle: HawkProperty.title,
+        location: `${HawkProperty.city}, ${HawkProperty.area}`,
+        monthlyRentETB: 25000,
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        kebeleWitnessName: 'Melaku Belay (Kebele Chairman)',
+        kebeleWitnessStamp: 'OFFICIAL_KEBELE_STAMP_01',
+        status: 'Official Draft',
+        agentId: portalAgent.id,
+      },
+    });
+  }
+
+  // Create SMS log
+  await prisma.featurePhoneSms.create({
+    data: {
+      recipientPhone: assistedTenant.featurePhone,
+      recipientName: assistedTenant.fullName,
+      messageAmharic: 'ሰላም ዓለማየሁ! ወኪል ዳዊት ለእርስዎ በጀት የሚሆን 2 የቤት አማራጮችን አግኝቷል። ቅዳሜ ይጎበኛሉ።',
+      messageEnglish: 'Selam Alemayehu! Agent Dawit has found 2 matching house options for your budget. Inspection scheduled for Saturday.',
+      status: 'Delivered (Feature Phone)',
+      agentId: portalAgent.id,
+    },
+  });
+
+  // 7. Create abuse report
+  const studioProperty = await prisma.property.findFirst({ where: { propertyType: 'Studio' } });
+  if (studioProperty) {
+    await prisma.report.create({
+      data: {
+        propertyId: studioProperty.id,
+        reporterId: seekerUser.id,
+        reason: 'Fraudulent Listing',
+        details: 'Listed price is incorrect. Landlord asking for 30,000 ETB instead of 18,000 ETB.',
+      },
+    });
+  }
+
+  // 8. Create payments
+  await prisma.payment.create({
+    data: {
+      userId: providerUser.id,
+      amountETB: 450,
+      currency: 'ETB',
+      paymentMethod: 'CHAPA_SIMULATION',
+      reference: 'TX-SUB-BOLE-001',
+      status: 'SUCCESS',
+    },
+  });
+
+  // 9. Create Sample Notification for Seeker
   await prisma.notification.create({
     data: {
       userId: seekerUser.id,
@@ -183,3 +400,4 @@ main()
   .finally(async () => {
     await prisma.$disconnect();
   });
+

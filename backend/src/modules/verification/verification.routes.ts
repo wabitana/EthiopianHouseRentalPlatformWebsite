@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { verificationService } from './verification.service';
 import { authenticateToken, AuthRequest } from '../../middleware/auth';
+import { prisma } from '../../prisma';
 
 const router = Router();
 
@@ -64,6 +65,78 @@ router.get('/admin/pending', authenticateToken, async (req: AuthRequest, res) =>
     return res.json(data);
   } catch (error) {
     return res.status(500).json({ error: 'Failed to fetch verification queue' });
+  }
+});
+
+// PATCH /api/v1/verification/identity/:id/review (Accept/reject ID document - Admin/Agent)
+router.patch('/identity/:id/review', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const role = req.user?.role?.toLowerCase();
+    if (role !== 'admin' && role !== 'agent') {
+      return res.status(403).json({ error: 'Admin or Agent access required' });
+    }
+
+    const { id } = req.params;
+    const { status, adminNotes } = req.body; // status: 'VERIFIED' or 'REJECTED'
+
+    if (!status || (status !== 'VERIFIED' && status !== 'REJECTED')) {
+      return res.status(400).json({ error: 'Invalid or missing status. Must be VERIFIED or REJECTED.' });
+    }
+
+    const updatedDoc = await verificationService.reviewIdentityDocument(id, status, adminNotes);
+
+    // Increment agent verifications completed
+    if (role === 'agent' && req.user?.id) {
+      await prisma.user.update({
+        where: { id: req.user.id },
+        data: {
+          verificationsCompleted: {
+            increment: 1,
+          },
+        },
+      });
+    }
+
+    return res.json({ success: true, document: updatedDoc });
+  } catch (error: any) {
+    console.error('Identity review error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to review identity document' });
+  }
+});
+
+// PATCH /api/v1/verification/property-license/:id/review (Accept/reject property deeds - Admin/Agent)
+router.patch('/property-license/:id/review', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const role = req.user?.role?.toLowerCase();
+    if (role !== 'admin' && role !== 'agent') {
+      return res.status(403).json({ error: 'Admin or Agent access required' });
+    }
+
+    const { id } = req.params;
+    const { status, adminNotes } = req.body; // status: 'VERIFIED' or 'REJECTED'
+
+    if (!status || (status !== 'VERIFIED' && status !== 'REJECTED')) {
+      return res.status(400).json({ error: 'Invalid or missing status. Must be VERIFIED or REJECTED.' });
+    }
+
+    const updatedDoc = await verificationService.reviewPropertyDocument(id, status, adminNotes);
+
+    // Increment agent verifications completed
+    if (role === 'agent' && req.user?.id) {
+      await prisma.user.update({
+        where: { id: req.user.id },
+        data: {
+          verificationsCompleted: {
+            increment: 1,
+          },
+        },
+      });
+    }
+
+    return res.json({ success: true, document: updatedDoc });
+  } catch (error: any) {
+    console.error('Property document review error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to review property document' });
   }
 });
 

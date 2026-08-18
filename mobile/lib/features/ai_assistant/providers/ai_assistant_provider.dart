@@ -1,8 +1,13 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../../data/repositories/ai_repository.dart';
 import '../../../shared/models/property_model.dart';
 
 class AiAssistantProvider extends ChangeNotifier {
+  static const String _historyStorageKey = 'ai_assistant_chat_history_v1';
+  static const String _conversationStorageKey = 'ai_assistant_conversation_id_v1';
+
   final AiRepository _aiRepository;
 
   List<AiChatMessage> _messages = [];
@@ -17,7 +22,7 @@ class AiAssistantProvider extends ChangeNotifier {
 
   AiAssistantProvider({AiRepository? aiRepository})
       : _aiRepository = aiRepository ?? AiRepository() {
-    _addInitialWelcomeMessage();
+    _loadPersistedChatHistory();
   }
 
   void _addInitialWelcomeMessage() {
@@ -29,6 +34,43 @@ class AiAssistantProvider extends ChangeNotifier {
         timestamp: DateTime.now(),
       ),
     ];
+  }
+
+  Future<void> _loadPersistedChatHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedId = prefs.getString(_conversationStorageKey);
+      final rawJson = prefs.getString(_historyStorageKey);
+
+      if (savedId != null && savedId.isNotEmpty) {
+        _conversationId = savedId;
+      }
+
+      if (rawJson != null && rawJson.isNotEmpty) {
+        final decoded = json.decode(rawJson);
+        if (decoded is List && decoded.isNotEmpty) {
+          _messages = decoded
+              .map((item) => AiChatMessage.fromJson(item as Map<String, dynamic>))
+              .toList();
+          notifyListeners();
+          return;
+        }
+      }
+    } catch (_) {}
+
+    _addInitialWelcomeMessage();
+    notifyListeners();
+  }
+
+  Future<void> _savePersistedChatHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_conversationId != null) {
+        await prefs.setString(_conversationStorageKey, _conversationId!);
+      }
+      final jsonList = _messages.map((m) => m.toJson()).toList();
+      await prefs.setString(_historyStorageKey, json.encode(jsonList));
+    } catch (_) {}
   }
 
   Future<void> sendMessage(String text) async {
@@ -46,6 +88,7 @@ class AiAssistantProvider extends ChangeNotifier {
     _messages.add(userMsg);
     _isLoading = true;
     notifyListeners();
+    _savePersistedChatHistory();
 
     try {
       final response = await _aiRepository.sendChatMessage(
@@ -75,6 +118,7 @@ class AiAssistantProvider extends ChangeNotifier {
       );
 
       _messages.add(aiMsg);
+      _savePersistedChatHistory();
     } catch (e) {
       _errorMessage = 'Failed to connect to AI server. Please check your internet connection and try again.';
       _messages.add(
@@ -85,6 +129,7 @@ class AiAssistantProvider extends ChangeNotifier {
           timestamp: DateTime.now(),
         ),
       );
+      _savePersistedChatHistory();
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -96,6 +141,12 @@ class AiAssistantProvider extends ChangeNotifier {
       await _aiRepository.clearConversationHistory(_conversationId!);
     }
     _conversationId = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_historyStorageKey);
+      await prefs.remove(_conversationStorageKey);
+    } catch (_) {}
+
     _addInitialWelcomeMessage();
     notifyListeners();
   }

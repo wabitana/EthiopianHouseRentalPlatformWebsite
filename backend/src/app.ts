@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import path from 'path';
 
 import {
@@ -19,13 +20,19 @@ import {
   saleRoutes,
   cmsRoutes,
   vendorServicesRoutes,
+  agentRoutes,
 } from './modules';
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+  credentials: true, // Required for cross-origin cookies
+}));
+app.use(cookieParser()); // Populate req.cookies
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
 
 // Static uploads directory
 const uploadsPath = path.join(__dirname, '../uploads');
@@ -51,6 +58,7 @@ app.use('/api/v1/sales', saleRoutes);
 app.use('/api/v1/cms', cmsRoutes);
 app.use('/api/v1/services', vendorServicesRoutes);
 app.use('/api/v1/addresses', vendorServicesRoutes);
+app.use('/api/v1/agent', agentRoutes);
 
 // Backward compatibility proxies for web app legacy routes
 app.use('/api/cms', cmsRoutes);

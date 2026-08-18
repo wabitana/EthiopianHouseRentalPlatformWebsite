@@ -45,6 +45,12 @@ router.post('/register', async (req, res) => {
     }
 
     const normalizedRole = (role || 'seeker').toLowerCase();
+
+    // Rule: Administrative or Agent roles cannot be registered publicly
+    if (normalizedRole === 'agent' || normalizedRole === 'admin') {
+      return res.status(400).json({ error: 'Administrative or Agent accounts must be created by an Administrator.' });
+    }
+
     const existing = await prisma.user.findUnique({ where: { email } });
 
     if (existing) {
@@ -256,10 +262,23 @@ router.post('/login', async (req, res) => {
 
     const tokens = await generateTokens(user);
 
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    // Short-lived access token cookie
     res.cookie('delala_token', tokens.token, {
       httpOnly: true,
+      secure: isProduction,
       sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000,
+      maxAge: 15 * 60 * 1000, // 15 minutes
+      path: '/',
+    });
+
+    // Long-lived refresh token cookie (HttpOnly — JS can never read this)
+    res.cookie('delala_refresh_token', tokens.refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: '/',
     });
 
@@ -289,8 +308,12 @@ router.post('/login', async (req, res) => {
 // POST /api/v1/auth/refresh-token
 router.post('/refresh-token', async (req, res) => {
   try {
-    const { refreshToken } = req.body;
-    if (!refreshToken) return res.status(400).json({ error: 'Refresh token required' });
+    // Accept refresh token from HttpOnly cookie (preferred) or request body (fallback)
+    const refreshToken = req.cookies?.delala_refresh_token || req.body?.refreshToken;
+
+    if (!refreshToken) {
+      return res.status(400).json({ error: 'Refresh token required' });
+    }
 
     const storedToken = await prisma.refreshToken.findUnique({
       where: { token: refreshToken },
@@ -298,17 +321,46 @@ router.post('/refresh-token', async (req, res) => {
     });
 
     if (!storedToken || storedToken.revoked || storedToken.expiresAt < new Date()) {
+      // Clear both cookies on invalid refresh to force re-login
+      res.clearCookie('delala_token', { path: '/' });
+      res.clearCookie('delala_refresh_token', { path: '/' });
       return res.status(401).json({ error: 'Invalid or expired refresh token' });
     }
 
-    const token = jwt.sign(
-      { id: storedToken.user.id, email: storedToken.user.email, role: storedToken.user.role, name: storedToken.user.name },
-      JWT_SECRET,
-      { expiresIn: '15m' }
-    );
+    // Revoke the used refresh token (rotation — prevents replay attacks)
+    await prisma.refreshToken.update({
+      where: { id: storedToken.id },
+      data: { revoked: true },
+    });
 
-    return res.json({ token, refreshToken });
+    // Issue a fresh token pair
+    const newTokens = await generateTokens(storedToken.user);
+
+    // Set both tokens as HttpOnly cookies
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    res.cookie('delala_token', newTokens.token, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 15 * 60 * 1000, // 15 minutes
+      path: '/',
+    });
+
+    res.cookie('delala_refresh_token', newTokens.refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/',
+    });
+
+    return res.json({
+      token: newTokens.token,
+      refreshToken: newTokens.refreshToken,
+    });
   } catch (error) {
+    console.error('Refresh token error:', error);
     return res.status(500).json({ error: 'Failed to refresh token' });
   }
 });
@@ -326,7 +378,11 @@ const handleLogout = async (req: any, res: any) => {
   }
 
   res.clearCookie('delala_token', { path: '/' });
-  res.setHeader('Set-Cookie', 'delala_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly');
+  res.clearCookie('delala_refresh_token', { path: '/' });
+  res.setHeader('Set-Cookie', [
+    'delala_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly',
+    'delala_refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly',
+  ]);
   
   const isHtmlRequest = req.headers['accept']?.includes('text/html') || req.query?.redirect === 'true';
   if (isHtmlRequest) {

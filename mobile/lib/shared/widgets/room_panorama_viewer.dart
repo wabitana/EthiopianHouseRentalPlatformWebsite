@@ -87,7 +87,7 @@ class _RoomPanoramaViewerState extends State<RoomPanoramaViewer> {
                       Formatters.formatImageUrl(displayImages[index]),
                       fit: BoxFit.cover,
                       width: double.infinity,
-                      errorBuilder: (_, __, ___) => Container(
+                      errorBuilder: (_, _, _) => Container(
                         color: Colors.grey.shade900,
                         child: const Center(
                           child: Icon(Icons.home, size: 60, color: Colors.white24),

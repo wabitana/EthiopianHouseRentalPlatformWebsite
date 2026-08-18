@@ -1,8 +1,9 @@
-import { AI_TOOLS_DEFINITIONS, executeAiTool, ToolContext } from './ai.tools';
-import { isToolAllowed } from './ai.permissions';
+import { ChatOpenAI } from '@langchain/openai';
+import { createReactAgent } from '@langchain/langgraph/prebuilt';
+import { HumanMessage, AIMessage } from '@langchain/core/messages';
+import { executeAiTool, ToolContext } from './ai.tools';
 import { getConversationHistory, saveConversationHistory, ChatMessage } from './ai.memory';
-
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+import { createLangChainTools, ToolExecutionCollector } from './ai.langchain.tools';
 
 export interface AiProcessOptions {
   message: string;
@@ -17,18 +18,12 @@ export interface AiProcessResult {
   conversationId: string;
 }
 
-export async function processAiChat(options: AiProcessOptions): Promise<AiProcessResult> {
-  const apiKey = process.env.OPENROUTER_API_KEY;
-  const model = process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini';
-
-  const conversationId = options.conversationId || `conv-${Date.now()}`;
-  const history = getConversationHistory(conversationId);
-
-  // System Prompt for Ethiopian Housing Assistant
-  const systemPrompt: ChatMessage = {
-    role: 'system',
-    content: `You are the official AI Housing Assistant for the Ethiopian House Rental platform.
+const SYSTEM_PROMPT_TEXT = `You are the official AI Housing Assistant for the Ethiopian House Rental platform.
 Your job is to help users find houses, understand rental terms in Ethiopia, and assist house providers with listings.
+
+EXPANDED DOMAIN CAPABILITIES:
+- You have specialized tools for: Neighborhood Safety Scores, Schedule D Ethiopian Rental Tax, Water Shortage & Tank Sizing, Solar Inverter Backup Sizing, Expat/Diplomat Concierge (ICS, Sandford, UN ECA), Rental Yield ROI, Ginbot/Sene Negotiation Strategies, Local Furniture Estimator (Merkato/Mexico prices), Ethiopian Civil Code Lease Dispute Guidance (Articles 2896–2974), ISUZU Moving Truck Logistics, School Proximity Planning, and Commercial Shop/Office Search.
+- Proactively call these tools whenever relevant to give users extraordinary, insightful, and comprehensive guidance.
 
 ABSOLUTE STRICT RULES:
 1. NEVER INVENT OR HALLUCINATE PROPERTIES, PRICES, LOCATIONS, PROVIDERS, OR AVAILABILITY.
@@ -36,138 +31,98 @@ ABSOLUTE STRICT RULES:
 3. If no properties match the user search criteria in the database, clearly state that no matching properties were found in the platform database. DO NOT CREATE FAKE LISTINGS.
 4. Support both English and Amharic naturally. If the user asks in Amharic (e.g., "በቦሌ 25000 ብር በታች 2 መኝታ ቤት ፈልግልኝ"), search the database and respond in clear Amharic.
 5. All price values are in Ethiopian Birr (ETB).
-6. Keep recommendations honest, concise, and helpful.
-7. DO NOT output raw markdown image URLs or syntax like '![Image 1](url)'. The mobile application automatically renders high-resolution interactive property cards below your text response.
-8. Format text cleanly and naturally for app display.`,
-  };
+6. Provide detailed, rich, helpful responses explaining matched properties, location highlights, and rental terms.
+7. DO NOT output raw markdown image URLs or syntax like '![Image 1](url)'. The mobile application automatically renders high-resolution interactive property cards and live map views below your text response.
+8. Format text cleanly and naturally for app display.
+9. When users ask to see homes on the map or location views (e.g. "show me homes on map"), mention that an interactive live map with property price pins is available right below in the message view.`;
 
-  // Build message history for request
-  const messages: ChatMessage[] = [];
-  messages.push(systemPrompt);
+export async function processAiChat(options: AiProcessOptions): Promise<AiProcessResult> {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+  const conversationId = options.conversationId || `conv-${Date.now()}`;
 
-  if (history.length > 0) {
-    messages.push(...history);
-  }
-
-  messages.push({ role: 'user', content: options.message });
-
-  const collectedProperties: Map<string, any> = new Map();
-  const collectedActions: string[] = [];
-
-  // Maximum tool call iterations safety cap
-  const MAX_ITERATIONS = 5;
-  let iterations = 0;
-  let finalAssistantResponse = '';
-
-  // Check if valid API key is present
+  // Fallback if no valid OpenRouter API key configured
   if (!apiKey || apiKey.includes('demo-key')) {
-    // If no real OpenRouter key configured yet, execute smart backend DB tool search directly
     return handleDirectDbFallback(options.message, conversationId, options.context);
   }
 
+  // Dynamically map OPENROUTER_API_KEY for LangChain / OpenAI SDK internal calls
+  process.env.OPENAI_API_KEY = apiKey;
+  process.env.OPENAI_BASE_URL = 'https://openrouter.ai/api/v1';
+
   try {
-    while (iterations < MAX_ITERATIONS) {
-      iterations++;
+    const history = getConversationHistory(conversationId);
+    const langchainMessages: (HumanMessage | AIMessage)[] = [];
 
-      const payload = {
-        model,
-        messages,
-        tools: AI_TOOLS_DEFINITIONS,
-        tool_choice: 'auto',
-      };
-
-      const response = await fetch(OPENROUTER_API_URL, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'HTTP-Referer': 'https://ethiopianhouserental.com',
-          'X-Title': 'Ethiopian House Rental AI Assistant',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error('OpenRouter API Error:', errText);
-        return handleDirectDbFallback(options.message, conversationId, options.context);
-      }
-
-      const data = (await response.json()) as any;
-      const choice = data.choices?.[0];
-      const responseMessage = choice?.message;
-
-      if (!responseMessage) {
-        break;
-      }
-
-      // Add assistant message to trajectory
-      messages.push(responseMessage);
-
-      // Check if tool calls were requested by AI model
-      if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-        for (const toolCall of responseMessage.tool_calls) {
-          const fnName = toolCall.function.name;
-          let fnArgs = {};
-          try {
-            fnArgs = JSON.parse(toolCall.function.arguments || '{}');
-          } catch (_) {}
-
-          // Enforce role authorization permissions
-          if (!isToolAllowed(fnName, options.context)) {
-            messages.push({
-              role: 'tool',
-              tool_call_id: toolCall.id,
-              name: fnName,
-              content: JSON.stringify({ error: `Permission denied for tool ${fnName}. User authentication or role required.` }),
-            });
-            continue;
-          }
-
-          // Execute tool query on main PostgreSQL DB
-          const toolResult = await executeAiTool(fnName, fnArgs, options.context);
-
-          // Collect properties for Flutter rendering
-          if (toolResult.properties && Array.isArray(toolResult.properties)) {
-            for (const p of toolResult.properties) {
-              collectedProperties.set(p.id, p);
-            }
-          } else if (toolResult.property) {
-            collectedProperties.set(toolResult.property.id, toolResult.property);
-          } else if (toolResult.recommendations && Array.isArray(toolResult.recommendations)) {
-            for (const r of toolResult.recommendations) {
-              if (r.property) collectedProperties.set(r.property.id, r.property);
-            }
-          }
-
-          collectedActions.push(`Executed tool: ${fnName}`);
-
-          // Append tool execution result back to conversation
-          messages.push({
-            role: 'tool',
-            tool_call_id: toolCall.id,
-            name: fnName,
-            content: JSON.stringify(toolResult),
-          });
-        }
-      } else {
-        // Final text answer received from model
-        finalAssistantResponse = responseMessage.content || '';
-        break;
+    for (const msg of history) {
+      if (msg.role === 'user') {
+        langchainMessages.push(new HumanMessage(msg.content || ''));
+      } else if (msg.role === 'assistant' && msg.content) {
+        langchainMessages.push(new AIMessage(msg.content || ''));
       }
     }
 
-    // Update conversation memory
-    saveConversationHistory(conversationId, messages.filter((m) => m.role !== 'system'));
+    langchainMessages.push(new HumanMessage(options.message || ''));
+
+    const collector: ToolExecutionCollector = {
+      properties: new Map(),
+      actions: [],
+    };
+
+    const model = new ChatOpenAI({
+      apiKey: apiKey,
+      modelName: process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini',
+      configuration: {
+        baseURL: 'https://openrouter.ai/api/v1',
+        defaultHeaders: {
+          'HTTP-Referer': 'https://ethiopianhouserental.com',
+          'X-Title': 'Ethiopian House Rental AI Assistant',
+        },
+      },
+      temperature: 0.3,
+    });
+
+    const tools = createLangChainTools(options.context, collector);
+
+    // LangGraph ReAct Agent StateGraph execution with prompt parameter
+    const agent = createReactAgent({
+      llm: model,
+      tools: tools,
+      prompt: SYSTEM_PROMPT_TEXT,
+    });
+
+    const agentResult = await agent.invoke({
+      messages: langchainMessages,
+    });
+
+    const outputMessages = agentResult.messages || [];
+    const finalMsg = outputMessages[outputMessages.length - 1];
+
+    let finalAssistantResponse = 'I searched the database to help you find matching properties.';
+    if (finalMsg && finalMsg.content) {
+      finalAssistantResponse = typeof finalMsg.content === 'string'
+        ? finalMsg.content
+        : JSON.stringify(finalMsg.content);
+    }
+
+    // Persist updated conversation memory
+    const updatedHistory: ChatMessage[] = [];
+    for (const m of outputMessages) {
+      if (m instanceof HumanMessage) {
+        updatedHistory.push({ role: 'user', content: String(m.content) });
+      } else if (m instanceof AIMessage && m.content) {
+        updatedHistory.push({ role: 'assistant', content: String(m.content) });
+      }
+    }
+    saveConversationHistory(conversationId, updatedHistory);
 
     return {
-      message: finalAssistantResponse || 'I searched the database to help you find matching properties.',
-      properties: Array.from(collectedProperties.values()),
-      actions: collectedActions,
+      message: finalAssistantResponse,
+      properties: Array.from(collector.properties.values()),
+      actions: collector.actions,
       conversationId,
     };
   } catch (error) {
-    console.error('AI Service Error:', error);
+    console.error('LangChain / LangGraph AI Service Error:', error);
     return handleDirectDbFallback(options.message, conversationId, options.context);
   }
 }
@@ -177,7 +132,6 @@ async function handleDirectDbFallback(message: string, conversationId: string, c
   const lowerMsg = message.toLowerCase();
   const isAmharic = /[\u1200-\u137F]/.test(message);
 
-  // Check if query is a general housing question (checklists, deposit, lease terms, contract, commute, roommate, scam)
   if (lowerMsg.includes('lease') || lowerMsg.includes('contract') || lowerMsg.includes('ውል')) {
     const leaseRes = await executeAiTool('generate_amharic_lease_draft', { tenantName: ctx.userName || 'Tenant' }, ctx);
     return {
@@ -231,7 +185,6 @@ async function handleDirectDbFallback(message: string, conversationId: string, c
     }
   }
 
-  // Otherwise perform natural language database property search
   let properties: any[] = [];
   let responseText = '';
 
@@ -240,19 +193,16 @@ async function handleDirectDbFallback(message: string, conversationId: string, c
   let maxPrice: number | undefined;
   let bedrooms: number | undefined;
 
-  // Extract prices
   const priceMatch = message.match(/(\d{4,6})/);
   if (priceMatch) {
     maxPrice = parseInt(priceMatch[1], 10);
   }
 
-  // Extract bedrooms
   const bedMatch = message.match(/(\d)\s*(bedroom|bed|መኝታ)/i);
   if (bedMatch) {
     bedrooms = parseInt(bedMatch[1], 10);
   }
 
-  // Extract locations
   const locations = ['Bole', 'Kazanchis', 'Sarbet', 'CMC', 'Ayat', 'Summit', 'Piassa', 'Mekelle', 'Hawassa', 'Bahir Dar'];
   for (const loc of locations) {
     if (lowerMsg.includes(loc.toLowerCase())) {
@@ -261,7 +211,6 @@ async function handleDirectDbFallback(message: string, conversationId: string, c
     }
   }
 
-  // Execute database search tool directly
   const searchResult = await executeAiTool('search_properties', { city, area, maxPrice, bedrooms }, ctx);
   properties = searchResult.properties || [];
 

@@ -104,6 +104,36 @@ export class VerificationService {
 
     return doc;
   }
+
+  async reviewPropertyDocument(docId: string, status: 'VERIFIED' | 'REJECTED', adminNotes?: string) {
+    const doc = await prisma.propertyDocument.update({
+      where: { id: docId },
+      data: {
+        status,
+        ...(adminNotes && { aiNotes: adminNotes }),
+      },
+    });
+
+    if (status === 'VERIFIED') {
+      await prisma.property.update({
+        where: { id: doc.propertyId },
+        data: {
+          isVerified: true,
+          listingStatus: 'active',
+        },
+      });
+    } else if (status === 'REJECTED') {
+      await prisma.property.update({
+        where: { id: doc.propertyId },
+        data: {
+          isVerified: false,
+          listingStatus: 'rejected',
+        },
+      });
+    }
+
+    return doc;
+  }
 }
 
 export const verificationService = new VerificationService();

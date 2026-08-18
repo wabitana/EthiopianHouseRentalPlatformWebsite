@@ -13,7 +13,9 @@ import '../../../shared/widgets/skeleton_loader.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../providers/property_provider.dart';
 import '../providers/favorites_provider.dart';
+import '../providers/ai_recommendations_provider.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../../core/services/user_behavior_tracker.dart';
 import 'property_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -88,6 +90,10 @@ class _SearchScreenState extends State<SearchScreen> {
                         controller: _searchController,
                         onChanged: (val) {
                           propertyProvider.setSearchQuery(val);
+                          if (val.trim().length > 2) {
+                            UserBehaviorTracker.trackSearch(query: val.trim());
+                            context.read<AiRecommendationsProvider>().fetchRecommendations();
+                          }
                         },
                         decoration: InputDecoration(
                           hintText: 'Search city, area or neighborhood...',

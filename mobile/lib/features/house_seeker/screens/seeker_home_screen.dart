@@ -19,6 +19,8 @@ import '../../../shared/widgets/property_comparison_sheet.dart';
 import 'saved_searches_screen.dart';
 import '../../tenants/screens/maintenance_portal_screen.dart';
 import '../../ai_assistant/screens/ai_assistant_screen.dart';
+import '../providers/ai_recommendations_provider.dart';
+import '../../../core/services/user_behavior_tracker.dart';
 
 class SeekerHomeScreen extends StatelessWidget {
   const SeekerHomeScreen({super.key});
@@ -296,6 +298,121 @@ class SeekerHomeScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
+
+                // ✨ AI Behavioral Recommended For You Carousel Section
+                Consumer<AiRecommendationsProvider>(
+                  builder: (context, aiRecsProvider, _) {
+                    if (aiRecsProvider.recommendations.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.auto_awesome_rounded, color: Colors.amber, size: 20),
+                                SizedBox(width: 6),
+                                Text(
+                                  'AI Recommended For You',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                              ),
+                              child: const Text(
+                                '50+ Signals AI',
+                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.primary),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          aiRecsProvider.summaryInsight,
+                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          height: 255,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: aiRecsProvider.recommendations.length,
+                            itemBuilder: (context, index) {
+                              final item = aiRecsProvider.recommendations[index];
+                              return Stack(
+                                children: [
+                                  PropertyCard(
+                                    property: item.property,
+                                    isHorizontal: true,
+                                    isFavorite: favoritesProvider.isFavorite(item.property.id),
+                                    onFavoriteToggle: () {
+                                      if (user != null) {
+                                        favoritesProvider.toggleFavorite(user.id, item.property.id);
+                                        UserBehaviorTracker.trackFavoriteToggle(item.property.id, !favoritesProvider.isFavorite(item.property.id));
+                                      }
+                                    },
+                                    onTap: () {
+                                      UserBehaviorTracker.trackPropertyView(item.property);
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => PropertyDetailScreen(propertyId: item.property.id),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                  // AI Match Score Badge Overlay
+                                  Positioned(
+                                    top: 10,
+                                    left: 10,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(alpha: 0.8),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.amber, width: 1.2),
+                                        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.auto_awesome, color: Colors.amber, size: 11),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            '${item.matchScore}% AI Match',
+                                            style: const TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                    );
+                  },
+                ),
 
                 // Featured / Recommended Section Carousel
                 if (propertyProvider.featuredProperties.isNotEmpty) ...[

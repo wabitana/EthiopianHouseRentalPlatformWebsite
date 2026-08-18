@@ -8,6 +8,9 @@ const getSecretKey = () =>
     process.env.JWT_SECRET || "ethiopian_house_rental_super_secret_jwt_key_2026"
   );
 
+const BACKEND_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
+
 export interface SessionUser {
   id: string;
   email: string;
@@ -48,16 +51,99 @@ export async function verifyToken(token: string): Promise<SessionUser | null> {
       role: (payload.role || "admin") as Role,
     };
   } catch (error) {
-    console.warn("JWT Verification failed in web/src/lib/auth.ts:", error);
+    // Only log non-expiry errors — expiry is expected and handled by refresh
+    const code = (error as any)?.code;
+    if (code !== "ERR_JWT_EXPIRED") {
+      console.warn("JWT Verification failed in web/src/lib/auth.ts:", error);
+    }
     return null;
   }
 }
 
+/**
+ * Attempts to refresh the access token using the HttpOnly refresh cookie.
+ * On success, updates both cookies in the response and returns the new session.
+ * This runs server-side inside Server Components / layouts.
+ */
+async function tryServerSideRefresh(): Promise<SessionUser | null> {
+  try {
+    const cookieStore = await cookies();
+    const refreshToken = cookieStore.get("delala_refresh_token")?.value;
+    if (!refreshToken) return null;
+
+    const response = await fetch(`${BACKEND_URL}/auth/refresh-token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      // Pass refresh token in body since we can't forward HttpOnly cookies in server-to-server fetch
+      body: JSON.stringify({ refreshToken }),
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      // Refresh failed — clear both cookies so the next request goes to login
+      cookieStore.delete("delala_token");
+      cookieStore.delete("delala_refresh_token");
+      return null;
+    }
+
+    const data = await response.json();
+    const newToken: string = data.token;
+    const newRefreshToken: string = data.refreshToken;
+
+    if (!newToken) return null;
+
+    // Update cookies for subsequent server renders in this request
+    const isProduction = process.env.NODE_ENV === "production";
+
+    cookieStore.set("delala_token", newToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: "lax",
+      maxAge: 15 * 60, // 15 minutes
+      path: "/",
+    });
+
+    if (newRefreshToken) {
+      cookieStore.set("delala_refresh_token", newRefreshToken, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60, // 7 days
+        path: "/",
+      });
+    }
+
+    return verifyToken(newToken);
+  } catch (error) {
+    console.warn("Server-side token refresh failed:", error);
+    return null;
+  }
+}
+
+/**
+ * Returns the current session user.
+ * If the access token is expired but a refresh token cookie exists,
+ * silently refreshes and returns the session — no logout needed.
+ */
 export async function getSession(): Promise<SessionUser | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get("delala_token")?.value;
-  if (!token) return null;
-  return verifyToken(token);
+
+  if (token) {
+    const session = await verifyToken(token);
+    if (session) return session;
+
+    // Access token expired — attempt server-side refresh
+    return tryServerSideRefresh();
+  }
+
+  // No access token at all — try refresh if refresh token exists
+  const hasRefreshToken = !!cookieStore.get("delala_refresh_token")?.value;
+  if (hasRefreshToken) {
+    return tryServerSideRefresh();
+  }
+
+  return null;
 }
 
 export async function requireSession(roles?: Role[]): Promise<SessionUser> {
@@ -73,7 +159,7 @@ export async function setAuthCookie(token: string) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: 15 * 60, // 15 minutes — always short-lived
     path: "/",
   });
 }
@@ -81,4 +167,5 @@ export async function setAuthCookie(token: string) {
 export async function clearAuthCookie() {
   const cookieStore = await cookies();
   cookieStore.delete("delala_token");
+  cookieStore.delete("delala_refresh_token");
 }
