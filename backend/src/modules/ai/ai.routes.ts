@@ -73,4 +73,33 @@ router.delete('/chat/:conversationId', (_req, res) => {
   return res.json({ message: 'Conversation history cleared successfully.', conversationId });
 });
 
+// POST /api/v1/ai/recommendations - Personalized behavioral house recommendations
+router.post('/recommendations', async (req: AuthRequest, res: Response) => {
+  try {
+    const profile = req.body || {};
+    const { generatePersonalizedRecommendations } = await import('./ai.recommendations.service');
+    const result = await generatePersonalizedRecommendations(profile, req.body.limit || 8);
+    return res.json(result);
+  } catch (error: any) {
+    console.error('AI Recommendations Route Error:', error);
+    return res.status(500).json({ error: 'Failed to generate recommendations.' });
+  }
+});
+
+// POST /api/v1/ai/property-match-score - Calculate match score for a property
+router.post('/property-match-score', async (req: AuthRequest, res: Response) => {
+  try {
+    const { propertyId, profile } = req.body || {};
+    if (!propertyId) {
+      return res.status(400).json({ error: 'propertyId is required.' });
+    }
+    const { calculatePropertyMatchScore } = await import('./ai.recommendations.service');
+    const result = await calculatePropertyMatchScore(propertyId, profile || {});
+    return res.json(result);
+  } catch (error: any) {
+    console.error('AI Match Score Route Error:', error);
+    return res.status(500).json({ error: 'Failed to calculate match score.' });
+  }
+});
+
 export default router;

@@ -1049,6 +1049,240 @@ export async function executeAiTool(name: string, args: any, ctx: ToolContext): 
       };
     }
 
+    case 'neighborhood_safety_score_analyzer': {
+      const subcity = (args.subcity || 'Bole').toLowerCase();
+      let score = 92;
+      let lighting = 'High (Subcity Main Arteries)';
+      let riskLevel = 'Low Risk';
+      let tips = 'Good street coverage; standard night precautions apply.';
+
+      if (subcity.includes('bole') || subcity.includes('sarbet') || subcity.includes('old airport')) {
+        score = 96;
+        lighting = 'Excellent (CCTV & Security Patrols)';
+        riskLevel = 'Very Safe / Embassy Zone';
+        tips = 'High security presence due to international missions and diplomatic residences.';
+      } else if (subcity.includes('merkato') || subcity.includes('piassa')) {
+        score = 78;
+        lighting = 'Moderate (Commercial Zone)';
+        riskLevel = 'Moderate Pickpocket Risk in Crowds';
+        tips = 'Avoid carrying visible valuables during peak evening market hours.';
+      } else if (subcity.includes('cmc') || subcity.includes('ayat') || subcity.includes('summit')) {
+        score = 88;
+        lighting = 'Good (Gated Condominium Compounds)';
+        riskLevel = 'Safe Residential';
+        tips = 'Protected gated entry points with 24/7 compound guards.';
+      }
+
+      return {
+        subcity: args.subcity || 'Bole',
+        safetyScore: `${score}%`,
+        streetLightingIndex: lighting,
+        securityRiskLevel: riskLevel,
+        safetyAdvice: tips,
+      };
+    }
+
+    case 'ethiopian_tax_and_withholding_calculator': {
+      const monthly = args.monthlyRentETB || 25000;
+      const annualGross = monthly * 12;
+
+      // Ethiopian Schedule D Rental Tax Calculation Rules
+      let taxAmount = 0;
+      if (annualGross > 120000) {
+        taxAmount = (annualGross - 120000) * 0.30;
+      } else if (annualGross > 60000) {
+        taxAmount = (annualGross - 60000) * 0.20;
+      } else if (annualGross > 7200) {
+        taxAmount = (annualGross - 7200) * 0.10;
+      }
+
+      const withholdingTaxETB = Math.round(monthly * 0.05); // 5% withholding tax
+      const netMonthlyIncomeLandlord = monthly - withholdingTaxETB;
+
+      return {
+        monthlyRentETB: monthly,
+        annualGrossRentalETB: annualGross,
+        estimatedAnnualRentalIncomeTaxETB: Math.round(taxAmount),
+        withholdingTaxMonthlyDeductionETB: withholdingTaxETB,
+        netMonthlyLandlordPayoutETB: netMonthlyIncomeLandlord,
+        taxRegulation: 'Schedule D Rental Income Tax under Ethiopian Ministry of Revenue Proclamation No. 979/2016.',
+      };
+    }
+
+    case 'water_shortage_resilience_advisor': {
+      const subcity = (args.subcity || 'Bole').toLowerCase();
+      const occupants = Math.max(1, args.occupants || 3);
+      let supplyDaysPerWeek = 4;
+      let recommendedTankLiters = occupants * 500;
+
+      if (subcity.includes('summit') || subcity.includes('ayat') || subcity.includes('kality')) {
+        supplyDaysPerWeek = 2;
+        recommendedTankLiters = Math.max(3000, occupants * 800);
+      } else if (subcity.includes('cmc') || subcity.includes('sarbet')) {
+        supplyDaysPerWeek = 5;
+        recommendedTankLiters = Math.max(2000, occupants * 500);
+      } else if (subcity.includes('bole')) {
+        supplyDaysPerWeek = 6;
+        recommendedTankLiters = Math.max(1000, occupants * 400);
+      }
+
+      return {
+        subcity: args.subcity || 'Bole',
+        municipalWaterLineSupplyDaysPerWeek: `${supplyDaysPerWeek} Days / Week`,
+        recommendedReserveWaterTankCapacity: `${recommendedTankLiters} Liters`,
+        estimatedTankInstallationCostETB: `${Math.round(recommendedTankLiters * 12)} ETB (Rotto Tank + Pump)`,
+        advice: supplyDaysPerWeek < 4
+          ? 'High water rotation area! Ensure landlord provides minimum 2,000L - 3,000L reserve tank.'
+          : 'Standard water supply area. A 1,000L - 2,000L Rotto tank is sufficient.',
+      };
+    }
+
+    case 'solar_backup_inverter_calculator': {
+      const appliances = args.essentialAppliances || ['Wi-Fi', 'Refrigerator', 'TV', 'Lighting'];
+      const estLoadWatts = 800;
+      const batteryCapacityAh = 200; // 24V 200Ah Lithium/Gel
+      const inverterkVA = 2.5;
+
+      return {
+        targetAppliances: appliances,
+        estimatedLoadWatts: estLoadWatts,
+        recommendedInverterRating: `${inverterkVA} kVA Pure Sine Wave Inverter`,
+        recommendedBatteryBank: `24V ${batteryCapacityAh}Ah Lithium / Tubular Gel Battery`,
+        estimatedOutageBackupDuration: '8 to 12 Hours Continuous Load',
+        estimatedSystemSetupCostETB: '95,000 ETB - 130,000 ETB',
+        benefit: 'Provides uninterrupted Wi-Fi, lighting, and refrigeration during Addis Ababa grid load-shedding.',
+      };
+    }
+
+    case 'expat_diplomat_relocation_concierge': {
+      const org = args.organizationType || 'NGO / Embassy';
+      return {
+        targetOrganizationCategory: org,
+        topRecommendedSubcities: ['Bole Atlas', 'Old Airport (Bisrate Gabriel)', 'Sarbet', 'Kazanchis VIP'],
+        internationalSchoolProximity: [
+          'International Community School (ICS) - Old Airport',
+          'Sandford International School - Kebena',
+          'Lycée Franco-Éthiopien Guebre-Mariam - Churchill Road',
+        ],
+        keyDiplomaticHubs: 'Proximity to African Union (AU), UN ECA, EU Delegation, and US Embassy.',
+        recommendedHousingType: 'Gated Villa with 24/7 Security Post & Backup Generator',
+        typicalExpatBudgetRangeETB: '60,000 ETB - 180,000 ETB / month',
+      };
+    }
+
+    case 'rental_yield_investment_calculator': {
+      const price = args.propertyPriceETB || 6000000;
+      const rent = args.monthlyRentETB || 35000;
+      const annualRent = rent * 12;
+      const grossYield = ((annualRent / price) * 100).toFixed(2);
+      const paybackYears = (price / annualRent).toFixed(1);
+
+      return {
+        propertyPurchasePriceETB: price,
+        monthlyRentETB: rent,
+        annualGrossRentETB: annualRent,
+        grossRentalYieldPercentage: `${grossYield}%`,
+        estimatedPaybackPeriodYears: `${paybackYears} Years`,
+        projected5YearCapitalAppreciation: '15% - 22% annual real estate value growth in Addis Ababa',
+        investmentRating: Number(grossYield) >= 7.0 ? '🔥 High Yield Investment' : 'Standard Yield Investment',
+      };
+    }
+
+    case 'negotiation_strategy_advisor': {
+      const listed = args.listedRentETB || 30000;
+      const Target6Months = Math.round(listed * 0.90);
+      const Target12Months = Math.round(listed * 0.85);
+
+      return {
+        listedMonthlyRentETB: listed,
+        discountStrategy: [
+          `Offer 6 Months Advance Payment: Counter offer at ${Target6Months} ETB/month (10% discount).`,
+          `Offer 12 Months Advance Payment: Counter offer at ${Target12Months} ETB/month (15% discount).`,
+          'Leverage Seasonal Timing: Negotiate lower rates during Ginbot/Sene before school opening in September.',
+        ],
+        landlordSweetenerTips: 'Offer to cover minor initial repainting or water pump maintenance in exchange for rent reduction.',
+      };
+    }
+
+    case 'furniture_decor_cost_estimator': {
+      const beds = args.bedrooms || 2;
+      const sofaCost = 65000;
+      const bedsCost = beds * 35000;
+      const appliancesCost = 85000; // Fridge, TV, Water Heater, Stove
+      const totalCost = sofaCost + bedsCost + appliancesCost;
+
+      return {
+        bedroomsCount: beds,
+        estimatedLivingRoomSofaETB: sofaCost,
+        estimatedBedroomBedsAndMattressesETB: bedsCost,
+        estimatedEssentialAppliancesETB: appliancesCost,
+        totalFurnishingBudgetETB: totalCost,
+        bestLocalMarkets: 'Merkato (Sebategna), Mexico Furniture Avenue, and Shola Market for quality Ethiopian woodwork.',
+      };
+    }
+
+    case 'tenant_landlord_dispute_mediator': {
+      const topic = args.disputeTopic || 'Deposit Return';
+      return {
+        disputeCategory: topic,
+        ethiopianCivilCodeArticles: 'Civil Code of Ethiopia Articles 2896 to 2974 (Lease of Immovables)',
+        legalGuidelines: [
+          'Security Deposit Return: Landlord must return security deposit within 30 days of move-out unless proof of unpaid utility bills or tenant damage is shown.',
+          'Structural Repairs: Landlord is legally responsible for major roof, wall, and main water/electrical line repairs.',
+          'Eviction Notice Period: Minimum 1 to 3 months written notice required before terminating a residential lease.',
+        ],
+        recommendedAction: 'Always attach a signed move-in condition inventory and demand bank receipts for all rent transfers.',
+      };
+    }
+
+    case 'move_in_moving_truck_estimator': {
+      const from = args.fromSubcity || 'Bole';
+      const to = args.toSubcity || 'CMC';
+      const floor = args.floorLevel || 2;
+      const baseTruck = 4500;
+      const stairsFee = floor * 800;
+      const totalMovingCost = baseTruck + stairsFee;
+
+      return {
+        route: `${from} ➔ ${to}`,
+        recommendedVehicle: 'ISUZU Medium Box Truck (Short Chassis)',
+        baseTruckRentalCostETB: baseTruck,
+        helpersAndStairsHandlingETB: stairsFee,
+        totalEstimatedMovingCostETB: totalMovingCost,
+        movingTips: 'Schedule move-in on Sunday mornings to avoid Addis Ababa weekday heavy traffic.',
+      };
+    }
+
+    case 'school_proximity_family_planner': {
+      const school = args.schoolName || 'ICS / Sandford';
+      return {
+        targetSchool: school,
+        recommendedNearbySubcities: ['Old Airport', 'Bisrate Gabriel', 'Sarbet', 'Kebena', 'Bole Atlas'],
+        averageTaxiCommuteMinutes: '10 to 20 minutes',
+        familyFriendlyNeighborhoodRating: '95% (Safe, green parks, international grocery stores nearby)',
+      };
+    }
+
+    case 'commercial_office_retail_space_finder': {
+      const biz = args.businessType || 'Office / Retail Shop';
+      const budget = args.maxBudgetETB || 50000;
+
+      const commercialProps = await prisma.property.findMany({
+        where: {
+          city: 'Addis Ababa',
+          price: { lte: budget },
+        },
+        take: 3,
+      });
+
+      return {
+        businessCategory: biz,
+        maxBudgetETB: budget,
+        matchingCommercialListings: commercialProps,
+        topCommercialCorridors: 'Bole Road (Edna Mall), Kazanchis Main Street, 22 Mazoria, Mexico Square.',
+      };
+    }
+
     default:
       return { error: `Tool ${name} is not implemented on backend.` };
   }

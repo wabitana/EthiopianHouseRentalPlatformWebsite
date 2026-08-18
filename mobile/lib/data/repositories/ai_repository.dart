@@ -18,6 +18,36 @@ class AiChatMessage {
     this.actions = const [],
     required this.timestamp,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'sender': sender,
+      'text': text,
+      'properties': properties.map((p) => p.toJson()).toList(),
+      'actions': actions,
+      'timestamp': timestamp.toIso8601String(),
+    };
+  }
+
+  factory AiChatMessage.fromJson(Map<String, dynamic> json) {
+    return AiChatMessage(
+      id: json['id'] as String,
+      sender: json['sender'] as String,
+      text: json['text'] as String,
+      properties: (json['properties'] is List)
+          ? (json['properties'] as List)
+              .map((p) => PropertyModel.fromJson(p as Map<String, dynamic>))
+              .toList()
+          : [],
+      actions: (json['actions'] is List)
+          ? List<String>.from(json['actions'] as List)
+          : [],
+      timestamp: json['timestamp'] != null
+          ? DateTime.parse(json['timestamp'] as String)
+          : DateTime.now(),
+    );
+  }
 }
 
 class AiRepository {
