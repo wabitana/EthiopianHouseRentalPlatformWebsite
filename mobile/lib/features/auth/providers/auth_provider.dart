@@ -153,7 +153,10 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = 'Failed to register account';
+      final msg = e.toString();
+      _errorMessage = msg.startsWith('Exception: ')
+          ? msg.replaceFirst('Exception: ', '')
+          : (msg.isEmpty ? 'Failed to register account' : msg);
       _isLoading = false;
       notifyListeners();
       return false;
