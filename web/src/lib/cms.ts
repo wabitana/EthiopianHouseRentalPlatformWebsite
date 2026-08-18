@@ -118,9 +118,12 @@ export async function getCmsConfig() {
       cache: "no-store",
     });
     if (res.ok) {
-      const data = await res.json();
-      if (data && data.config) {
-        return { ...defaultCmsConfig, ...data.config };
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const data = await res.json();
+        if (data && data.config) {
+          return { ...defaultCmsConfig, ...data.config };
+        }
       }
     }
     return defaultCmsConfig;
