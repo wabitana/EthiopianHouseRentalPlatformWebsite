@@ -97,7 +97,9 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
               widget.onLocationSelected?.call(currentLatLng);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Location set to your GPS position (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})'),
+                  content: Text(
+                    'Location set to your GPS position (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})',
+                  ),
                   backgroundColor: AppColors.primary,
                 ),
               );
@@ -107,7 +109,9 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
             if (mounted) {
               setState(() => _isLocating = false);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Location permission denied or unavailable.')),
+                const SnackBar(
+                  content: Text('Location permission denied or unavailable.'),
+                ),
               );
             }
           }.toJS,
@@ -120,7 +124,9 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
 
     try {
       final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
 
       final currentLatLng = LatLng(position.latitude, position.longitude);
@@ -147,14 +153,17 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
       setState(() => _isLocating = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not fetch GPS location: ${e.toString()}')),
+          SnackBar(
+            content: Text('Could not fetch GPS location: ${e.toString()}'),
+          ),
         );
       }
     }
   }
 
   void _openGoogleMapsDirections() async {
-    final query = '${widget.neighborhood}, ${widget.area}, ${widget.city}, Ethiopia';
+    final query =
+        '${widget.neighborhood}, ${widget.area}, ${widget.city}, Ethiopia';
     final targetUrlString =
         'https://www.google.com/maps/dir/?api=1&destination=${_currentCenter.latitude},${_currentCenter.longitude}&travelmode=driving';
 
@@ -174,7 +183,10 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
     );
 
     try {
-      final success = await launchUrl(googleMapsDirectionsUrl, mode: LaunchMode.externalApplication);
+      final success = await launchUrl(
+        googleMapsDirectionsUrl,
+        mode: LaunchMode.externalApplication,
+      );
       if (!success) {
         await launchUrl(fallbackUrl, mode: LaunchMode.externalApplication);
       }
@@ -190,7 +202,8 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
   @override
   Widget build(BuildContext context) {
     final streetUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-    final satelliteUrl = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+    final satelliteUrl =
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
 
     return Container(
       height: 220,
@@ -238,18 +251,36 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(12),
-                              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 6, offset: Offset(0, 2))],
-                              border: Border.all(color: AppColors.primary, width: 1.5),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black26,
+                                  blurRadius: 6,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                              border: Border.all(
+                                color: AppColors.primary,
+                                width: 1.5,
+                              ),
                             ),
                             child: Text(
-                              widget.neighborhood.isNotEmpty ? widget.neighborhood : widget.area,
+                              widget.neighborhood.isNotEmpty
+                                  ? widget.neighborhood
+                                  : widget.area,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primary,
+                              ),
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -259,10 +290,20 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
                               color: AppColors.primary,
                               shape: BoxShape.circle,
                               boxShadow: [
-                                BoxShadow(color: AppColors.primary.withValues(alpha: 0.4), blurRadius: 8, spreadRadius: 2),
+                                BoxShadow(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.4,
+                                  ),
+                                  blurRadius: 8,
+                                  spreadRadius: 2,
+                                ),
                               ],
                             ),
-                            child: const Icon(Icons.home_work_rounded, color: Colors.white, size: 18),
+                            child: const Icon(
+                              Icons.home_work_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
                           ),
                         ],
                       ),
@@ -280,11 +321,16 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
                 child: GestureDetector(
                   onTap: _isLocating ? null : _useCurrentLocation,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.primary,
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black26, blurRadius: 4),
+                      ],
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -293,14 +339,25 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
                           const SizedBox(
                             width: 12,
                             height: 12,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
                           )
                         else
-                          const Icon(Icons.my_location_rounded, color: Colors.white, size: 14),
+                          const Icon(
+                            Icons.my_location_rounded,
+                            color: Colors.white,
+                            size: 14,
+                          ),
                         const SizedBox(width: 4),
                         Text(
                           _isLocating ? 'Locating...' : 'Use My Location',
-                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -321,19 +378,34 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
                       });
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.75),
                         borderRadius: BorderRadius.circular(20),
-                        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black26, blurRadius: 4),
+                        ],
                       ),
                       child: Row(
                         children: [
-                          Icon(_isSatellite ? Icons.map_outlined : Icons.satellite_alt_rounded, color: Colors.white, size: 14),
+                          Icon(
+                            _isSatellite
+                                ? Icons.map_outlined
+                                : Icons.satellite_alt_rounded,
+                            color: Colors.white,
+                            size: 14,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             _isSatellite ? 'Street View' : 'Satellite',
-                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
@@ -345,7 +417,9 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
-                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black12, blurRadius: 4),
+                      ],
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -358,11 +432,22 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
                             _mapController.move(_currentCenter, _zoomLevel);
                           },
                           child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                            child: Icon(Icons.add, size: 16, color: AppColors.primary),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 6,
+                            ),
+                            child: Icon(
+                              Icons.add,
+                              size: 16,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
-                        Container(width: 1, height: 16, color: AppColors.border),
+                        Container(
+                          width: 1,
+                          height: 16,
+                          color: AppColors.border,
+                        ),
                         InkWell(
                           onTap: () {
                             setState(() {
@@ -371,8 +456,15 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
                             _mapController.move(_currentCenter, _zoomLevel);
                           },
                           child: const Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                            child: Icon(Icons.remove, size: 16, color: AppColors.primary),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 6,
+                            ),
+                            child: Icon(
+                              Icons.remove,
+                              size: 16,
+                              color: AppColors.primary,
+                            ),
                           ),
                         ),
                       ],
@@ -391,19 +483,32 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.95),
                       borderRadius: BorderRadius.circular(10),
-                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black12, blurRadius: 4),
+                      ],
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.location_on, size: 14, color: AppColors.secondary),
+                        const Icon(
+                          Icons.location_on,
+                          size: 14,
+                          color: AppColors.secondary,
+                        ),
                         const SizedBox(width: 4),
                         Text(
                           '${widget.city}, Ethiopia',
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                       ],
                     ),
@@ -414,11 +519,19 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
                       foregroundColor: Colors.white,
                       minimumSize: const Size(100, 34),
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                       elevation: 2,
                     ),
                     icon: const Icon(Icons.directions, size: 15),
-                    label: const Text('Directions', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    label: const Text(
+                      'Directions',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     onPressed: _openGoogleMapsDirections,
                   ),
                 ],

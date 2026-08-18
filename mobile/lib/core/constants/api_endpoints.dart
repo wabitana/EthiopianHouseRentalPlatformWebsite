@@ -60,4 +60,6 @@ class ApiEndpoints {
   static String get reports => '$baseUrl/reports';
   static String get upload => '$baseUrl/upload';
   static String get aiChat => '$baseUrl/ai/chat';
+  static String get aiRecommendations => '$baseUrl/ai/recommendations';
+  static String get aiMatchScore => '$baseUrl/ai/property-match-score';
 }

@@ -7,6 +7,8 @@ import '../../../shared/widgets/verification_badge.dart';
 import '../../../shared/widgets/ethiopia_map_preview.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
+import '../../../core/services/user_behavior_tracker.dart';
+import '../providers/ai_recommendations_provider.dart';
 import '../providers/property_provider.dart';
 import '../providers/favorites_provider.dart';
 import '../providers/inquiry_provider.dart';
@@ -239,6 +241,19 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
         propertyTitle: property.title,
       ),
     );
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final propProvider = context.read<PropertyProvider>();
+      try {
+        final prop = propProvider.properties.firstWhere((p) => p.id == widget.propertyId);
+        UserBehaviorTracker.trackPropertyView(prop);
+        context.read<AiRecommendationsProvider>().fetchRecommendations();
+      } catch (_) {}
+    });
   }
 
   @override

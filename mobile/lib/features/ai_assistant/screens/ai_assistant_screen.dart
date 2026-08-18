@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/repositories/ai_repository.dart';
 import '../../../shared/widgets/property_card.dart';
+import '../../../shared/widgets/ai_property_map_view.dart';
 import '../../house_seeker/screens/property_detail_screen.dart';
 import '../providers/ai_assistant_provider.dart';
 
@@ -18,9 +19,11 @@ class AiAssistantScreen extends StatefulWidget {
 class _AiAssistantScreenState extends State<AiAssistantScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final Set<String> _showMapForMessageId = {};
 
   final List<String> _quickPrompts = [
     'Find 2 bedrooms in Bole under 25,000 ETB',
+    'can u show me home present in Addis Ababa?',
     'በቦሌ 25000 ብር በታች 2 መኝታ ቤት ፈልግልኝ',
     '📜 Draft Amharic Lease Agreement (የሕግ የቤት ኪራይ ውል)',
     '🚕 Calculate commute time to Kazanchis',
@@ -33,7 +36,6 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     '💡 Estimate monthly water & electric bill',
     'Show my saved houses',
     'What should I check before renting?',
-    'How are my house listings doing?',
     'Compare houses under 30,000 ETB',
   ];
 
@@ -152,7 +154,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                 }
 
                 final msg = messages[index];
-                return _buildMessageBubble(msg);
+                return _buildMessageBubble(msg, index);
               },
             ),
           ),
@@ -209,8 +211,10 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
     );
   }
 
-  Widget _buildMessageBubble(AiChatMessage msg) {
+  Widget _buildMessageBubble(AiChatMessage msg, int msgIndex) {
     final isUser = msg.sender == 'user';
+    final msgKey = 'msg_$msgIndex';
+    final showMap = _showMapForMessageId.contains(msgKey);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
@@ -271,7 +275,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
             ],
           ),
 
-          // Render Real Property Cards if included in AI response
+          // Render Real Property Cards or Live Map View if included in AI response
           if (msg.properties.isNotEmpty) ...[
             const SizedBox(height: 12),
             Padding(
@@ -279,6 +283,7 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // View Switcher Bar (Cards vs Live Map)
                   Row(
                     children: [
                       const Icon(Icons.home_work_rounded, size: 16, color: AppColors.primary),
@@ -287,34 +292,112 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
                         'Matched Real Properties (${msg.properties.length}):',
                         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
                       ),
+                      const Spacer(),
+                      // Toggle Buttons: Cards View | Map View
+                      Container(
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Row(
+                          children: [
+                            InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _showMapForMessageId.remove(msgKey);
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: !showMap ? AppColors.primary : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.grid_view_rounded, size: 13, color: !showMap ? Colors.white : AppColors.textSecondary),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Cards',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: !showMap ? Colors.white : AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () {
+                                setState(() {
+                                  _showMapForMessageId.add(msgKey);
+                                });
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: showMap ? AppColors.primary : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.map_rounded, size: 13, color: showMap ? Colors.white : AppColors.textSecondary),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Live Map',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: showMap ? Colors.white : AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  SizedBox(
-                    height: 340,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: msg.properties.length,
-                      itemBuilder: (context, pIndex) {
-                        final property = msg.properties[pIndex];
-                        return Container(
-                          width: 290,
-                          margin: const EdgeInsets.only(right: 12),
-                          child: PropertyCard(
-                            property: property,
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => PropertyDetailScreen(propertyId: property.id),
-                                ),
-                              );
-                            },
-                          ),
-                        );
-                      },
+
+                  // Display Small Inline Map View or Cards View
+                  if (showMap)
+                    AiPropertyMapView(
+                      properties: msg.properties,
+                      height: 240,
+                    )
+                  else
+                    SizedBox(
+                      height: 340,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: msg.properties.length,
+                        itemBuilder: (context, pIndex) {
+                          final property = msg.properties[pIndex];
+                          return Container(
+                            width: 290,
+                            margin: const EdgeInsets.only(right: 12),
+                            child: PropertyCard(
+                              property: property,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => PropertyDetailScreen(propertyId: property.id),
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        },
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -326,11 +409,8 @@ class _AiAssistantScreenState extends State<AiAssistantScreen> {
 
   String _cleanMarkdownText(String rawText) {
     if (rawText.isEmpty) return rawText;
-    // Remove markdown image tags like ![Image 1](url)
     String cleaned = rawText.replaceAll(RegExp(r'!\[.*?\]\(.*?\)', caseSensitive: false), '');
-    // Remove markdown bold asterisks **
     cleaned = cleaned.replaceAll('**', '');
-    // Remove extra consecutive blank lines
     cleaned = cleaned.replaceAll(RegExp(r'\n{3,}'), '\n\n');
     return cleaned.trim();
   }

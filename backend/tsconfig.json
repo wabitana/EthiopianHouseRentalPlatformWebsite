@@ -2,6 +2,7 @@
   "compilerOptions": {
     "target": "es2020",
     "module": "commonjs",
+    "moduleResolution": "node",
     "lib": ["es2020"],
     "outDir": "./dist",
     "rootDir": "./src",
@@ -9,7 +10,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node"
+    "baseUrl": ".",
+    "paths": {
+      "@langchain/langgraph/prebuilt": ["./node_modules/@langchain/langgraph/dist/prebuilt/index.d.ts"]
+    }
   },
   "include": ["src/**/*"]
 }

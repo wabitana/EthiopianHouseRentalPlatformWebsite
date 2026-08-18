@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/mock_data.dart';
 import '../../../shared/widgets/property_card.dart';
 import '../../../shared/widgets/empty_state_widget.dart';
 import '../providers/property_provider.dart';
@@ -35,7 +36,12 @@ class _SavedScreenState extends State<SavedScreen> {
     final favoritesProvider = context.watch<FavoritesProvider>();
     final user = context.watch<AuthProvider>().currentUser;
 
-    final savedProperties = propertyProvider.properties
+    final allKnownProperties = {
+      ...propertyProvider.properties,
+      ...MockData.mockProperties,
+    }.toList();
+
+    final savedProperties = allKnownProperties
         .where((p) => favoritesProvider.isFavorite(p.id))
         .toList();
 
