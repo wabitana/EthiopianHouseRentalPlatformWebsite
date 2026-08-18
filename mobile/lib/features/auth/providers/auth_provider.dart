@@ -281,6 +281,40 @@ class AuthProvider extends ChangeNotifier {
     return false;
   }
 
+  Future<bool> sendForgotPassword(String email) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final success = await _authRepository.forgotPassword(email);
+      _isLoading = false;
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _errorMessage = 'Failed to send password reset code';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> resetPassword(String email, String code, String newPassword) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final success = await _authRepository.performResetPassword(email, code, newPassword);
+      _isLoading = false;
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _errorMessage = 'Failed to reset password. Check verification code.';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> changePassword(String currentPassword, String newPassword) async {
     _isLoading = true;
     notifyListeners();

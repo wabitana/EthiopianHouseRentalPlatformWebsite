@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -24,8 +24,10 @@ import {
   UserCheck2,
   HelpCircle,
   ExternalLink,
+  ShieldAlert,
 } from "lucide-react";
 import { mockNotifications } from "@/lib/portal-mock-data";
+import { apiFetch } from "@/lib/api";
 
 const adminNavItems = [
   { href: "/portal/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -52,8 +54,43 @@ export default function AdminPortalLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
+
+  useEffect(() => {
+    async function checkAdminAuth() {
+      try {
+        const res = await apiFetch("/users/me");
+        if (res?.user?.role !== "admin") {
+          setAccessDenied(true);
+        }
+      } catch (err) {
+        setAccessDenied(true);
+      }
+    }
+    checkAdminAuth();
+  }, []);
 
   const unreadNotifs = mockNotifications.filter((n) => !n.read);
+
+  if (accessDenied) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-slate-800 border border-slate-700 rounded-2xl p-8 text-center space-y-4 shadow-2xl">
+          <ShieldAlert className="h-16 w-16 text-rose-500 mx-auto" />
+          <h2 className="text-xl font-bold text-white">Access Denied</h2>
+          <p className="text-sm text-slate-300">
+            Administrator privileges are required to access the Admin Dashboard. Your account does not have access.
+          </p>
+          <Link
+            href="/portal/login"
+            className="inline-block w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-sm transition-colors shadow-lg"
+          >
+            Back to Portal Login
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">

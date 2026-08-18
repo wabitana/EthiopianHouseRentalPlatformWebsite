@@ -1,32 +1,66 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
+import { z } from 'zod';
 import { prisma, withDbRetry } from '../../prisma';
-import { authenticateToken, AuthRequest } from '../../middleware/auth';
+import { authenticateToken, getJwtSecret, AuthRequest } from '../../middleware/auth';
 import { sendVerificationEmail } from '../email/email.service';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'ethiopian_house_rental_super_secret_jwt_key_2026';
 
-// Helper to issue tokens
+const hashToken = (token: string) => {
+  return crypto.createHash('sha256').update(token).digest('hex');
+};
+
+// Zod Schemas
+const registerSchema = z.object({
+  name: z.string().min(2, 'Name must be at least 2 characters'),
+  email: z.string().email('Invalid email address'),
+  phone: z.string().optional(),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  role: z.string().optional(),
+});
+
+const loginSchema = z.object({
+  emailOrPhone: z.string().optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  password: z.string().min(1, 'Password is required'),
+  role: z.string().optional(),
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email('Invalid email address'),
+});
+
+const resetPasswordSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  code: z.string().min(4, 'Verification code is required'),
+  newPassword: z.string().min(6, 'New password must be at least 6 characters'),
+});
+
+// Helper to issue tokens (1h Access Token, 7d Hashed Refresh Token)
 const generateTokens = async (user: any) => {
   const token = jwt.sign(
     { id: user.id, email: user.email, role: user.role, name: user.name },
-    JWT_SECRET,
-    { expiresIn: '15m' }
+    getJwtSecret(),
+    { expiresIn: '1h' }
   );
 
   const refreshToken = jwt.sign(
     { id: user.id, type: 'refresh' },
-    JWT_SECRET,
+    getJwtSecret(),
     { expiresIn: '7d' }
   );
+
+  const hashedRefreshToken = hashToken(refreshToken);
 
   try {
     await prisma.refreshToken.create({
       data: {
         userId: user.id,
-        token: refreshToken,
+        token: hashedRefreshToken,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
@@ -38,27 +72,30 @@ const generateTokens = async (user: any) => {
 // POST /api/v1/auth/register
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, phone, password, role } = req.body;
-
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Name, email, and password are required' });
+    const parseResult = registerSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        details: parseResult.error.flatten().fieldErrors,
+      });
     }
+
+    const { name, email, phone, password, role } = parseResult.data;
 
     const normalizedRole = (role || 'seeker').toLowerCase();
 
-    // Rule: Administrative or Agent roles cannot be registered publicly
     if (normalizedRole === 'agent' || normalizedRole === 'admin') {
-      return res.status(400).json({ error: 'Administrative or Agent accounts must be created by an Administrator.' });
+      return res.status(403).json({ error: 'Administrative or Agent accounts must be created by an Administrator.' });
     }
 
     const existing = await prisma.user.findUnique({ where: { email } });
-
     if (existing) {
       return res.status(400).json({ error: 'Email is already registered' });
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
     const emailCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedCode = await bcrypt.hash(emailCode, 10);
 
     const user = await prisma.user.create({
       data: {
@@ -69,8 +106,8 @@ router.post('/register', async (req, res) => {
         role: normalizedRole,
         isVerified: false,
         isEmailVerified: false,
-        emailVerificationCode: emailCode,
-        emailVerificationExpires: new Date(Date.now() + 15 * 60 * 1000), // 15 mins
+        emailVerificationCode: hashedCode,
+        emailVerificationExpires: new Date(Date.now() + 10 * 60 * 1000), // 10 mins expiration
       },
     });
 
@@ -84,7 +121,7 @@ router.post('/register', async (req, res) => {
       requiresEmailVerification: true,
       email: user.email,
       role: user.role,
-      code: emailCode, // Included for easy dev/testing
+      code: emailCode, // Included for easy dev testing
     });
   } catch (error) {
     console.error('Register error:', error);
@@ -111,7 +148,20 @@ router.post('/verify-email', async (req, res) => {
       return res.json({ message: 'Email already verified', ...tokens, user });
     }
 
-    if (user.emailVerificationCode !== code.toString().trim()) {
+    if (user.emailVerificationExpires && user.emailVerificationExpires < new Date()) {
+      return res.status(400).json({ error: 'Verification code has expired. Please request a new code.' });
+    }
+
+    let isValid = false;
+    if (user.emailVerificationCode) {
+      if (user.emailVerificationCode === code.toString().trim()) {
+        isValid = true;
+      } else {
+        isValid = await bcrypt.compare(code.toString().trim(), user.emailVerificationCode);
+      }
+    }
+
+    if (!isValid) {
       return res.status(400).json({ error: 'Invalid verification code' });
     }
 
@@ -129,7 +179,7 @@ router.post('/verify-email', async (req, res) => {
     res.cookie('delala_token', tokens.token, {
       httpOnly: true,
       sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000,
+      maxAge: 60 * 60 * 1000,
       path: '/',
     });
 
@@ -153,6 +203,104 @@ router.post('/verify-email', async (req, res) => {
   }
 });
 
+// POST /api/v1/auth/forgot-password
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const parseResult = forgotPasswordSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        details: parseResult.error.flatten().fieldErrors,
+      });
+    }
+
+    const { email } = parseResult.data;
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return res.json({ message: 'If an account exists with that email, a reset OTP code has been sent.' });
+    }
+
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const hashedCode = await bcrypt.hash(resetCode, 10);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        emailVerificationCode: hashedCode,
+        emailVerificationExpires: new Date(Date.now() + 10 * 60 * 1000), // 10 mins
+      },
+    });
+
+    console.log(`🔐 Password Reset OTP for ${email}: ${resetCode}`);
+    sendVerificationEmail(email, resetCode, user.name).catch((err) => {
+      console.error('Email dispatch error:', err);
+    });
+
+    return res.json({
+      message: 'Password reset code sent to email.',
+      email,
+      code: resetCode, // Dev testing printout
+    });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    return res.status(500).json({ error: 'Failed to process forgot password' });
+  }
+});
+
+// POST /api/v1/auth/reset-password
+router.post('/reset-password', async (req, res) => {
+  try {
+    const parseResult = resetPasswordSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        details: parseResult.error.flatten().fieldErrors,
+      });
+    }
+
+    const { email, code, newPassword } = parseResult.data;
+
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ error: 'User account not found' });
+    }
+
+    if (user.emailVerificationExpires && user.emailVerificationExpires < new Date()) {
+      return res.status(400).json({ error: 'Reset code has expired. Please request a new password reset.' });
+    }
+
+    let isValid = false;
+    if (user.emailVerificationCode) {
+      if (user.emailVerificationCode === code.toString().trim()) {
+        isValid = true;
+      } else {
+        isValid = await bcrypt.compare(code.toString().trim(), user.emailVerificationCode);
+      }
+    }
+
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid password reset code' });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        passwordHash,
+        emailVerificationCode: null,
+        emailVerificationExpires: null,
+      },
+    });
+
+    return res.json({ message: 'Password has been successfully reset. You may now log in.' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    return res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
 // POST /api/v1/auth/send-phone-otp
 router.post('/send-phone-otp', authenticateToken, async (req: AuthRequest, res) => {
   try {
@@ -169,7 +317,7 @@ router.post('/send-phone-otp', authenticateToken, async (req: AuthRequest, res) 
       data: {
         phone: targetPhone,
         phoneVerificationCode: phoneCode,
-        phoneVerificationExpires: new Date(Date.now() + 15 * 60 * 1000),
+        phoneVerificationExpires: new Date(Date.now() + 10 * 60 * 1000),
       },
     });
 
@@ -178,7 +326,7 @@ router.post('/send-phone-otp', authenticateToken, async (req: AuthRequest, res) 
     return res.json({
       message: 'Phone verification code sent.',
       phone: targetPhone,
-      code: phoneCode, // Included for dev testing
+      code: phoneCode,
     });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to send phone verification code' });
@@ -224,6 +372,14 @@ router.post('/verify-phone-otp', authenticateToken, async (req: AuthRequest, res
 // POST /api/v1/auth/login
 router.post('/login', async (req, res) => {
   try {
+    const parseResult = loginSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        details: parseResult.error.flatten().fieldErrors,
+      });
+    }
+
     const { emailOrPhone, email, phone, password, role } = req.body;
     const identifier = emailOrPhone || email || phone;
 
@@ -248,9 +404,25 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email/phone or password' });
     }
 
+    // Block login if email is not verified
+    if (!user.isEmailVerified) {
+      return res.status(403).json({
+        error: 'Email not verified. Please verify your email before logging in.',
+        requiresEmailVerification: true,
+        email: user.email,
+      });
+    }
+
     if (role) {
       const requestedRole = role.toLowerCase();
       const userRole = user.role.toLowerCase();
+
+      // Rule 1: Admin portal login security check
+      if (requestedRole === 'admin' && userRole !== 'admin') {
+        return res.status(403).json({ error: 'Forbidden: Admin access required.' });
+      }
+
+      // Rule 2: Seeker/Provider role matching
       if (userRole !== requestedRole && userRole !== 'admin') {
         const registeredLabel = userRole === 'seeker' ? 'House Seeker' : 'House Provider';
         const selectedLabel = requestedRole === 'seeker' ? 'House Seeker' : 'House Provider';
@@ -264,16 +436,14 @@ router.post('/login', async (req, res) => {
 
     const isProduction = process.env.NODE_ENV === 'production';
 
-    // Short-lived access token cookie
     res.cookie('delala_token', tokens.token, {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'lax',
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      maxAge: 60 * 60 * 1000, // 1 hour
       path: '/',
     });
 
-    // Long-lived refresh token cookie (HttpOnly — JS can never read this)
     res.cookie('delala_refresh_token', tokens.refreshToken, {
       httpOnly: true,
       secure: isProduction,
@@ -308,42 +478,40 @@ router.post('/login', async (req, res) => {
 // POST /api/v1/auth/refresh-token
 router.post('/refresh-token', async (req, res) => {
   try {
-    // Accept refresh token from HttpOnly cookie (preferred) or request body (fallback)
     const refreshToken = req.cookies?.delala_refresh_token || req.body?.refreshToken;
 
     if (!refreshToken) {
       return res.status(400).json({ error: 'Refresh token required' });
     }
 
+    const hashedToken = hashToken(refreshToken);
+
     const storedToken = await prisma.refreshToken.findUnique({
-      where: { token: refreshToken },
+      where: { token: hashedToken },
       include: { user: true },
     });
 
     if (!storedToken || storedToken.revoked || storedToken.expiresAt < new Date()) {
-      // Clear both cookies on invalid refresh to force re-login
       res.clearCookie('delala_token', { path: '/' });
       res.clearCookie('delala_refresh_token', { path: '/' });
       return res.status(401).json({ error: 'Invalid or expired refresh token' });
     }
 
-    // Revoke the used refresh token (rotation — prevents replay attacks)
+    // Revoke old refresh token (rotation)
     await prisma.refreshToken.update({
       where: { id: storedToken.id },
       data: { revoked: true },
     });
 
-    // Issue a fresh token pair
     const newTokens = await generateTokens(storedToken.user);
 
-    // Set both tokens as HttpOnly cookies
     const isProduction = process.env.NODE_ENV === 'production';
 
     res.cookie('delala_token', newTokens.token, {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'lax',
-      maxAge: 15 * 60 * 1000, // 15 minutes
+      maxAge: 60 * 60 * 1000, // 1 hour
       path: '/',
     });
 
@@ -368,10 +536,13 @@ router.post('/refresh-token', async (req, res) => {
 // POST & GET /api/v1/auth/logout
 const handleLogout = async (req: any, res: any) => {
   const { refreshToken } = req.body || {};
-  if (refreshToken) {
+  const token = refreshToken || req.cookies?.delala_refresh_token;
+
+  if (token) {
     try {
+      const hashedToken = hashToken(token);
       await prisma.refreshToken.updateMany({
-        where: { token: refreshToken },
+        where: { token: hashedToken },
         data: { revoked: true },
       });
     } catch (_) {}
@@ -383,7 +554,7 @@ const handleLogout = async (req: any, res: any) => {
     'delala_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly',
     'delala_refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly',
   ]);
-  
+
   const isHtmlRequest = req.headers['accept']?.includes('text/html') || req.query?.redirect === 'true';
   if (isHtmlRequest) {
     return res.redirect('/login');

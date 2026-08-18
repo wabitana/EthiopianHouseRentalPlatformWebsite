@@ -245,4 +245,28 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
     }
     throw ApiException('Failed to parse identity verification response');
   }
+
+  @override
+  Future<bool> forgotPassword(String email) async {
+    final res = await ApiClient.post(
+      ApiEndpoints.forgotPassword,
+      body: {'email': email},
+      requireAuth: false,
+    );
+    return res != null && res['message'] != null;
+  }
+
+  @override
+  Future<bool> resetPassword(String email, String code, String newPassword) async {
+    final res = await ApiClient.post(
+      ApiEndpoints.resetPassword,
+      body: {
+        'email': email,
+        'code': code,
+        'newPassword': newPassword,
+      },
+      requireAuth: false,
+    );
+    return res != null && res['message'] != null;
+  }
 }

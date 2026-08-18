@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import { prisma } from '../../prisma';
-import { authenticateToken, AuthRequest } from '../../middleware/auth';
+import { authenticateToken, requireAdmin, AuthRequest } from '../../middleware/auth';
 
 const router = Router();
+router.use(authenticateToken, requireAdmin);
 
 const formatProperty = (p: any) => ({
   id: p.id,

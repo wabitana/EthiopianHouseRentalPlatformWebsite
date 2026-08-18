@@ -32,6 +32,7 @@ export default function PortalLoginPage() {
   // Interactive UI states for simulation
   const [isLoading, setIsLoading] = useState(false);
   const [errorState, setErrorState] = useState<"none" | "invalid" | "locked">("none");
+  const [errorText, setErrorText] = useState<string>("");
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
@@ -39,13 +40,14 @@ export default function PortalLoginPage() {
   // Quick fill mock credentials handler
   const handleQuickFill = (targetRole: "admin" | "agent") => {
     setErrorState("none");
+    setErrorText("");
     if (targetRole === "admin") {
-      setEmail("admin@example.com");
-      setPassword("admin123456");
+      setEmail("admin@delala.com");
+      setPassword("password123");
       setRole("admin");
     } else {
-      setEmail("agent@example.com");
-      setPassword("agent123456");
+      setEmail("agent@delala.com");
+      setPassword("password123");
       setRole("agent");
     }
   };
@@ -53,10 +55,8 @@ export default function PortalLoginPage() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (errorState !== "none") {
-      return;
-    }
-
+    setErrorState("none");
+    setErrorText("");
     setIsLoading(true);
 
     try {
@@ -66,28 +66,42 @@ export default function PortalLoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        credentials: "include", // Important: allows backend Set-Cookie to set HttpOnly refresh token
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({
+          email,
+          password,
+          role: role === "auto" ? undefined : role,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error("Invalid credentials");
+        const resData = await response.json().catch(() => ({}));
+        const message = resData.error || "Invalid email or password";
+        setErrorText(message);
+        throw new Error(message);
       }
 
       const data = await response.json();
       const token = data.token;
 
       // Store access token in a JS-readable cookie (used by api.ts for Authorization header)
-      // The backend already set delala_refresh_token as HttpOnly via Set-Cookie header
-      document.cookie = `delala_token=${token}; path=/; max-age=${15 * 60}; SameSite=Lax`;
+      document.cookie = `delala_token=${token}; path=/; max-age=${60 * 60}; SameSite=Lax`;
 
-      const userRole = data.user?.role;
+      const userRole = (data.user?.role || "").toLowerCase();
+      if (userRole !== "admin" && userRole !== "agent") {
+        // Clear token cookie
+        document.cookie = "delala_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+        const message = "Access Denied: Only Administrators and Portal Agents can log into this portal.";
+        setErrorText(message);
+        setErrorState("invalid");
+        return;
+      }
+
       if (userRole === "agent") {
         router.push("/portal/agent");
-      } else {
+      } else if (userRole === "admin") {
         router.push("/portal/admin");
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Login failed:", err);
       setErrorState("invalid");
     } finally {
@@ -187,8 +201,8 @@ export default function PortalLoginPage() {
             <div className="mb-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-3 text-rose-300 text-xs animate-shake">
               <AlertTriangle className="h-5 w-5 text-rose-400 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="font-semibold text-rose-200">Invalid Credentials</p>
-                <p className="mt-0.5">The email or password you entered is incorrect. Please check your credentials or reset password.</p>
+                <p className="font-semibold text-rose-200">Authentication Failed</p>
+                <p className="mt-0.5">{errorText || "The email or password you entered is incorrect. Please check your credentials."}</p>
               </div>
               <button
                 type="button"
