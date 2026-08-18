@@ -353,57 +353,60 @@ class SeekerHomeScreen extends StatelessWidget {
                             itemCount: aiRecsProvider.recommendations.length,
                             itemBuilder: (context, index) {
                               final item = aiRecsProvider.recommendations[index];
-                              return Stack(
-                                children: [
-                                  PropertyCard(
-                                    property: item.property,
-                                    isHorizontal: true,
-                                    isFavorite: favoritesProvider.isFavorite(item.property.id),
-                                    onFavoriteToggle: () {
-                                      if (user != null) {
-                                        favoritesProvider.toggleFavorite(user.id, item.property.id);
-                                        UserBehaviorTracker.trackFavoriteToggle(item.property.id, !favoritesProvider.isFavorite(item.property.id));
-                                      }
-                                    },
-                                    onTap: () {
-                                      UserBehaviorTracker.trackPropertyView(item.property);
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) => PropertyDetailScreen(propertyId: item.property.id),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  // AI Match Score Badge Overlay
-                                  Positioned(
-                                    top: 10,
-                                    left: 10,
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withValues(alpha: 0.8),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.amber, width: 1.2),
-                                        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const Icon(Icons.auto_awesome, color: Colors.amber, size: 11),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            '${item.matchScore}% AI Match',
-                                            style: const TextStyle(
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.white,
-                                            ),
+                              return SizedBox(
+                                width: 280,
+                                child: Stack(
+                                  children: [
+                                    PropertyCard(
+                                      property: item.property,
+                                      isHorizontal: true,
+                                      isFavorite: favoritesProvider.isFavorite(item.property.id),
+                                      onFavoriteToggle: () {
+                                        if (user != null) {
+                                          favoritesProvider.toggleFavorite(user.id, item.property.id);
+                                          UserBehaviorTracker.trackFavoriteToggle(item.property.id, !favoritesProvider.isFavorite(item.property.id));
+                                        }
+                                      },
+                                      onTap: () {
+                                        UserBehaviorTracker.trackPropertyView(item.property);
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => PropertyDetailScreen(propertyId: item.property.id),
                                           ),
-                                        ],
+                                        );
+                                      },
+                                    ),
+                                    // AI Match Score Badge Overlay
+                                    Positioned(
+                                      top: 10,
+                                      left: 10,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withValues(alpha: 0.8),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(color: Colors.amber, width: 1.2),
+                                          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.auto_awesome, color: Colors.amber, size: 11),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              '${item.matchScore}% AI Match',
+                                              style: const TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               );
                             },
                           ),

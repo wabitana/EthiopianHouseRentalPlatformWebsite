@@ -15,9 +15,23 @@ import 'provider_inquiries_screen.dart';
 import 'provider_analytics_screen.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/widgets/app_navigation_drawer.dart';
+import '../../../shared/widgets/app_tutoring_overlay.dart';
 
-class ProviderDashboardScreen extends StatelessWidget {
+class ProviderDashboardScreen extends StatefulWidget {
   const ProviderDashboardScreen({super.key});
+
+  @override
+  State<ProviderDashboardScreen> createState() => _ProviderDashboardScreenState();
+}
+
+class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      AppTutorialService.checkAndShowTutorial(context, 'provider');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
