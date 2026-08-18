@@ -60,6 +60,38 @@ const mapBackendPropertyDoc = (d: any): VerificationItem => {
   };
 };
 
+const mapBackendIdentityDoc = (d: any): VerificationItem => {
+  return {
+    id: d.id,
+    propertyId: '',
+    propertyTitle: `Identity: ${d.user?.name || 'User Profile'}`,
+    propertyImage: d.user?.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
+    providerId: d.userId || '',
+    providerName: d.user?.name || 'User Profile',
+    providerPhone: d.user?.phone || '',
+    location: 'Identity Verification Queue',
+    status: d.status === 'VERIFIED' ? 'Approved' : d.status === 'REJECTED' ? 'Rejected' : 'Pending',
+    documentsCount: 1,
+    aiPreCheckScore: d.aiRiskScore || 95.0,
+    aiPreCheckDetails: {
+      ownershipDocsValid: true,
+      identityVerified: true,
+      locationMatch: true,
+      priceReasonable: true,
+    },
+    submittedDate: new Date(d.createdAt).toLocaleDateString(),
+    notes: d.aiNotes || '',
+    documents: [
+      {
+        title: `${d.idType || 'National ID'} (${d.idNumber || ''})`,
+        type: d.idType || 'NATIONAL_ID',
+        url: d.documentUrl || 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600',
+        preview: d.documentUrl || 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600',
+      }
+    ]
+  };
+};
+
 export default function AdminVerificationPage() {
   const [queue, setQueue] = useState<VerificationItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,7 +102,9 @@ export default function AdminVerificationPage() {
     try {
       setLoading(true);
       const data = await apiFetch("/verification/admin/pending");
-      setQueue((data.propertyDocs || []).map(mapBackendPropertyDoc));
+      const propItems = (data.propertyDocs || []).map(mapBackendPropertyDoc);
+      const idItems = (data.identityDocs || []).map(mapBackendIdentityDoc);
+      setQueue([...propItems, ...idItems]);
     } catch (err) {
       console.error("Failed to load verification queue:", err);
     } finally {

@@ -404,12 +404,22 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email/phone or password' });
     }
 
-    // Block login if email is not verified
-    if (!user.isEmailVerified) {
+    const userRole = user.role ? user.role.toLowerCase() : '';
+
+    // Administrative and Agent accounts do not require email verification
+    if (!user.isEmailVerified && userRole !== 'admin' && userRole !== 'agent') {
       return res.status(403).json({
         error: 'Email not verified. Please verify your email before logging in.',
         requiresEmailVerification: true,
         email: user.email,
+      });
+    }
+
+    // Auto-mark isEmailVerified for Admin / Agent roles if needed
+    if (!user.isEmailVerified && (userRole === 'admin' || userRole === 'agent')) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { isEmailVerified: true },
       });
     }
 

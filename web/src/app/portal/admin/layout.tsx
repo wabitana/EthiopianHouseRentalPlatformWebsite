@@ -29,19 +29,19 @@ import {
 import { mockNotifications } from "@/lib/portal-mock-data";
 import { apiFetch } from "@/lib/api";
 
-const adminNavItems = [
-  { href: "/portal/admin", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/portal/admin/users", label: "Users", icon: Users },
-  { href: "/portal/admin/providers", label: "Providers", icon: Building },
-  { href: "/portal/admin/seekers", label: "Seekers", icon: UserCheck2 },
-  { href: "/portal/admin/properties", label: "Properties", icon: Building2 },
-  { href: "/portal/admin/verification", label: "Verification", icon: ShieldCheck, badge: "126" },
-  { href: "/portal/admin/agents", label: "Agents", icon: UserCheck },
-  { href: "/portal/admin/reports", label: "Reports", icon: FileText, badge: "14" },
-  { href: "/portal/admin/payments", label: "Payments", icon: CreditCard },
-  { href: "/portal/admin/notifications", label: "Notifications", icon: Bell },
-  { href: "/portal/admin/messages", label: "Messages", icon: MessageSquare, badge: "2" },
-  { href: "/portal/admin/settings", label: "Settings", icon: Settings },
+const baseNavItems = [
+  { id: "dashboard", href: "/portal/admin", label: "Dashboard", icon: LayoutDashboard },
+  { id: "users", href: "/portal/admin/users", label: "Users", icon: Users },
+  { id: "providers", href: "/portal/admin/providers", label: "Providers", icon: Building },
+  { id: "seekers", href: "/portal/admin/seekers", label: "Seekers", icon: UserCheck2 },
+  { id: "properties", href: "/portal/admin/properties", label: "Properties", icon: Building2 },
+  { id: "verification", href: "/portal/admin/verification", label: "Verification", icon: ShieldCheck },
+  { id: "agents", href: "/portal/admin/agents", label: "Agents", icon: UserCheck },
+  { id: "reports", href: "/portal/admin/reports", label: "Reports", icon: FileText },
+  { id: "payments", href: "/portal/admin/payments", label: "Payments", icon: CreditCard },
+  { id: "notifications", href: "/portal/admin/notifications", label: "Notifications", icon: Bell },
+  { id: "messages", href: "/portal/admin/messages", label: "Messages", icon: MessageSquare },
+  { id: "settings", href: "/portal/admin/settings", label: "Settings", icon: Settings },
 ];
 
 export default function AdminPortalLayout({
@@ -55,19 +55,30 @@ export default function AdminPortalLayout({
   const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [badges, setBadges] = useState<{ verification?: number; reports?: number }>({});
 
   useEffect(() => {
-    async function checkAdminAuth() {
+    async function checkAdminAuthAndLoadStats() {
       try {
         const res = await apiFetch("/users/me");
         if (res?.user?.role !== "admin") {
           setAccessDenied(true);
+          return;
+        }
+
+        // Fetch dynamic KPI badges from database
+        const kpis = await apiFetch("/admin/analytics/kpis");
+        if (kpis) {
+          setBadges({
+            verification: kpis.pendingVerifications ?? 0,
+            reports: kpis.pendingReports ?? 0,
+          });
         }
       } catch (err) {
         setAccessDenied(true);
       }
     }
-    checkAdminAuth();
+    checkAdminAuthAndLoadStats();
   }, []);
 
   const unreadNotifs = mockNotifications.filter((n) => !n.read);
@@ -266,9 +277,16 @@ export default function AdminPortalLayout({
             <p className="text-[10px] uppercase font-bold text-slate-400 px-3 pb-2 tracking-wider">
               Management Menu
             </p>
-            {adminNavItems.map((item) => {
+            {baseNavItems.map((item) => {
               const isActive = pathname === item.href;
               const Icon = item.icon;
+              let badgeVal: string | undefined = undefined;
+              if (item.id === "verification" && (badges.verification ?? 0) > 0) {
+                badgeVal = String(badges.verification);
+              } else if (item.id === "reports" && (badges.reports ?? 0) > 0) {
+                badgeVal = String(badges.reports);
+              }
+
               return (
                 <Link
                   key={item.href}
@@ -284,7 +302,7 @@ export default function AdminPortalLayout({
                     <Icon className={`h-4 w-4 ${isActive ? "text-white" : "text-slate-400"}`} />
                     <span>{item.label}</span>
                   </div>
-                  {item.badge && (
+                  {badgeVal && (
                     <span
                       className={`px-2 py-0.5 text-[10px] font-extrabold rounded-full ${
                         isActive
@@ -292,7 +310,7 @@ export default function AdminPortalLayout({
                           : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
                       }`}
                     >
-                      {item.badge}
+                      {badgeVal}
                     </span>
                   )}
                 </Link>
