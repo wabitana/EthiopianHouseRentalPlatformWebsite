@@ -22,6 +22,7 @@ import {
   Calendar,
   MessageSquare,
 } from "lucide-react";
+import { PortalPropertyMap } from "@/components/portal/portal-property-map";
 import {
   mockAssistedTenants,
   mockAssistedBookings,
@@ -311,50 +312,18 @@ export default function AssistedRuralRentalsPage() {
             )}
           </div>
 
-          {/* Property Matching List */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-              Available Verified Houses Ready for Direct Booking ({mockProperties.filter((p) => p.status === "Published").length})
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {mockProperties
-                .filter((p) => p.status === "Published")
-                .map((prop) => (
-                  <div key={prop.id} className="bg-slate-800/90 border border-slate-700/80 rounded-2xl p-5 shadow-xl space-y-3">
-                    <div className="flex items-start gap-4">
-                      <img src={prop.images[0]} alt={prop.title} className="h-20 w-24 rounded-xl object-cover" />
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[10px] font-bold uppercase text-blue-400">{prop.propertyType}</span>
-                        <h4 className="font-bold text-white text-sm line-clamp-1">{prop.title}</h4>
-                        <p className="text-xs text-slate-400">{prop.location}</p>
-                        <p className="text-emerald-400 font-mono font-extrabold text-sm mt-1">
-                          ETB {prop.price.toLocaleString()}/month
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t border-slate-700/60 flex items-center justify-between text-xs">
-                      <span className="text-slate-400">
-                        Landlord: <strong className="text-white">{prop.providerName}</strong>
-                      </span>
-                      <button
-                        onClick={() => {
-                          if (!matchingTenant) {
-                            alert("Please select or register an offline tenant first at the top!");
-                            return;
-                          }
-                          setSelectedProperty(prop);
-                        }}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs shadow-md transition-colors flex items-center gap-1.5"
-                      >
-                        <CheckCircle2 className="h-4 w-4" /> Rent on Behalf of Tenant
-                      </button>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
+          {/* Property Search & Google Map View Engine */}
+          <PortalPropertyMap
+            properties={mockProperties}
+            matchingTenant={matchingTenant}
+            onSelectRentOnBehalf={(prop) => {
+              if (!matchingTenant) {
+                alert("Please select or register an offline tenant first at the top!");
+                return;
+              }
+              setSelectedProperty(prop);
+            }}
+          />
         </div>
       )}
 
