@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -255,7 +255,79 @@ const sampleProperties: Property[] = [
   },
 ];
 
+const mapBackendToPublicProperty = (p: any): Property => {
+  let imagesArr = [];
+  try {
+    imagesArr = typeof p.images === 'string' ? JSON.parse(p.images) : p.images || [];
+  } catch (e) {
+    // ignore
+  }
+  let amenitiesArr = [];
+  try {
+    amenitiesArr = typeof p.amenities === 'string' ? JSON.parse(p.amenities) : p.amenities || [];
+  } catch (e) {
+    // ignore
+  }
+
+  let category: Property["category"] = "Luxury Apartment";
+  if (p.propertyType === "Villa") category = "Gated Villa";
+  else if (p.propertyType === "Studio") category = "Studio Flat";
+  else if (p.propertyType === "Condo") category = "Penthouse";
+  else if (p.propertyType === "Family House" || p.propertyType === "Land" || p.propertyType === "Commercial") category = "Family House";
+
+  return {
+    id: p.id,
+    title: p.title,
+    category,
+    city: (p.city === "Addis Ababa" || p.city === "Hawassa" || p.city === "Adama" || p.city === "Bahir Dar") ? p.city : "Addis Ababa",
+    neighborhood: p.area || "Bole",
+    pricePerMonth: p.price,
+    bedrooms: p.rooms || 2,
+    bathrooms: p.bathrooms || 1,
+    areaSqm: p.area || 120,
+    images: imagesArr.length > 0 ? imagesArr.map((img: string) => img.startsWith('http') || img.startsWith('/') ? img : `/${img}`) : ["/images/studio_flat.png"],
+    description: p.description || "",
+    furnished: true,
+    featured: p.isVerified,
+    isVerifiedLandlord: p.isVerified,
+    hasVirtualTour: true,
+    amenities: amenitiesArr,
+    landlord: {
+      name: p.providerName || "Landlord",
+      phone: p.providerPhone || "+251 911 000 000",
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(p.providerName || 'Landlord')}&background=059669&color=fff`,
+      responseRate: "Under 15 mins",
+    }
+  };
+};
+
 export default function BrowseHousesPage() {
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadProperties() {
+      try {
+        setLoading(true);
+        const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
+        const response = await fetch(`${backendUrl}/properties`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data && data.length > 0) {
+            setProperties(data.map(mapBackendToPublicProperty));
+            return;
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load public properties from database:", err);
+      } finally {
+        setLoading(false);
+      }
+      setProperties(sampleProperties);
+    }
+    loadProperties();
+  }, []);
+
   // --- FILTER STATES ---
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
@@ -285,7 +357,7 @@ export default function BrowseHousesPage() {
 
   // Filter Logic
   const filteredProperties = useMemo(() => {
-    return sampleProperties.filter(p => {
+    return properties.filter(p => {
       // Search
       const matchesSearch =
         searchQuery === "" ||
@@ -326,6 +398,14 @@ export default function BrowseHousesPage() {
       setTourProperty(null);
     }, 2500);
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px] bg-slate-900 text-slate-100">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 selection:bg-emerald-500 selection:text-white">

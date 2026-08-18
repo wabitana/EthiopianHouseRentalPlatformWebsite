@@ -45,6 +45,12 @@ router.post('/register', async (req, res) => {
     }
 
     const normalizedRole = (role || 'seeker').toLowerCase();
+
+    // Rule: Administrative or Agent roles cannot be registered publicly
+    if (normalizedRole === 'agent' || normalizedRole === 'admin') {
+      return res.status(400).json({ error: 'Administrative or Agent accounts must be created by an Administrator.' });
+    }
+
     const existing = await prisma.user.findUnique({ where: { email } });
 
     if (existing) {

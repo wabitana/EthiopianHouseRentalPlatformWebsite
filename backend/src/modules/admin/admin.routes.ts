@@ -445,6 +445,24 @@ router.delete('/users/:id', authenticateToken, async (req: AuthRequest, res) => 
 
     const { id } = req.params;
 
+    // Rule 1: Admin cannot delete their own account
+    if (id === req.user?.id) {
+      return res.status(400).json({ error: 'Administrators cannot delete their own account' });
+    }
+
+    const targetUser = await prisma.user.findUnique({ where: { id } });
+    if (!targetUser) {
+      return res.status(404).json({ error: 'User account not found' });
+    }
+
+    // Rule 2: Cannot delete the last remaining administrator
+    if (targetUser.role === 'admin') {
+      const adminCount = await prisma.user.count({ where: { role: 'admin' } });
+      if (adminCount <= 1) {
+        return res.status(400).json({ error: 'Cannot delete the last remaining administrator account' });
+      }
+    }
+
     // Delete user from database
     await prisma.user.delete({
       where: { id },

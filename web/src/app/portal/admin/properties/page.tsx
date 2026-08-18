@@ -132,6 +132,14 @@ export default function AdminPropertiesPage() {
     return matchesSearch && matchesStatus && matchesType;
   });
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}

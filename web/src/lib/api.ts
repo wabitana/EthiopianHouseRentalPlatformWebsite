@@ -31,6 +31,12 @@ export async function apiFetch(path: string, options: ApiRequestInit = {}) {
   });
 
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      if (typeof window !== "undefined") {
+        document.cookie = "delala_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax";
+        window.location.href = "/portal/login";
+      }
+    }
     let errorMsg = `API error: ${response.status} ${response.statusText}`;
     try {
       const errData = await response.json();
