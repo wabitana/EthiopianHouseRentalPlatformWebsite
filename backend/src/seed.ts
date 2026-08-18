@@ -136,6 +136,8 @@ async function main() {
       images: JSON.stringify([
         'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800',
         'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800',
+        'https://images.unsplash.com/photo-1600566753376-12c8ab7fb75b?w=800',
+        'https://images.unsplash.com/photo-1600573472591-ee6b68d14c68?w=800',
       ]),
       amenities: JSON.stringify(['Generator', 'Water Tank', 'Parking', 'WiFi', 'Garden', 'Security Guard']),
       availability: true,
@@ -158,6 +160,8 @@ async function main() {
       addressDetails: 'Opposite ECA Building',
       images: JSON.stringify([
         'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=800',
+        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?w=800',
+        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=800',
       ]),
       amenities: JSON.stringify(['Generator', 'Elevator', 'Security Guard', 'Balcony', 'Water Tank']),
       availability: true,

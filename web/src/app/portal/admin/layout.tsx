@@ -56,6 +56,11 @@ export default function AdminPortalLayout({
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
   const [badges, setBadges] = useState<{ verification?: number; reports?: number }>({});
+  const [hasReadNotifications, setHasReadNotifications] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ name: string; email: string; avatarUrl?: string }>({
+    name: "",
+    email: "",
+  });
 
   useEffect(() => {
     async function checkAdminAuthAndLoadStats() {
@@ -64,6 +69,14 @@ export default function AdminPortalLayout({
         if (res?.user?.role !== "admin") {
           setAccessDenied(true);
           return;
+        }
+
+        if (res?.user) {
+          setCurrentUser({
+            name: res.user.name || "",
+            email: res.user.email || "",
+            avatarUrl: res.user.avatarUrl,
+          });
         }
 
         // Fetch dynamic KPI badges from database
@@ -81,7 +94,7 @@ export default function AdminPortalLayout({
     checkAdminAuthAndLoadStats();
   }, []);
 
-  const unreadNotifs = mockNotifications.filter((n) => !n.read);
+  const unreadNotifs = hasReadNotifications ? [] : mockNotifications.filter((n) => !n.read);
 
   if (accessDenied) {
     return (
@@ -164,6 +177,7 @@ export default function AdminPortalLayout({
               onClick={() => {
                 setNotifDropdownOpen(!notifDropdownOpen);
                 setProfileDropdownOpen(false);
+                setHasReadNotifications(true);
               }}
               className="relative p-2 text-slate-300 hover:text-white rounded-xl hover:bg-slate-700/60 transition-colors"
             >
@@ -215,12 +229,12 @@ export default function AdminPortalLayout({
               className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-700/60 transition-colors"
             >
               <img
-                src="https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&q=80"
+                src={currentUser.avatarUrl || "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&q=80"}
                 alt="Admin Avatar"
                 className="h-8 w-8 rounded-lg object-cover ring-2 ring-emerald-500/50"
               />
               <div className="hidden md:block text-left">
-                <p className="text-xs font-bold text-white leading-none">Solomon Tesfaye</p>
+                <p className="text-xs font-bold text-white leading-none">{currentUser.name}</p>
                 <p className="text-[10px] text-emerald-400 font-medium">Super Administrator</p>
               </div>
               <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
@@ -229,8 +243,8 @@ export default function AdminPortalLayout({
             {profileDropdownOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl z-50 p-2 text-xs">
                 <div className="p-3 border-b border-slate-700 mb-1">
-                  <p className="font-bold text-white">Solomon Tesfaye</p>
-                  <p className="text-slate-400 text-[11px]">admin@delala.et</p>
+                  <p className="font-bold text-white">{currentUser.name}</p>
+                  <p className="text-slate-400 text-[11px] truncate">{currentUser.email}</p>
                 </div>
                 <button
                   onClick={() => {
