@@ -247,68 +247,80 @@ export default function AdminPropertiesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/60 text-slate-300">
-              {filteredProperties.map((prop) => (
-                <tr key={prop.id} className="hover:bg-slate-750/50 transition-colors">
-                  <td className="p-4 font-semibold text-white flex items-center gap-3">
-                    <img
-                      src={prop.images[0]}
-                      alt={prop.title}
-                      className="h-10 w-14 rounded-xl object-cover ring-1 ring-slate-700"
-                    />
-                    <div className="max-w-xs">
-                      <p className="font-bold text-white text-xs line-clamp-1">{prop.title}</p>
-                      <p className="text-[10px] text-slate-400">{prop.id}</p>
-                    </div>
-                  </td>
-                  <td className="p-4 font-medium text-slate-200">{prop.providerName}</td>
-                  <td className="p-4 text-slate-400">{prop.location}</td>
-                  <td className="p-4">
-                    <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-700 font-semibold text-[10px]">
-                      {prop.propertyType}
-                    </span>
-                  </td>
-                  <td className="p-4 font-mono font-bold text-emerald-400">
-                    ETB {prop.price.toLocaleString()}
-                  </td>
-                  <td className="p-4">
-                    <span
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                        prop.status === "Published"
-                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                          : prop.status === "Pending"
-                          ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                          : prop.status === "Suspended" || prop.status === "Rejected"
-                          ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
-                          : "bg-slate-700 text-slate-300"
-                      }`}
-                    >
-                      {prop.status}
-                    </span>
-                  </td>
-                  <td className="p-4">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                        prop.verificationStatus === "Verified"
-                          ? "bg-emerald-500/20 text-emerald-400"
-                          : "bg-amber-500/20 text-amber-400"
-                      }`}
-                    >
-                      {prop.verificationStatus}
-                    </span>
-                  </td>
-                  <td className="p-4 text-slate-400">{prop.datePosted}</td>
-                  <td className="p-4">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <button
-                        onClick={() => handleOpenPropertyDetails(prop)}
-                        className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-colors flex items-center gap-1"
+              {filteredProperties.length > 0 ? (
+                filteredProperties.map((prop) => (
+                  <tr key={prop.id} className="hover:bg-slate-750/50 transition-colors">
+                    <td className="p-4 font-semibold text-white flex items-center gap-3">
+                      <img
+                        src={prop.images[0]}
+                        alt={prop.title}
+                        className="h-10 w-14 rounded-xl object-cover ring-1 ring-slate-700"
+                      />
+                      <div className="max-w-xs">
+                        <p className="font-bold text-white text-xs line-clamp-1">{prop.title}</p>
+                        <p className="text-[10px] text-slate-400">{prop.id}</p>
+                      </div>
+                    </td>
+                    <td className="p-4 font-medium text-slate-200">{prop.providerName}</td>
+                    <td className="p-4 text-slate-400">{prop.location}</td>
+                    <td className="p-4">
+                      <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-700 font-semibold text-[10px]">
+                        {prop.propertyType}
+                      </span>
+                    </td>
+                    <td className="p-4 font-mono font-bold text-emerald-400">
+                      ETB {prop.price.toLocaleString()}
+                    </td>
+                    <td className="p-4">
+                      <span
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                          prop.status === "Published"
+                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                            : prop.status === "Pending"
+                            ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                            : prop.status === "Suspended" || prop.status === "Rejected"
+                            ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                            : "bg-slate-700 text-slate-300"
+                        }`}
                       >
-                        <Eye className="h-3.5 w-3.5" /> Details
-                      </button>
+                        {prop.status}
+                      </span>
+                    </td>
+                    <td className="p-4">
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          prop.verificationStatus === "Verified"
+                            ? "bg-emerald-500/20 text-emerald-400"
+                            : "bg-amber-500/20 text-amber-400"
+                        }`}
+                      >
+                        {prop.verificationStatus}
+                      </span>
+                    </td>
+                    <td className="p-4 text-slate-400">{prop.datePosted}</td>
+                    <td className="p-4">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          onClick={() => handleOpenPropertyDetails(prop)}
+                          className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-colors flex items-center gap-1"
+                        >
+                          <Eye className="h-3.5 w-3.5" /> Details
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={9} className="p-8 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <Building2 className="h-7 w-7 text-slate-500" />
+                      <p className="font-semibold text-slate-300">No Properties Found</p>
+                      <p className="text-xs text-slate-500">Properties submitted from mobile or web users will appear here live.</p>
                     </div>
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

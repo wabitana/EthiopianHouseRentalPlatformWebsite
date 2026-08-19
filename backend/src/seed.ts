@@ -403,16 +403,56 @@ async function main() {
   }
 
   // 8. Create payments
-  await prisma.payment.create({
-    data: {
+  const samplePayments = [
+    {
       userId: providerUser.id,
-      amountETB: 450,
+      amountETB: 1200,
       currency: 'ETB',
       paymentMethod: 'CHAPA_SIMULATION',
       reference: 'TX-SUB-BOLE-001',
       status: 'SUCCESS',
     },
-  });
+    {
+      userId: providerUser.id,
+      amountETB: 45000,
+      currency: 'ETB',
+      paymentMethod: 'CBE_BIRR',
+      reference: 'TX-RENT-BOLE-002',
+      status: 'SUCCESS',
+    },
+    {
+      userId: providerUser.id,
+      amountETB: 28000,
+      currency: 'ETB',
+      paymentMethod: 'CHAPA_REAL',
+      reference: 'TX-RENT-KAZ-003',
+      status: 'SUCCESS',
+    },
+    {
+      userId: providerUser.id,
+      amountETB: 30400,
+      currency: 'ETB',
+      paymentMethod: 'CBE_BIRR',
+      reference: 'TX-PAYOUT-004',
+      status: 'PENDING',
+    },
+    {
+      userId: seekerUser.id,
+      amountETB: 2500,
+      currency: 'ETB',
+      paymentMethod: 'CHAPA_SIMULATION',
+      reference: 'TX-SUB-BUS-005',
+      status: 'SUCCESS',
+    },
+  ];
+
+  for (const pmt of samplePayments) {
+    await prisma.payment.upsert({
+      where: { reference: pmt.reference },
+      update: { status: pmt.status, amountETB: pmt.amountETB },
+      create: pmt,
+    });
+  }
 
   // 9. Create Sample Notification for Seeker
   await prisma.notification.create({

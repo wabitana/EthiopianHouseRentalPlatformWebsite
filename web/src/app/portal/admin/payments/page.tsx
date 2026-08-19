@@ -121,23 +121,32 @@ export default function AdminPaymentsPage() {
 
       {activeTab === "transactions" ? (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-5 bg-slate-800 rounded-2xl border border-slate-700">
-              <span className="text-xs text-slate-400 font-medium">Total Rent Processed</span>
-              <p className="text-2xl font-extrabold text-white mt-1">ETB 4,850,000</p>
-              <span className="text-[11px] text-emerald-400 font-bold">+15.8% this month</span>
-            </div>
-            <div className="p-5 bg-slate-800 rounded-2xl border border-slate-700">
-              <span className="text-xs text-slate-400 font-medium">Platform Commission (5%)</span>
-              <p className="text-2xl font-extrabold text-emerald-400 mt-1">ETB 242,500</p>
-              <span className="text-[11px] text-slate-400">Net Platform Income</span>
-            </div>
-            <div className="p-5 bg-slate-800 rounded-2xl border border-slate-700">
-              <span className="text-xs text-slate-400 font-medium">Pending Landlord Payouts</span>
-              <p className="text-2xl font-extrabold text-amber-400 mt-1">ETB 30,400</p>
-              <span className="text-[11px] text-slate-400">1 Transaction Queued</span>
-            </div>
-          </div>
+          {(() => {
+            const totalRent = transactions.reduce((acc, t) => acc + (t.amount || 0), 0);
+            const totalCommission = transactions.reduce((acc, t) => acc + (t.commission || 0), 0);
+            const pendingPayouts = transactions.filter(t => t.status === 'Pending Payout').reduce((acc, t) => acc + (t.amount || 0), 0);
+            const pendingCount = transactions.filter(t => t.status === 'Pending Payout').length;
+
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-5 bg-slate-800 rounded-2xl border border-slate-700">
+                  <span className="text-xs text-slate-400 font-medium">Total Rent Processed</span>
+                  <p className="text-2xl font-extrabold text-white mt-1">ETB {totalRent.toLocaleString()}</p>
+                  <span className="text-[11px] text-emerald-400 font-bold">Real-time DB Sum</span>
+                </div>
+                <div className="p-5 bg-slate-800 rounded-2xl border border-slate-700">
+                  <span className="text-xs text-slate-400 font-medium">Platform Commission (5%)</span>
+                  <p className="text-2xl font-extrabold text-emerald-400 mt-1">ETB {totalCommission.toLocaleString()}</p>
+                  <span className="text-[11px] text-slate-400">Net Platform Income</span>
+                </div>
+                <div className="p-5 bg-slate-800 rounded-2xl border border-slate-700">
+                  <span className="text-xs text-slate-400 font-medium">Pending Landlord Payouts</span>
+                  <p className="text-2xl font-extrabold text-amber-400 mt-1">ETB {pendingPayouts.toLocaleString()}</p>
+                  <span className="text-[11px] text-slate-400">{pendingCount} Transaction{pendingCount === 1 ? '' : 's'} Queued</span>
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl shadow-xl overflow-hidden">
             <div className="p-4 border-b border-slate-700 flex items-center justify-between">
@@ -161,22 +170,34 @@ export default function AdminPaymentsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-700/60 text-slate-300">
-                  {transactions.map((t) => (
-                    <tr key={t.id} className="hover:bg-slate-750/50">
-                      <td className="p-4 font-mono text-emerald-400 font-bold">{t.id}</td>
-                      <td className="p-4 font-semibold text-white">{t.property}</td>
-                      <td className="p-4">{t.provider}</td>
-                      <td className="p-4 font-bold text-white">ETB {t.amount?.toLocaleString()}</td>
-                      <td className="p-4 text-emerald-400 font-semibold">ETB {t.commission?.toLocaleString()}</td>
-                      <td className="p-4 uppercase font-bold text-slate-400">{t.gateway}</td>
-                      <td className="p-4">{t.date}</td>
-                      <td className="p-4">
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                          {t.status}
-                        </span>
+                  {transactions.length > 0 ? (
+                    transactions.map((t) => (
+                      <tr key={t.id} className="hover:bg-slate-750/50">
+                        <td className="p-4 font-mono text-emerald-400 font-bold">{t.id}</td>
+                        <td className="p-4 font-semibold text-white">{t.property}</td>
+                        <td className="p-4">{t.provider}</td>
+                        <td className="p-4 font-bold text-white">ETB {t.amount?.toLocaleString()}</td>
+                        <td className="p-4 text-emerald-400 font-semibold">ETB {t.commission?.toLocaleString()}</td>
+                        <td className="p-4 uppercase font-bold text-slate-400">{t.gateway}</td>
+                        <td className="p-4">{t.date}</td>
+                        <td className="p-4">
+                          <span className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                            {t.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={8} className="p-8 text-center text-slate-400">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <CreditCard className="h-7 w-7 text-slate-500" />
+                          <p className="font-semibold text-slate-300">No Transaction Logs Recorded</p>
+                          <p className="text-xs text-slate-500">Platform payments, payouts, and subscriptions will appear here when recorded.</p>
+                        </div>
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
             </div>
