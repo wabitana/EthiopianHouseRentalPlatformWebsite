@@ -255,6 +255,43 @@ router.get('/analytics/kpis', authenticateToken, async (req: AuthRequest, res) =
       { status: 'Rejected', count: rejectedCount || 0, color: '#6B7280' },
     ];
 
+    // Calculate real 6-month historical monthly breakdown for registrations & revenue
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    sixMonthsAgo.setDate(1);
+
+    const [monthlyUsers, monthlyPayments] = await Promise.all([
+      prisma.user.findMany({
+        where: { createdAt: { gte: sixMonthsAgo } },
+        select: { role: true, createdAt: true },
+      }).catch(() => []),
+      prisma.payment.findMany({
+        where: { status: 'SUCCESS', createdAt: { gte: sixMonthsAgo } },
+        select: { amountETB: true, createdAt: true },
+      }).catch(() => []),
+    ]);
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const registrationsChart: any[] = [];
+    const revenueChart: any[] = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const mIndex = d.getMonth();
+      const year = d.getFullYear();
+      const label = monthNames[mIndex];
+
+      const seekers = (monthlyUsers || []).filter(u => u.role === 'seeker' && new Date(u.createdAt).getMonth() === mIndex && new Date(u.createdAt).getFullYear() === year).length;
+      const providers = (monthlyUsers || []).filter(u => u.role === 'provider' && new Date(u.createdAt).getMonth() === mIndex && new Date(u.createdAt).getFullYear() === year).length;
+      const revenue = (monthlyPayments || [])
+        .filter(p => new Date(p.createdAt).getMonth() === mIndex && new Date(p.createdAt).getFullYear() === year)
+        .reduce((sum, p) => sum + (p.amountETB || 0), 0);
+
+      registrationsChart.push({ month: label, seekers, providers });
+      revenueChart.push({ month: label, value: revenue });
+    }
+
     return res.json({
       totalUsers: totalUsers || 0,
       totalProperties: totalProperties || 0,
@@ -268,8 +305,10 @@ router.get('/analytics/kpis', authenticateToken, async (req: AuthRequest, res) =
       activeProperties: activeProperties || 0,
       pendingProperties: pendingProperties || 0,
       verifiedProperties: verifiedProperties || 0,
-      locationBreakdown: locationBreakdown.length > 0 ? locationBreakdown : undefined,
+      locationBreakdown: locationBreakdown.length > 0 ? locationBreakdown : [],
       propertyStatusDistribution,
+      registrationsChart,
+      revenueChart,
     });
   } catch (error) {
     console.error('KPI Fetch error:', error);
@@ -400,6 +439,95 @@ router.patch('/users/:id/status', authenticateToken, async (req: AuthRequest, re
   }
 });
 
+// POST /api/v1/admin/users - Admin create/register new user account (with mobile OTP & verification business rules)
+router.post('/users', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { name, email, phone, password, confirmPassword, role, city, address, autoVerify } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Name, email, and password are required fields' });
+    }
+
+    if (confirmPassword && password !== confirmPassword) {
+      return res.status(400).json({ error: 'Password and Confirm Password do not match' });
+    }
+
+    const emailSanitized = String(email).trim().toLowerCase();
+    const nameSanitized = String(name).trim();
+    const phoneSanitized = String(phone || '+251 90 000 0000').trim();
+
+    let userRole = 'seeker';
+    if (role) {
+      const rLower = String(role).toLowerCase();
+      if (rLower === 'house provider' || rLower === 'provider') userRole = 'provider';
+      else if (rLower === 'agent') userRole = 'agent';
+      else if (rLower === 'admin') userRole = 'admin';
+      else if (rLower === 'house seeker' || rLower === 'seeker') userRole = 'seeker';
+    }
+
+    const existing = await prisma.user.findUnique({ where: { email: emailSanitized } });
+    if (existing) {
+      return res.status(400).json({ error: 'An account with this email address already exists' });
+    }
+
+    const bcrypt = require('bcryptjs');
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Generate 6-digit Email Verification OTP code for mobile business rules
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins expiry
+
+    const isVerifiedBool = Boolean(autoVerify);
+
+    const newUser = await prisma.user.create({
+      data: {
+        name: nameSanitized,
+        email: emailSanitized,
+        phone: phoneSanitized,
+        passwordHash,
+        role: userRole,
+        city: city || 'Addis Ababa',
+        address: address || null,
+        isVerified: isVerifiedBool,
+        isEmailVerified: isVerifiedBool,
+        emailVerificationCode: isVerifiedBool ? null : otpCode,
+        emailVerificationExpires: isVerifiedBool ? null : otpExpires,
+        active: true,
+        ...(userRole === 'agent' && {
+          assignedArea: address || city || 'Addis Ababa',
+          agentStatus: 'Active',
+        }),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        avatarUrl: true,
+        isVerified: true,
+        isEmailVerified: true,
+        emailVerificationCode: true,
+        active: true,
+        createdAt: true,
+        city: true,
+        address: true,
+        assignedArea: true,
+        agentStatus: true,
+      },
+    });
+
+    return res.status(201).json(newUser);
+  } catch (error) {
+    console.error('Admin create user error:', error);
+    return res.status(500).json({ error: 'Failed to create user account' });
+  }
+});
+
 // POST /api/v1/admin/agents - Register new platform agent
 router.post('/agents', authenticateToken, async (req: AuthRequest, res) => {
   try {
@@ -496,17 +624,49 @@ router.get('/reports', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
-// GET /api/v1/admin/payments - Get all financial transactions
+// GET /api/v1/admin/payments - Get all financial transactions (Supports time period filtering: 7d, 30d, 6m, 1y, all)
 router.get('/payments', authenticateToken, async (req: AuthRequest, res) => {
   try {
     if (req.user?.role !== 'admin') {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
+    const { period } = req.query;
+    let dateFilter: Date | undefined = undefined;
+
+    if (period === '7d') {
+      dateFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    } else if (period === '30d') {
+      dateFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    } else if (period === '6m') {
+      dateFilter = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+    } else if (period === '1y') {
+      dateFilter = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+    }
+
+    const where: any = {};
+    if (dateFilter) {
+      where.createdAt = { gte: dateFilter };
+    }
+
     const payments = await prisma.payment.findMany({
+      where,
       include: {
         user: {
-          select: { name: true, email: true }
+          select: { id: true, name: true, email: true, phone: true, role: true }
+        },
+        subscription: {
+          include: {
+            plan: {
+              select: { name: true, priceETB: true, maxListings: true }
+            }
+          }
+        },
+        order: {
+          select: { id: true, orderNumber: true, total: true, subtotal: true, commission: true }
+        },
+        serviceBooking: {
+          select: { id: true, bookingNumber: true, type: true, estimatedPrice: true, finalPrice: true }
         }
       },
       orderBy: { createdAt: 'desc' },
@@ -514,7 +674,47 @@ router.get('/payments', authenticateToken, async (req: AuthRequest, res) => {
 
     return res.json(payments);
   } catch (error) {
+    console.error('Fetch payments error:', error);
     return res.status(500).json({ error: 'Failed to fetch payments' });
+  }
+});
+
+// DELETE /api/v1/admin/payments/clear-all - Clear all payment transaction logs
+router.delete('/payments/clear-all', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    await prisma.payment.deleteMany({});
+
+    return res.json({ success: true, message: 'All payment transaction logs cleared successfully' });
+  } catch (error) {
+    console.error('Clear payments error:', error);
+    return res.status(500).json({ error: 'Failed to clear payment transactions' });
+  }
+});
+
+// DELETE /api/v1/admin/payments/:id - Delete single payment transaction log
+router.delete('/payments/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({ error: 'Invalid payment ID parameter' });
+    }
+
+    await prisma.payment.delete({
+      where: { id },
+    });
+
+    return res.json({ success: true, message: 'Payment transaction deleted successfully' });
+  } catch (error) {
+    console.error('Delete payment error:', error);
+    return res.status(500).json({ error: 'Failed to delete payment transaction' });
   }
 });
 
@@ -873,6 +1073,274 @@ router.put('/subscription-plans/:id', authenticateToken, async (req: AuthRequest
   } catch (error) {
     console.error('Update plan error:', error);
     return res.status(500).json({ error: 'Failed to update subscription plan' });
+  }
+});
+
+// ==========================================
+// PLATFORM AGENT MANAGEMENT CRUD ENDPOINTS
+// ==========================================
+
+// GET /api/v1/admin/agents - Fetch all platform field agents
+router.get('/agents', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const agents = await withDbRetry(() =>
+      prisma.user.findMany({
+        where: {
+          role: { in: ['agent', 'AGENT'] }
+        },
+        include: {
+          tasks: {
+            where: { status: { in: ['Pending', 'In Progress'] } }
+          },
+          assistedTenants: true,
+          assistedBookings: true,
+          leaseAgreements: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+    );
+
+    const formattedAgents = agents.map((a) => ({
+      id: a.id,
+      name: a.name,
+      email: a.email,
+      phone: a.phone,
+      role: a.role,
+      avatarUrl: a.avatarUrl,
+      assignedArea: a.assignedArea || 'Addis Ababa',
+      propertiesManaged: a.propertiesManaged || 0,
+      verificationsCompleted: a.verificationsCompleted || 0,
+      activeTasks: a.tasks ? a.tasks.length : (a.activeTasks || 0),
+      performanceScore: a.performanceScore || 100.0,
+      agentStatus: a.agentStatus || (a.active ? 'Active' : 'Suspended'),
+      joinedDate: a.joinedDate || a.createdAt,
+      city: a.city,
+    }));
+
+    return res.json(formattedAgents);
+  } catch (error) {
+    console.error('Fetch agents error:', error);
+    return res.status(500).json({ error: 'Failed to fetch field agents' });
+  }
+});
+
+// POST /api/v1/admin/agents - Register a new field agent
+router.post('/agents', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { name, email, phone, password, assignedArea, city } = req.body;
+
+    if (!name || !email || !phone || !password) {
+      return res.status(400).json({ error: 'Name, email, phone, and password are required' });
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'An account with this email already exists' });
+    }
+
+    const passwordHash = await require('bcryptjs').hash(password, 10);
+
+    const agent = await prisma.user.create({
+      data: {
+        name,
+        email,
+        phone,
+        passwordHash,
+        role: 'agent',
+        isVerified: true,
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        active: true,
+        assignedArea: assignedArea || 'Addis Ababa',
+        city: city || 'Addis Ababa',
+        agentStatus: 'Active',
+        performanceScore: 100.0,
+        propertiesManaged: 0,
+        verificationsCompleted: 0,
+        activeTasks: 0,
+      },
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId: agent.id,
+        title: 'Welcome Field Agent! 🚀',
+        message: `Your agent account for ${agent.assignedArea} has been created by Platform Administrator.`,
+        type: 'SYSTEM',
+      },
+    });
+
+    return res.status(201).json({
+      id: agent.id,
+      name: agent.name,
+      email: agent.email,
+      phone: agent.phone,
+      role: agent.role,
+      assignedArea: agent.assignedArea,
+      agentStatus: agent.agentStatus,
+      performanceScore: agent.performanceScore,
+      joinedDate: agent.joinedDate,
+    });
+  } catch (error: any) {
+    console.error('Create agent error:', error);
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'Email address is already registered' });
+    }
+    return res.status(500).json({ error: 'Failed to create field agent' });
+  }
+});
+
+// PUT /api/v1/admin/agents/:id - Update field agent details & territory
+router.put('/agents/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    const { name, phone, assignedArea, agentStatus, performanceScore, city } = req.body;
+
+    const agent = await prisma.user.findUnique({ where: { id } });
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    const updatedAgent = await prisma.user.update({
+      where: { id },
+      data: {
+        ...(name && { name }),
+        ...(phone && { phone }),
+        ...(assignedArea && { assignedArea }),
+        ...(agentStatus && {
+          agentStatus,
+          active: agentStatus === 'Active',
+        }),
+        ...(performanceScore !== undefined && { performanceScore: Number(performanceScore) }),
+        ...(city && { city }),
+      },
+    });
+
+    return res.json({
+      id: updatedAgent.id,
+      name: updatedAgent.name,
+      email: updatedAgent.email,
+      phone: updatedAgent.phone,
+      assignedArea: updatedAgent.assignedArea,
+      agentStatus: updatedAgent.agentStatus,
+      performanceScore: updatedAgent.performanceScore,
+    });
+  } catch (error) {
+    console.error('Update agent error:', error);
+    return res.status(500).json({ error: 'Failed to update agent' });
+  }
+});
+
+// DELETE /api/v1/admin/agents/:id - Delete field agent
+router.delete('/agents/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    const agent = await prisma.user.findUnique({ where: { id } });
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    await prisma.user.delete({ where: { id } });
+    return res.json({ success: true, message: 'Agent account removed successfully' });
+  } catch (error) {
+    console.error('Delete agent error:', error);
+    return res.status(500).json({ error: 'Failed to delete agent account' });
+  }
+});
+
+// POST /api/v1/admin/agents/:id/tasks - Assign a new task to field agent
+router.post('/agents/:id/tasks', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    const { title, type, priority, dueDate, description, propertyId, propertyTitle, providerName } = req.body;
+
+    if (!title || !type || !dueDate) {
+      return res.status(400).json({ error: 'Title, type, and due date are required' });
+    }
+
+    const agent = await prisma.user.findUnique({ where: { id } });
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    const task = await prisma.task.create({
+      data: {
+        title,
+        type,
+        priority: priority || 'Medium',
+        dueDate: new Date(dueDate),
+        description: description || 'Field inspection task assigned by Admin.',
+        propertyId: propertyId || null,
+        propertyTitle: propertyTitle || null,
+        providerName: providerName || null,
+        assignedAgentId: id,
+        status: 'Pending',
+      },
+    });
+
+    // Update active tasks count
+    const activeTasksCount = await prisma.task.count({
+      where: { assignedAgentId: id, status: { in: ['Pending', 'In Progress'] } }
+    });
+
+    await prisma.user.update({
+      where: { id },
+      data: { activeTasks: activeTasksCount },
+    });
+
+    return res.status(201).json(task);
+  } catch (error) {
+    console.error('Assign agent task error:', error);
+    return res.status(500).json({ error: 'Failed to assign task to agent' });
+  }
+});
+
+// GET /api/v1/admin/agents/:id/details - Fetch full agent details with linked items
+router.get('/agents/:id/details', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    const agent = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        tasks: { orderBy: { dueDate: 'asc' } },
+        assistedTenants: { orderBy: { createdAt: 'desc' } },
+        assistedBookings: { include: { tenant: true, property: true }, orderBy: { createdAt: 'desc' } },
+        leaseAgreements: { orderBy: { createdAt: 'desc' } },
+      },
+    });
+
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    return res.json(agent);
+  } catch (error) {
+    console.error('Fetch agent details error:', error);
+    return res.status(500).json({ error: 'Failed to fetch agent details' });
   }
 });
 
