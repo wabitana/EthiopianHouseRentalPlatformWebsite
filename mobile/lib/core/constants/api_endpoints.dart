@@ -35,6 +35,13 @@ class ApiEndpoints {
   static String get logout => '$baseUrl/auth/logout';
   static String get me => '$baseUrl/users/me';
   static String get verifyIdentity => '$baseUrl/auth/verify-identity';
+  static String get forgotPassword => '$baseUrl/auth/forgot-password';
+  static String get resetPassword => '$baseUrl/auth/reset-password';
+
+  // Subscriptions endpoints
+  static String get subscriptionPlans => '$baseUrl/subscriptions/plans';
+  static String get subscribe => '$baseUrl/subscriptions/subscribe';
+  static String get mySubscription => '$baseUrl/subscriptions/my-subscription';
 
   // Properties endpoints
   static String get properties => '$baseUrl/properties';

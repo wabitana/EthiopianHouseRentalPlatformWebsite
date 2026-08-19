@@ -125,16 +125,11 @@ class TutoringProvider extends ChangeNotifier {
     ),
   ];
 
-  // Auto Check First Launch
+  // Auto Check First Launch (Disabled auto popup)
   Future<void> checkAndStartFirstLaunchTour(String role) async {
     _activeRole = role;
-    final prefs = await SharedPreferences.getInstance();
-    final key = role == 'provider' ? _providerTourKey : _seekerTourKey;
-    final hasCompleted = prefs.getBool(key) ?? false;
-
-    if (!hasCompleted) {
-      startTour(role);
-    }
+    _isTourActive = false;
+    notifyListeners();
   }
 
   void startTour(String role) {

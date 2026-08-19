@@ -15,6 +15,8 @@ abstract class AuthRemoteDataSource {
   Future<void> logoutUser();
   Future<UserModel> updateUserProfile(UserModel user);
   Future<UserModel> verifyIdentity(String idType, String idNumber, {String? documentImage, String? selfieImage});
+  Future<bool> forgotPassword(String email);
+  Future<bool> resetPassword(String email, String code, String newPassword);
 }
 
 class MockAuthRemoteDataSource implements AuthRemoteDataSource {
@@ -96,5 +98,17 @@ class MockAuthRemoteDataSource implements AuthRemoteDataSource {
       _currentUser = _currentUser!.copyWith(isVerified: true);
     }
     return _currentUser!;
+  }
+
+  @override
+  Future<bool> forgotPassword(String email) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    return true;
+  }
+
+  @override
+  Future<bool> resetPassword(String email, String code, String newPassword) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    return true;
   }
 }

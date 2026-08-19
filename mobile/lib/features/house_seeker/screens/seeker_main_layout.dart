@@ -8,8 +8,6 @@ import '../../notifications/providers/notification_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/constants/app_strings.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../../core/services/tutoring_provider.dart';
 import '../../../shared/widgets/app_tutoring_overlay.dart';
 import 'seeker_home_screen.dart';
 import 'search_screen.dart';

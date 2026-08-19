@@ -20,6 +20,12 @@ import {
 import { mockVerifications, VerificationItem } from "@/lib/portal-mock-data";
 import { apiFetch } from "@/lib/api";
 
+const resolveImageUrl = (url?: string) => {
+  if (!url) return 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `http://localhost:3000${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
 const mapBackendPropertyDoc = (d: any): VerificationItem => {
   let imagesArr = [];
   try {
@@ -27,7 +33,8 @@ const mapBackendPropertyDoc = (d: any): VerificationItem => {
   } catch (e) {
     // ignore
   }
-  const imgUrl = imagesArr[0] || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=600';
+  const imgUrl = resolveImageUrl(imagesArr[0]);
+  const docUrl = resolveImageUrl(d.docUrl);
 
   return {
     id: d.id,
@@ -53,10 +60,56 @@ const mapBackendPropertyDoc = (d: any): VerificationItem => {
       {
         title: `${d.docType} for ${d.property?.title || 'Listing'}`,
         type: d.docType,
-        url: d.docUrl || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600',
-        preview: d.docUrl || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600',
+        url: docUrl,
+        preview: docUrl,
       }
     ]
+  };
+};
+
+const mapBackendIdentityDoc = (d: any): VerificationItem => {
+  const docUrl = resolveImageUrl(d.documentUrl);
+  const backUrl = resolveImageUrl(d.selfieUrl);
+
+  const docs = [
+    {
+      title: `${d.idType || 'National ID'} - Front (${d.idNumber || ''})`,
+      type: `${d.idType || 'NATIONAL_ID'} (Front)`,
+      url: docUrl,
+      preview: docUrl,
+    }
+  ];
+
+  if (d.selfieUrl) {
+    docs.push({
+      title: `${d.idType || 'National ID'} - Back`,
+      type: `${d.idType || 'NATIONAL_ID'} (Back)`,
+      url: backUrl,
+      preview: backUrl,
+    });
+  }
+
+  return {
+    id: d.id,
+    propertyId: '',
+    propertyTitle: `Identity: ${d.user?.name || 'User Profile'}`,
+    propertyImage: resolveImageUrl(d.user?.avatarUrl),
+    providerId: d.userId || '',
+    providerName: d.user?.name || 'User Profile',
+    providerPhone: d.user?.phone || '',
+    location: 'Identity Verification Queue',
+    status: d.status === 'VERIFIED' ? 'Approved' : d.status === 'REJECTED' ? 'Rejected' : 'Pending',
+    documentsCount: docs.length,
+    aiPreCheckScore: d.aiRiskScore || 95.0,
+    aiPreCheckDetails: {
+      ownershipDocsValid: true,
+      identityVerified: true,
+      locationMatch: true,
+      priceReasonable: true,
+    },
+    submittedDate: new Date(d.createdAt).toLocaleDateString(),
+    notes: d.aiNotes || '',
+    documents: docs,
   };
 };
 
@@ -65,12 +118,15 @@ export default function AdminVerificationPage() {
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<VerificationItem | null>(null);
   const [notesInput, setNotesInput] = useState("");
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
   async function loadPendingVerifications() {
     try {
       setLoading(true);
       const data = await apiFetch("/verification/admin/pending");
-      setQueue((data.propertyDocs || []).map(mapBackendPropertyDoc));
+      const propItems = (data.propertyDocs || []).map(mapBackendPropertyDoc);
+      const idItems = (data.identityDocs || []).map(mapBackendIdentityDoc);
+      setQueue([...propItems, ...idItems]);
     } catch (err) {
       console.error("Failed to load verification queue:", err);
     } finally {
@@ -82,22 +138,29 @@ export default function AdminVerificationPage() {
     loadPendingVerifications();
   }, []);
 
-  const handleUpdateStatus = async (id: string, newStatus: VerificationItem["status"]) => {
+  const handleUpdateStatus = async (item: VerificationItem, newStatus: VerificationItem["status"]) => {
     try {
+      setActionFeedback(null);
       const apiStatus = newStatus === 'Approved' ? 'VERIFIED' : newStatus === 'Rejected' ? 'REJECTED' : 'UNDER_REVIEW';
-      await apiFetch(`/verification/property-license/${id}/review`, {
+      const endpoint = item.propertyId
+        ? `/verification/property-license/${item.id}/review`
+        : `/verification/identity/${item.id}/review`;
+
+      await apiFetch(endpoint, {
         method: "PATCH",
         body: { status: apiStatus, adminNotes: notesInput }
       });
 
-      setQueue((prev) =>
-        prev.map((v) => (v.id === id ? { ...v, status: newStatus, notes: notesInput || v.notes } : v))
-      );
-      if (selectedItem && selectedItem.id === id) {
-        setSelectedItem({ ...selectedItem, status: newStatus, notes: notesInput || selectedItem.notes });
-      }
-    } catch (err) {
-      console.error("Failed to review property document:", err);
+      setQueue((prev) => prev.filter((v) => v.id !== item.id));
+
+      setActionFeedback(`🎉 Verification updated to ${newStatus}! Removed from Pending Queue.`);
+      setTimeout(() => {
+        setActionFeedback(null);
+        setSelectedItem(null);
+      }, 700);
+    } catch (err: any) {
+      console.error("Failed to review document:", err);
+      setActionFeedback(`❌ Error: ${err.message || "Failed to update verification status"}`);
     }
   };
 
@@ -214,6 +277,12 @@ export default function AdminVerificationPage() {
               <p className="text-xs text-slate-400">{selectedItem.location} • Submitted {selectedItem.submittedDate}</p>
             </div>
 
+            {actionFeedback && (
+              <div className={`p-3.5 rounded-xl border text-xs font-bold ${actionFeedback.startsWith('❌') ? 'bg-rose-950/80 border-rose-500/50 text-rose-200' : 'bg-emerald-950/80 border-emerald-500/50 text-emerald-200'}`}>
+                {actionFeedback}
+              </div>
+            )}
+
             {/* AI Pre-Check Result UI */}
             <div className="p-4 bg-gradient-to-r from-emerald-950/70 to-slate-900 border border-emerald-500/40 rounded-2xl space-y-3">
               <div className="flex items-center justify-between">
@@ -288,19 +357,19 @@ export default function AdminVerificationPage() {
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handleUpdateStatus(selectedItem.id, "Approved")}
+                  onClick={() => handleUpdateStatus(selectedItem, "Approved")}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md"
                 >
                   <CheckCircle2 className="h-4 w-4" /> Approve Verification
                 </button>
                 <button
-                  onClick={() => handleUpdateStatus(selectedItem.id, "Rejected")}
+                  onClick={() => handleUpdateStatus(selectedItem, "Rejected")}
                   className="px-4 py-2 bg-rose-600/30 hover:bg-rose-600/50 text-rose-300 font-bold rounded-xl text-xs flex items-center gap-1.5"
                 >
                   <XCircle className="h-4 w-4" /> Reject Verification
                 </button>
                 <button
-                  onClick={() => handleUpdateStatus(selectedItem.id, "In Review")}
+                  onClick={() => handleUpdateStatus(selectedItem, "In Review")}
                   className="px-4 py-2 bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 font-bold rounded-xl text-xs flex items-center gap-1.5"
                 >
                   <HelpCircle className="h-4 w-4" /> Request Additional Info

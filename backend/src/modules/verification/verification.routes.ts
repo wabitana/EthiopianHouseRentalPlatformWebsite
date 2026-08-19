@@ -79,8 +79,8 @@ router.patch('/identity/:id/review', authenticateToken, async (req: AuthRequest,
     const { id } = req.params;
     const { status, adminNotes } = req.body; // status: 'VERIFIED' or 'REJECTED'
 
-    if (!status || (status !== 'VERIFIED' && status !== 'REJECTED')) {
-      return res.status(400).json({ error: 'Invalid or missing status. Must be VERIFIED or REJECTED.' });
+    if (!status || (status !== 'VERIFIED' && status !== 'REJECTED' && status !== 'UNDER_REVIEW')) {
+      return res.status(400).json({ error: 'Invalid or missing status. Must be VERIFIED, REJECTED, or UNDER_REVIEW.' });
     }
 
     const updatedDoc = await verificationService.reviewIdentityDocument(id, status, adminNotes);

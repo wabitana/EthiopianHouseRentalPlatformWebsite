@@ -23,12 +23,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   UserRole _selectedRole = UserRole.seeker;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   void _onRegister() async {
     if (_formKey.currentState!.validate()) {
+      if (_passwordController.text != _confirmPasswordController.text) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Passwords do not match! Please verify your password.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       final authProvider = context.read<AuthProvider>();
       final success = await authProvider.register(
         name: _nameController.text.trim(),
@@ -80,6 +92,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _phoneController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -372,6 +385,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           validator: (val) {
                             if (val == null || val.length < 6) return 'Password must be at least 6 characters';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        CustomTextField(
+                          label: 'Confirm Password',
+                          hint: '••••••••',
+                          controller: _confirmPasswordController,
+                          obscureText: _obscureConfirmPassword,
+                          prefixIcon: Icons.lock_clock_outlined,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              color: AppColors.textMuted,
+                              size: 20,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscureConfirmPassword = !_obscureConfirmPassword;
+                              });
+                            },
+                          ),
+                          validator: (val) {
+                            if (val == null || val.isEmpty) return 'Please confirm your password';
+                            if (val != _passwordController.text) return 'Passwords do not match';
                             return null;
                           },
                         ),

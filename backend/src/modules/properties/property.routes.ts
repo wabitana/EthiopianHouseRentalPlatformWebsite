@@ -183,18 +183,53 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+import { z } from 'zod';
+
+const createPropertySchema = z.object({
+  title: z.string().min(3, 'Title must be at least 3 characters'),
+  description: z.string().min(10, 'Description must be at least 10 characters'),
+  propertyType: z.string().min(1, 'Property type is required'),
+  price: z.coerce.number().positive('Price must be a positive number'),
+  rentalPeriod: z.string().optional(),
+  rooms: z.coerce.number().int().min(0).optional(),
+  bathrooms: z.coerce.number().int().min(0).optional(),
+  city: z.string().min(1, 'City is required'),
+  area: z.string().min(1, 'Area is required'),
+  neighborhood: z.string().min(1, 'Neighborhood is required'),
+  addressDetails: z.string().optional(),
+  images: z.array(z.string()).optional(),
+  amenities: z.array(z.string()).optional(),
+});
+
 // POST /api/v1/properties (House Provider only)
 router.post('/', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const userId = req.user?.id;
     const userRole = req.user?.role;
 
-    if (!userId || userRole !== 'provider') {
+    if (!userId || (userRole !== 'provider' && userRole !== 'admin')) {
       return res.status(403).json({ error: 'Only House Providers can post properties' });
     }
 
     const providerUser = await prisma.user.findUnique({ where: { id: userId } });
     if (!providerUser) return res.status(404).json({ error: 'Provider profile not found' });
+
+    const isSubscribed = await subscriptionService.isOwnerSubscribed(userId);
+    if (!isSubscribed) {
+      return res.status(402).json({
+        error: 'Active Owner Subscription Required',
+        message: 'House Providers must hold an active subscription plan (Basic, Professional, or Business) before posting property listings.',
+        requiresSubscription: true,
+      });
+    }
+
+    const parseResult = createPropertySchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        details: parseResult.error.flatten().fieldErrors,
+      });
+    }
 
     const {
       title,
@@ -210,20 +245,7 @@ router.post('/', authenticateToken, async (req: AuthRequest, res) => {
       addressDetails,
       images,
       amenities,
-    } = req.body;
-
-    const isSubscribed = await subscriptionService.isOwnerSubscribed(userId);
-    if (!isSubscribed) {
-      return res.status(402).json({
-        error: 'Active Owner Subscription Required',
-        message: 'House Providers must hold an active subscription plan (Basic, Professional, or Business) before posting property listings.',
-        requiresSubscription: true,
-      });
-    }
-
-    if (!title || !description || !propertyType || !price || !city || !area || !neighborhood) {
-      return res.status(400).json({ error: 'Missing required property information' });
-    }
+    } = parseResult.data;
 
     const newProperty = await prisma.property.create({
       data: {

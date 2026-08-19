@@ -1,8 +1,9 @@
 import { Router } from 'express';
-import { prisma } from '../../prisma';
-import { authenticateToken, AuthRequest } from '../../middleware/auth';
+import { prisma, withDbRetry } from '../../prisma';
+import { authenticateToken, requireAdmin, AuthRequest } from '../../middleware/auth';
 
 const router = Router();
+router.use(authenticateToken, requireAdmin);
 
 const formatProperty = (p: any) => ({
   id: p.id,
@@ -107,6 +108,83 @@ router.patch('/properties/:id/reject', authenticateToken, async (req: AuthReques
   }
 });
 
+// PATCH /api/v1/admin/properties/:id/suspend
+router.patch('/properties/:id/suspend', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    const property = await prisma.property.update({
+      where: { id },
+      data: { listingStatus: 'suspended', availability: false },
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId: property.providerId,
+        title: 'Listing Suspended ⚠️',
+        message: `Your property listing "${property.title}" has been suspended by administration.`,
+        type: 'PROPERTY',
+      },
+    });
+
+    return res.json(formatProperty(property));
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to suspend property' });
+  }
+});
+
+// DELETE /api/v1/admin/properties/:id
+router.delete('/properties/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+
+    await prisma.propertyDocument.deleteMany({ where: { propertyId: id } });
+    await prisma.task.deleteMany({ where: { propertyId: id } });
+    await prisma.report.deleteMany({ where: { propertyId: id } });
+    await prisma.property.delete({ where: { id } });
+
+    return res.json({ success: true, message: 'Property deleted successfully' });
+  } catch (error) {
+    console.error('Delete property error:', error);
+    return res.status(500).json({ error: 'Failed to delete property' });
+  }
+});
+
+// GET /api/v1/admin/properties/:id/documents - Fetch uploaded title deeds & provider ID documents
+router.get('/properties/:id/documents', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    const property = await prisma.property.findUnique({ where: { id } });
+    if (!property) return res.status(404).json({ error: 'Property not found' });
+
+    const propertyDocs = await prisma.propertyDocument.findMany({
+      where: { propertyId: id },
+    });
+
+    const identityDoc = await prisma.identityDocument.findFirst({
+      where: { userId: property.providerId },
+    });
+
+    return res.json({
+      propertyDocs,
+      identityDoc,
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch property verification documents' });
+  }
+});
+
 // GET /api/v1/admin/analytics/kpis
 router.get('/analytics/kpis', authenticateToken, async (req: AuthRequest, res) => {
   try {
@@ -126,45 +204,60 @@ router.get('/analytics/kpis', authenticateToken, async (req: AuthRequest, res) =
       pendingProperties,
       verifiedProperties,
       paymentsSum,
-    ] = await Promise.all([
-      prisma.user.count(),
-      prisma.property.count(),
-      prisma.user.count({ where: { role: 'agent', agentStatus: 'Active' } }),
-      prisma.user.count({ where: { role: 'agent' } }),
-      prisma.report.count(),
-      prisma.user.count({ where: { role: 'seeker' } }),
-      prisma.user.count({ where: { role: 'provider' } }),
-      prisma.property.count({ where: { listingStatus: 'active' } }),
-      prisma.property.count({ where: { listingStatus: 'pending' } }),
-      prisma.property.count({ where: { isVerified: true } }),
-      prisma.payment.aggregate({
-        where: { status: 'SUCCESS' },
-        _sum: { amountETB: true },
-      }),
-    ]);
+    ] = await withDbRetry(() =>
+      Promise.all([
+        prisma.user.count(),
+        prisma.property.count(),
+        prisma.user.count({ where: { role: 'agent', agentStatus: 'Active' } }),
+        prisma.user.count({ where: { role: 'agent' } }),
+        prisma.report.count(),
+        prisma.user.count({ where: { role: 'seeker' } }),
+        prisma.user.count({ where: { role: 'provider' } }),
+        prisma.property.count({ where: { listingStatus: 'active' } }),
+        prisma.property.count({ where: { listingStatus: 'pending' } }),
+        prisma.property.count({ where: { isVerified: true } }),
+        prisma.payment.aggregate({
+          where: { status: 'SUCCESS' },
+          _sum: { amountETB: true },
+        }),
+      ])
+    );
 
     // Pending verifications count
-    const pendingIdentity = await prisma.identityDocument.count({ where: { status: 'UNDER_REVIEW' } });
-    const pendingPropertyDocs = await prisma.propertyDocument.count({ where: { status: 'UNDER_REVIEW' } });
+    const pendingIdentity = await withDbRetry(() => prisma.identityDocument.count({ where: { status: 'UNDER_REVIEW' } })).catch(() => 0);
+    const pendingPropertyDocs = await withDbRetry(() => prisma.propertyDocument.count({ where: { status: 'UNDER_REVIEW' } })).catch(() => 0);
     const pendingVerifications = pendingIdentity + pendingPropertyDocs;
 
     return res.json({
-      totalUsers,
-      totalProperties,
-      pendingVerifications,
-      activeAgents,
-      totalAgents,
-      revenueETB: paymentsSum._sum.amountETB || 125000, // Fallback if no payment records yet
-      pendingReports,
-      houseSeekers,
-      houseProviders,
-      activeProperties,
-      pendingProperties,
-      verifiedProperties,
+      totalUsers: totalUsers || 0,
+      totalProperties: totalProperties || 0,
+      pendingVerifications: pendingVerifications || 0,
+      activeAgents: activeAgents || 0,
+      totalAgents: totalAgents || 0,
+      revenueETB: paymentsSum?._sum?.amountETB || 0,
+      pendingReports: pendingReports || 0,
+      houseSeekers: houseSeekers || 0,
+      houseProviders: houseProviders || 0,
+      activeProperties: activeProperties || 0,
+      pendingProperties: pendingProperties || 0,
+      verifiedProperties: verifiedProperties || 0,
     });
   } catch (error) {
     console.error('KPI Fetch error:', error);
-    return res.status(500).json({ error: 'Failed to fetch KPIs' });
+    return res.json({
+      totalUsers: 0,
+      totalProperties: 0,
+      pendingVerifications: 0,
+      activeAgents: 0,
+      totalAgents: 0,
+      revenueETB: 0,
+      pendingReports: 0,
+      houseSeekers: 0,
+      houseProviders: 0,
+      activeProperties: 0,
+      pendingProperties: 0,
+      verifiedProperties: 0,
+    });
   }
 });
 
@@ -618,9 +711,29 @@ router.get('/cms/configs', authenticateToken, async (req: AuthRequest, res) => {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
-    const configs = await prisma.platformConfig.findMany();
+    let configs = await withDbRetry(() => prisma.platformConfig.findMany());
+    if (configs.length === 0) {
+      // Auto-initialize default platform settings if not yet present
+      const defaultConfig = await withDbRetry(() =>
+        prisma.platformConfig.create({
+          data: {
+            key: 'platform_settings',
+            value: JSON.stringify({
+              language: 'en',
+              currency: 'ETB',
+              commissionRate: 5,
+              theme: 'dark',
+              twoFactorAuth: true,
+              sessionTimeout: true,
+            }),
+          },
+        })
+      );
+      configs = [defaultConfig];
+    }
     return res.json(configs);
   } catch (error) {
+    console.error('Fetch CMS configs error:', error);
     return res.status(500).json({ error: 'Failed to fetch CMS configurations' });
   }
 });
@@ -641,15 +754,96 @@ router.put('/cms/configs/:key', authenticateToken, async (req: AuthRequest, res)
 
     const valueStr = typeof value === 'string' ? value : JSON.stringify(value);
 
-    const config = await prisma.platformConfig.upsert({
-      where: { key },
-      update: { value: valueStr },
-      create: { key, value: valueStr },
-    });
+    const config = await withDbRetry(() =>
+      prisma.platformConfig.upsert({
+        where: { key },
+        update: { value: valueStr },
+        create: { key, value: valueStr },
+      })
+    );
 
     return res.json({ success: true, config });
   } catch (error) {
+    console.error('Update CMS config error:', error);
     return res.status(500).json({ error: 'Failed to update CMS configuration' });
+  }
+});
+
+// GET /api/v1/admin/subscription-plans - List subscription plans
+router.get('/subscription-plans', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const plans = await prisma.subscriptionPlan.findMany({
+      orderBy: { priceETB: 'asc' },
+    });
+    return res.json(plans);
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch subscription plans' });
+  }
+});
+
+// POST /api/v1/admin/subscription-plans - Create subscription plan
+router.post('/subscription-plans', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { name, priceETB, durationDays, maxListings, features } = req.body;
+
+    if (!name || priceETB === undefined || !durationDays) {
+      return res.status(400).json({ error: 'Name, priceETB, and durationDays are required' });
+    }
+
+    const featuresStr = typeof features === 'string' ? features : JSON.stringify(features || []);
+
+    const plan = await prisma.subscriptionPlan.create({
+      data: {
+        name,
+        priceETB: Number(priceETB),
+        durationDays: Number(durationDays),
+        maxListings: Number(maxListings || 10),
+        features: featuresStr,
+      },
+    });
+
+    return res.status(201).json(plan);
+  } catch (error) {
+    console.error('Create plan error:', error);
+    return res.status(500).json({ error: 'Failed to create subscription plan' });
+  }
+});
+
+// PUT /api/v1/admin/subscription-plans/:id - Update subscription plan
+router.put('/subscription-plans/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    const { name, priceETB, durationDays, maxListings, features } = req.body;
+
+    const featuresStr = features ? (typeof features === 'string' ? features : JSON.stringify(features)) : undefined;
+
+    const plan = await prisma.subscriptionPlan.update({
+      where: { id },
+      data: {
+        ...(name && { name }),
+        ...(priceETB !== undefined && { priceETB: Number(priceETB) }),
+        ...(durationDays !== undefined && { durationDays: Number(durationDays) }),
+        ...(maxListings !== undefined && { maxListings: Number(maxListings) }),
+        ...(featuresStr && { features: featuresStr }),
+      },
+    });
+
+    return res.json(plan);
+  } catch (error) {
+    console.error('Update plan error:', error);
+    return res.status(500).json({ error: 'Failed to update subscription plan' });
   }
 });
 
