@@ -1,8 +1,8 @@
 import dotenv from 'dotenv';
+dotenv.config();
+
 import app from './app';
 import { startEmailReminderScheduler } from './modules/email/email.scheduler';
-
-dotenv.config();
 
 const PORT = process.env.PORT || 3000;
 
