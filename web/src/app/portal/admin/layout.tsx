@@ -26,7 +26,6 @@ import {
   ExternalLink,
   ShieldAlert,
 } from "lucide-react";
-import { mockNotifications } from "@/lib/portal-mock-data";
 import { apiFetch } from "@/lib/api";
 
 const baseNavItems = [
@@ -43,7 +42,6 @@ const baseNavItems = [
   { id: "messages", href: "/portal/admin/messages", label: "Messages", icon: MessageSquare },
   { id: "settings", href: "/portal/admin/settings", label: "Settings", icon: Settings },
 ];
-
 export default function AdminPortalLayout({
   children,
 }: {
@@ -56,7 +54,7 @@ export default function AdminPortalLayout({
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
   const [badges, setBadges] = useState<{ verification?: number; reports?: number }>({});
-  const [hasReadNotifications, setHasReadNotifications] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [currentUser, setCurrentUser] = useState<{ name: string; email: string; avatarUrl?: string }>({
     name: "",
     email: "",
@@ -80,13 +78,17 @@ export default function AdminPortalLayout({
         }
 
         // Fetch dynamic KPI badges from database
-        const kpis = await apiFetch("/admin/analytics/kpis");
+        const kpis = await apiFetch("/admin/analytics/kpis").catch(() => null);
         if (kpis) {
           setBadges({
             verification: kpis.pendingVerifications ?? 0,
             reports: kpis.pendingReports ?? 0,
           });
         }
+
+        // Fetch real database notifications
+        const notifData = await apiFetch("/notifications").catch(() => []);
+        setNotifications(notifData || []);
       } catch (err) {
         setAccessDenied(true);
       }
@@ -94,7 +96,7 @@ export default function AdminPortalLayout({
     checkAdminAuthAndLoadStats();
   }, []);
 
-  const unreadNotifs = hasReadNotifications ? [] : mockNotifications.filter((n) => !n.read);
+  const unreadNotifs = notifications.filter((n) => !n.read && !n.isRead);
 
   if (accessDenied) {
     return (
@@ -177,7 +179,6 @@ export default function AdminPortalLayout({
               onClick={() => {
                 setNotifDropdownOpen(!notifDropdownOpen);
                 setProfileDropdownOpen(false);
-                setHasReadNotifications(true);
               }}
               className="relative p-2 text-slate-300 hover:text-white rounded-xl hover:bg-slate-700/60 transition-colors"
             >
@@ -202,18 +203,26 @@ export default function AdminPortalLayout({
                   </Link>
                 </div>
                 <div className="max-h-80 overflow-y-auto divide-y divide-slate-700/60">
-                  {mockNotifications.map((n) => (
-                    <div
-                      key={n.id}
-                      className={`p-3.5 hover:bg-slate-750 transition-colors ${!n.read ? "bg-slate-750/50" : ""}`}
-                    >
-                      <div className="flex items-start justify-between">
-                        <p className="text-xs font-semibold text-white">{n.title}</p>
-                        <span className="text-[10px] text-slate-400">{n.time}</span>
-                      </div>
-                      <p className="text-xs text-slate-300 mt-1 line-clamp-2">{n.message}</p>
+                  {notifications.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400">
+                      No notifications found.
                     </div>
-                  ))}
+                  ) : (
+                    notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        className={`p-3.5 hover:bg-slate-750 transition-colors ${!n.read && !n.isRead ? "bg-slate-750/50" : ""}`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <p className="text-xs font-semibold text-white">{n.title}</p>
+                          <span className="text-[10px] text-slate-400">
+                            {n.createdAt ? new Date(n.createdAt).toLocaleTimeString() : 'Recent'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-300 mt-1 line-clamp-2">{n.message}</p>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             )}
