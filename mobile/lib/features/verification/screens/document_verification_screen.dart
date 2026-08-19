@@ -162,14 +162,15 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
       });
 
       if (mounted) {
-        context.read<AuthProvider>().updateVerificationStatus(true);
+        await context.read<AuthProvider>().refreshCurrentUser();
+        if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               widget.isProvider
-                  ? '🎉 Documents submitted! AI Pre-Check Passed (94.2/100). Sent to Admin Queue for final approval.'
-                  : '🎉 Identity verification submitted successfully! Verified Badge updated ✓',
+                  ? '🎉 Documents submitted! AI Pre-Check Passed (94.2/100). Sent to Web Admin Queue for final approval.'
+                  : '🎉 Identity document submitted successfully! Placed in Web Admin Queue for approval ⏳',
             ),
             backgroundColor: AppColors.success,
             duration: const Duration(seconds: 4),
