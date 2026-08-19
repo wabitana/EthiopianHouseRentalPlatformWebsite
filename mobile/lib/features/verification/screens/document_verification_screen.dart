@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -34,6 +35,10 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
   File? _idBackPhoto;
   File? _ownershipDocPhoto;
 
+  Uint8List? _idFrontBytes;
+  Uint8List? _idBackBytes;
+  Uint8List? _ownershipDocBytes;
+
   bool _isSubmitting = false;
   double? _aiRiskScore;
   String? _aiNotes;
@@ -49,10 +54,20 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
     );
 
     if (file != null) {
+      final bytes = await file.readAsBytes();
       setState(() {
-        if (target == 1) _idFrontPhoto = File(file.path);
-        if (target == 2) _idBackPhoto = File(file.path);
-        if (target == 3) _ownershipDocPhoto = File(file.path);
+        if (target == 1) {
+          _idFrontPhoto = File(file.path);
+          _idFrontBytes = bytes;
+        }
+        if (target == 2) {
+          _idBackPhoto = File(file.path);
+          _idBackBytes = bytes;
+        }
+        if (target == 3) {
+          _ownershipDocPhoto = File(file.path);
+          _ownershipDocBytes = bytes;
+        }
       });
     }
   }
@@ -97,14 +112,14 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
 
   Future<void> _submitVerification() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_idFrontPhoto == null) {
+    if (_idFrontBytes == null && _idFrontPhoto == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please scan or upload the front photo of your ID')),
       );
       return;
     }
 
-    if (widget.isProvider && _ownershipDocPhoto == null) {
+    if (widget.isProvider && _ownershipDocBytes == null && _ownershipDocPhoto == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('House Providers must upload House Ownership/License Document')),
       );
@@ -114,19 +129,29 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
     setState(() => _isSubmitting = true);
 
     try {
-      // 1. Upload ID Front Photo
-      final bytes = await _idFrontPhoto!.readAsBytes();
-      final base64Image = 'data:image/jpeg;base64,${base64Encode(bytes)}';
-      final uploadRes = await ApiClient.post(ApiEndpoints.upload, body: {'base64': base64Image});
+      // 1. Upload ID Front Photo using cross-platform Uint8List bytes
+      final frontBytes = _idFrontBytes ?? await _idFrontPhoto!.readAsBytes();
+      final frontBase64 = 'data:image/jpeg;base64,${base64Encode(frontBytes)}';
+      final uploadRes = await ApiClient.post(ApiEndpoints.upload, body: {'base64': frontBase64});
       final docUrl = uploadRes?['url'] ?? 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600';
 
-      // 2. Submit Identity Document to backend
+      // 2. Upload ID Back Photo (if selected)
+      String? backUrl;
+      if (_idBackBytes != null || _idBackPhoto != null) {
+        final backBytes = _idBackBytes ?? await _idBackPhoto!.readAsBytes();
+        final backBase64 = 'data:image/jpeg;base64,${base64Encode(backBytes)}';
+        final backUploadRes = await ApiClient.post(ApiEndpoints.upload, body: {'base64': backBase64});
+        backUrl = backUploadRes?['url'];
+      }
+
+      // 3. Submit Identity Document (Front + Back) to backend
       await ApiClient.post(
         '${ApiEndpoints.baseUrl}/verification/identity',
         body: {
           'idType': _selectedIdType,
           'idNumber': _idNumberController.text.trim(),
           'documentUrl': docUrl,
+          'selfieUrl': backUrl,
         },
       );
 
@@ -275,6 +300,7 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
                     child: _UploadBox(
                       title: 'ID Front Side',
                       file: _idFrontPhoto,
+                      bytes: _idFrontBytes,
                       onTap: () => _showImagePickerOptions(1),
                     ),
                   ),
@@ -283,6 +309,7 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
                     child: _UploadBox(
                       title: 'ID Back Side (Optional)',
                       file: _idBackPhoto,
+                      bytes: _idBackBytes,
                       onTap: () => _showImagePickerOptions(2),
                     ),
                   ),
@@ -324,6 +351,7 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
                 _UploadBox(
                   title: 'Upload House Ownership Document Photo',
                   file: _ownershipDocPhoto,
+                  bytes: _ownershipDocBytes,
                   isFullWidth: true,
                   onTap: () => _showImagePickerOptions(3),
                 ),
@@ -380,18 +408,21 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
 class _UploadBox extends StatelessWidget {
   final String title;
   final File? file;
+  final Uint8List? bytes;
   final bool isFullWidth;
   final VoidCallback onTap;
 
   const _UploadBox({
     required this.title,
     required this.file,
+    this.bytes,
     this.isFullWidth = false,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final hasImage = bytes != null || file != null;
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -400,14 +431,18 @@ class _UploadBox extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: file != null ? AppColors.primary : const Color(0xFFCBD5E1),
-            width: file != null ? 2 : 1,
+            color: hasImage ? AppColors.primary : const Color(0xFFCBD5E1),
+            width: hasImage ? 2 : 1,
           ),
         ),
-        child: file != null
+        child: hasImage
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: Image.file(file!, fit: BoxFit.cover, width: double.infinity),
+                child: bytes != null
+                    ? Image.memory(bytes!, fit: BoxFit.cover, width: double.infinity)
+                    : (kIsWeb
+                        ? const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 36)
+                        : Image.file(file!, fit: BoxFit.cover, width: double.infinity)),
               )
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,

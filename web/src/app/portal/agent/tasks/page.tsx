@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { CheckSquare, Clock, Filter, Plus, Calendar, AlertCircle, CheckCircle2, X } from "lucide-react";
-import { mockTasks, TaskItem } from "@/lib/portal-mock-data";
+import { TaskItem } from "@/lib/portal-mock-data";
 import { apiFetch } from "@/lib/api";
 
 const mapBackendTask = (t: any): TaskItem => ({

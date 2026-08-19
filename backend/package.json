@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "seed": "ts-node src/seed.ts"
+    "seed": "ts-node src/seed.ts",
+    "migrate:cloudinary": "ts-node src/scripts/migrate-local-images-to-cloudinary.ts"
   },
   "dependencies": {
     "@langchain/core": "^1.2.8",
@@ -21,6 +22,7 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/ws": "^8.18.1",
     "bcryptjs": "^2.4.3",
+    "cloudinary": "^2.10.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

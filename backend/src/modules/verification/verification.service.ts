@@ -86,7 +86,7 @@ export class VerificationService {
     };
   }
 
-  async reviewIdentityDocument(docId: string, status: 'VERIFIED' | 'REJECTED', adminNotes?: string) {
+  async reviewIdentityDocument(docId: string, status: 'VERIFIED' | 'REJECTED' | 'UNDER_REVIEW', adminNotes?: string) {
     const doc = await prisma.identityDocument.update({
       where: { id: docId },
       data: {
@@ -99,6 +99,11 @@ export class VerificationService {
       await prisma.user.update({
         where: { id: doc.userId },
         data: { isVerified: true },
+      });
+    } else if (status === 'REJECTED') {
+      await prisma.user.update({
+        where: { id: doc.userId },
+        data: { isVerified: false },
       });
     }
 

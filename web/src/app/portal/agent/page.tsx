@@ -15,52 +15,84 @@ import {
   ChevronRight,
   UserCheck,
 } from "lucide-react";
-import { mockTasks, mockVerifications } from "@/lib/portal-mock-data";
 import { apiFetch } from "@/lib/api";
+
+const resolveImageUrl = (url?: string) => {
+  if (!url) return 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `http://localhost:3000${url.startsWith('/') ? '' : '/'}${url}`;
+};
 
 export default function AgentDashboardPage() {
   const [profile, setProfile] = useState<any>(null);
+  const [pendingVerifications, setPendingVerifications] = useState<any[]>([]);
+  const [activeTasks, setActiveTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function loadProfile() {
+    async function loadDashboardData() {
       try {
-        const data = await apiFetch("/agent/profile");
-        setProfile(data);
+        setLoading(true);
+        const [profData, verifData, tasksData] = await Promise.all([
+          apiFetch("/agent/profile").catch(() => null),
+          apiFetch("/verification/admin/pending").catch(() => ({ identityDocs: [], propertyDocs: [] })),
+          apiFetch("/agent/tasks").catch(() => []),
+        ]);
+
+        setProfile(profData);
+
+        const propItems = (verifData.propertyDocs || []).map((d: any) => ({
+          id: d.id,
+          title: d.property?.title || 'Property Verification',
+          providerName: d.property?.providerName || 'Landlord',
+          location: d.property ? `${d.property.city}, ${d.property.area}` : 'Addis Ababa',
+          image: resolveImageUrl(d.docUrl),
+        }));
+
+        const idItems = (verifData.identityDocs || []).map((d: any) => ({
+          id: d.id,
+          title: `Identity: ${d.user?.name || 'User Profile'}`,
+          providerName: d.user?.name || 'Applicant',
+          location: d.idType || 'National ID',
+          image: resolveImageUrl(d.documentUrl),
+        }));
+
+        setPendingVerifications([...propItems, ...idItems]);
+        setActiveTasks(tasksData || []);
       } catch (err) {
-        console.error("Failed to load agent profile:", err);
+        console.error("Failed to load agent dashboard data:", err);
       } finally {
         setLoading(false);
       }
     }
-    loadProfile();
+    loadDashboardData();
   }, []);
 
   const kpiCards = [
     {
       title: "Assigned Properties",
-      value: profile ? String(profile.propertiesManaged) : "--",
-      subtitle: profile?.assignedArea || "Not Assigned",
+      value: profile ? String(profile.propertiesManaged || 0) : "0",
+      subtitle: profile?.assignedArea || "Addis Ababa Territory",
       icon: Building2,
       color: "from-blue-500/20 to-blue-600/10 border-blue-500/30 text-blue-400",
     },
     {
       title: "Pending Verifications",
-      value: profile ? "8" : "--",
+      value: String(pendingVerifications.length),
       subtitle: "Document Reviews Queued",
       icon: ShieldCheck,
       color: "from-amber-500/20 to-amber-600/10 border-amber-500/30 text-amber-400",
     },
     {
       title: "Verifications Completed",
-      value: profile ? String(profile.verificationsCompleted) : "--",
-      subtitle: "Total Approved / Rejected",
+      value: profile ? String(profile.verificationsCompleted || 0) : "0",
+      subtitle: "Total Approved / Reviewed",
       icon: CheckSquare,
       color: "from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 text-emerald-400",
     },
     {
       title: "Active Tasks",
-      value: profile ? String(profile.activeTasks) : "--",
+      value: String(activeTasks.filter((t) => t.status !== 'Completed').length),
       subtitle: "Inspections Pending",
       icon: Clock,
       color: "from-purple-500/20 to-purple-600/10 border-purple-500/30 text-purple-400",
@@ -135,26 +167,32 @@ export default function AgentDashboardPage() {
           </div>
 
           <div className="space-y-3">
-            {mockVerifications.map((v) => (
-              <div
-                key={v.id}
-                className="p-3.5 bg-slate-900 rounded-xl border border-slate-700 flex items-center justify-between text-xs hover:border-slate-600 transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <img src={v.propertyImage} alt={v.propertyTitle} className="h-10 w-12 rounded-lg object-cover" />
-                  <div>
-                    <p className="font-bold text-white line-clamp-1">{v.propertyTitle}</p>
-                    <p className="text-[11px] text-slate-400">{v.providerName} • {v.location}</p>
-                  </div>
-                </div>
-                <Link
-                  href="/portal/agent/verification"
-                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-[11px] shadow-sm"
-                >
-                  Verify
-                </Link>
+            {pendingVerifications.length === 0 ? (
+              <div className="p-4 bg-slate-900/60 rounded-xl text-center text-xs text-slate-400">
+                No pending verifications in queue.
               </div>
-            ))}
+            ) : (
+              pendingVerifications.slice(0, 4).map((v) => (
+                <div
+                  key={v.id}
+                  className="p-3.5 bg-slate-900 rounded-xl border border-slate-700 flex items-center justify-between text-xs hover:border-slate-600 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <img src={v.image} alt={v.title} className="h-10 w-12 rounded-lg object-cover" />
+                    <div>
+                      <p className="font-bold text-white line-clamp-1">{v.title}</p>
+                      <p className="text-[11px] text-slate-400">{v.providerName} • {v.location}</p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/portal/agent/verification"
+                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-[11px] shadow-sm"
+                  >
+                    Verify
+                  </Link>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -177,29 +215,35 @@ export default function AgentDashboardPage() {
           </div>
 
           <div className="space-y-3">
-            {mockTasks.slice(0, 3).map((tsk) => (
-              <div
-                key={tsk.id}
-                className="p-3.5 bg-slate-900 rounded-xl border border-slate-700 flex items-center justify-between text-xs"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2 py-0.2 rounded text-[9px] font-extrabold uppercase ${
-                        tsk.priority === "High" ? "bg-rose-500/20 text-rose-300" : "bg-blue-500/20 text-blue-300"
-                      }`}
-                    >
-                      {tsk.priority} Priority
-                    </span>
-                    <span className="text-[10px] text-slate-400">Due {tsk.dueDate}</span>
-                  </div>
-                  <p className="font-bold text-white mt-1">{tsk.title}</p>
-                </div>
-                <span className="px-2.5 py-1 bg-slate-800 border border-slate-700 text-slate-300 font-semibold rounded-md text-[10px]">
-                  {tsk.status}
-                </span>
+            {activeTasks.length === 0 ? (
+              <div className="p-4 bg-slate-900/60 rounded-xl text-center text-xs text-slate-400">
+                No active tasks assigned today.
               </div>
-            ))}
+            ) : (
+              activeTasks.slice(0, 3).map((tsk) => (
+                <div
+                  key={tsk.id}
+                  className="p-3.5 bg-slate-900 rounded-xl border border-slate-700 flex items-center justify-between text-xs"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-2 py-0.2 rounded text-[9px] font-extrabold uppercase ${
+                          tsk.priority === "High" ? "bg-rose-500/20 text-rose-300" : "bg-blue-500/20 text-blue-300"
+                        }`}
+                      >
+                        {tsk.priority || 'Normal'} Priority
+                      </span>
+                      <span className="text-[10px] text-slate-400">Due {tsk.dueDate ? new Date(tsk.dueDate).toLocaleDateString() : 'N/A'}</span>
+                    </div>
+                    <p className="font-bold text-white mt-1">{tsk.title}</p>
+                  </div>
+                  <span className="px-2.5 py-1 bg-slate-800 border border-slate-700 text-slate-300 font-semibold rounded-md text-[10px]">
+                    {tsk.status}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

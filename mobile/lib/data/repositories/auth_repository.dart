@@ -14,7 +14,8 @@ abstract class AuthRepository {
     required UserRole role,
   });
   Future<void> logout();
-  Future<void> resetPassword(String emailOrPhone);
+  Future<bool> forgotPassword(String emailOrPhone);
+  Future<bool> performResetPassword(String email, String code, String newPassword);
   Future<UserModel> updateProfile(UserModel updatedUser);
   Future<UserModel> verifyIdentity(String idType, String idNumber, {String? documentImage, String? selfieImage});
 }
@@ -56,9 +57,11 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> logout() => _remoteDataSource.logoutUser();
 
   @override
-  Future<void> resetPassword(String emailOrPhone) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-  }
+  Future<bool> forgotPassword(String emailOrPhone) => _remoteDataSource.forgotPassword(emailOrPhone);
+
+  @override
+  Future<bool> performResetPassword(String email, String code, String newPassword) =>
+      _remoteDataSource.resetPassword(email, code, newPassword);
 
   @override
   Future<UserModel> updateProfile(UserModel updatedUser) => _remoteDataSource.updateUserProfile(updatedUser);

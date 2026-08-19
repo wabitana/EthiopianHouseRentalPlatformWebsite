@@ -113,17 +113,17 @@ export default function AssistedRuralRentalsPage() {
     try {
       setLoading(true);
       const [tenantsData, bookingsData, leasesData, smsData, propertiesData] = await Promise.all([
-        apiFetch("/agent/assisted-tenants"),
-        apiFetch("/agent/assisted-bookings"),
-        apiFetch("/agent/lease-agreements"),
-        apiFetch("/agent/sms-logs"),
-        apiFetch("/properties")
+        apiFetch("/agent/assisted-tenants").catch(() => []),
+        apiFetch("/agent/assisted-bookings").catch(() => []),
+        apiFetch("/agent/leases").catch(() => []),
+        apiFetch("/agent/feature-phone-sms").catch(() => []),
+        apiFetch("/properties").catch(() => [])
       ]);
 
-      setTenants(tenantsData.map(mapBackendTenant));
-      setBookings(bookingsData.map(mapBackendBooking));
-      setLeases(leasesData.map(mapBackendLease));
-      setSmsLogs(smsData.map(mapBackendSms));
+      setTenants((tenantsData || []).map(mapBackendTenant));
+      setBookings((bookingsData || []).map(mapBackendBooking));
+      setLeases((leasesData || []).map(mapBackendLease));
+      setSmsLogs((smsData || []).map(mapBackendSms));
       
       const mapBackendProperty = (p: any): PropertyItem => {
         let imagesArr = [];
