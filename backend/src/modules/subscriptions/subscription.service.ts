@@ -1,11 +1,11 @@
 import { prisma } from '../../prisma';
-import { ChapaSimulationProvider, IPaymentProvider } from '../payments/payment.provider';
+import { createPaymentProvider, IPaymentProvider } from '../payments/payment.provider';
 
 export class SubscriptionService {
   private paymentProvider: IPaymentProvider;
 
   constructor(provider?: IPaymentProvider) {
-    this.paymentProvider = provider || new ChapaSimulationProvider();
+    this.paymentProvider = provider || createPaymentProvider();
   }
 
   async getSubscriptionPlans() {

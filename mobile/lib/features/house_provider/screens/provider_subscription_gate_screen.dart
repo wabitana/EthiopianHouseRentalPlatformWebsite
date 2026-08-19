@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_client.dart';
@@ -106,13 +107,23 @@ class _ProviderSubscriptionGateScreenState extends State<ProviderSubscriptionGat
         setState(() => _isProcessing = false);
 
         if (res != null && (res['subscription'] != null || res['payment'] != null)) {
+          final checkoutUrl = res['payment']?['checkoutUrl'] as String?;
+          if (checkoutUrl != null && checkoutUrl.startsWith('http')) {
+            try {
+              await launchUrl(Uri.parse(checkoutUrl), mode: LaunchMode.externalApplication);
+            } catch (e) {
+              debugPrint('Failed to open Chapa checkout URL: $e');
+            }
+          }
+
+          if (!mounted) return;
           await context.read<AuthProvider>().refreshCurrentUser();
           if (!mounted) return;
           context.read<AuthProvider>().switchRole(UserRole.provider);
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Chapa Payment Successful! Subscription Plan Activated.'),
+              content: Text('Chapa Payment Gateway Connected! Subscription Plan Activated.'),
               backgroundColor: AppColors.primary,
             ),
           );

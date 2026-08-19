@@ -102,13 +102,8 @@ class PropertyRepositoryImpl implements PropertyRepository {
   }
 
   @override
-  Future<PropertyModel> createProperty(PropertyModel property) async {
-    try {
-      return await _remoteDataSource.postProperty(property);
-    } catch (_) {
-      return await MockPropertyRemoteDataSource().postProperty(property);
-    }
-  }
+  Future<PropertyModel> createProperty(PropertyModel property) =>
+      _remoteDataSource.postProperty(property);
 
   @override
   Future<PropertyModel> updateProperty(PropertyModel property) =>
