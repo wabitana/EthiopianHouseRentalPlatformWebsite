@@ -66,6 +66,7 @@ export default function PortalLoginPage() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Important: allows backend Set-Cookie to set HttpOnly refresh token
         body: JSON.stringify({ email, password }),
       });
 
@@ -75,9 +76,10 @@ export default function PortalLoginPage() {
 
       const data = await response.json();
       const token = data.token;
-      
-      // Store token in cookie
-      document.cookie = `delala_token=${token}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`;
+
+      // Store access token in a JS-readable cookie (used by api.ts for Authorization header)
+      // The backend already set delala_refresh_token as HttpOnly via Set-Cookie header
+      document.cookie = `delala_token=${token}; path=/; max-age=${15 * 60}; SameSite=Lax`;
 
       const userRole = data.user?.role;
       if (userRole === "agent") {

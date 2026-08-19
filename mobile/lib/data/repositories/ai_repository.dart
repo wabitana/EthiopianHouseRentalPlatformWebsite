@@ -59,7 +59,7 @@ class AiRepository {
       ApiEndpoints.aiChat,
       body: {
         'message': message,
-        if (conversationId != null) 'conversationId': conversationId,
+        'conversationId': ?conversationId,
       },
     );
 
