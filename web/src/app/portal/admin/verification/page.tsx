@@ -116,22 +116,26 @@ export default function AdminVerificationPage() {
     loadPendingVerifications();
   }, []);
 
-  const handleUpdateStatus = async (id: string, newStatus: VerificationItem["status"]) => {
+  const handleUpdateStatus = async (item: VerificationItem, newStatus: VerificationItem["status"]) => {
     try {
       const apiStatus = newStatus === 'Approved' ? 'VERIFIED' : newStatus === 'Rejected' ? 'REJECTED' : 'UNDER_REVIEW';
-      await apiFetch(`/verification/property-license/${id}/review`, {
+      const endpoint = item.propertyId
+        ? `/verification/property-license/${item.id}/review`
+        : `/verification/identity/${item.id}/review`;
+
+      await apiFetch(endpoint, {
         method: "PATCH",
         body: { status: apiStatus, adminNotes: notesInput }
       });
 
       setQueue((prev) =>
-        prev.map((v) => (v.id === id ? { ...v, status: newStatus, notes: notesInput || v.notes } : v))
+        prev.map((v) => (v.id === item.id ? { ...v, status: newStatus, notes: notesInput || v.notes } : v))
       );
-      if (selectedItem && selectedItem.id === id) {
+      if (selectedItem && selectedItem.id === item.id) {
         setSelectedItem({ ...selectedItem, status: newStatus, notes: notesInput || selectedItem.notes });
       }
     } catch (err) {
-      console.error("Failed to review property document:", err);
+      console.error("Failed to review document:", err);
     }
   };
 
@@ -322,19 +326,19 @@ export default function AdminVerificationPage() {
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => handleUpdateStatus(selectedItem.id, "Approved")}
+                  onClick={() => handleUpdateStatus(selectedItem, "Approved")}
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md"
                 >
                   <CheckCircle2 className="h-4 w-4" /> Approve Verification
                 </button>
                 <button
-                  onClick={() => handleUpdateStatus(selectedItem.id, "Rejected")}
+                  onClick={() => handleUpdateStatus(selectedItem, "Rejected")}
                   className="px-4 py-2 bg-rose-600/30 hover:bg-rose-600/50 text-rose-300 font-bold rounded-xl text-xs flex items-center gap-1.5"
                 >
                   <XCircle className="h-4 w-4" /> Reject Verification
                 </button>
                 <button
-                  onClick={() => handleUpdateStatus(selectedItem.id, "In Review")}
+                  onClick={() => handleUpdateStatus(selectedItem, "In Review")}
                   className="px-4 py-2 bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 font-bold rounded-xl text-xs flex items-center gap-1.5"
                 >
                   <HelpCircle className="h-4 w-4" /> Request Additional Info
