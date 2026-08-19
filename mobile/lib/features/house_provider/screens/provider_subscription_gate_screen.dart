@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_client.dart';
+import '../../../shared/models/user_model.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/main_layout_wrapper.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class ProviderSubscriptionGateScreen extends StatefulWidget {
   const ProviderSubscriptionGateScreen({super.key});
@@ -33,27 +36,52 @@ class _ProviderSubscriptionGateScreenState extends State<ProviderSubscriptionGat
 
     try {
       final res = await ApiClient.get(ApiEndpoints.subscriptionPlans);
-      if (res != null && res is List) {
+      if (res != null && res is List && res.isNotEmpty) {
         _plans = List<Map<String, dynamic>>.from(res);
-        if (_plans.isNotEmpty) {
-          // Default to Professional or first plan
-          final prof = _plans.firstWhere(
-            (p) => (p['name'] as String).toLowerCase() == 'professional',
-            orElse: () => _plans.first,
-          );
-          _selectedPlanId = prof['id'] as String;
-        }
       } else {
-        _errorMessage = 'Failed to load subscription plans';
+        _plans = _defaultPlans;
       }
     } catch (e) {
-      _errorMessage = 'Network error fetching subscription plans: $e';
+      debugPrint('Error fetching backend subscription plans: $e');
+      _plans = _defaultPlans;
+    }
+
+    if (_plans.isNotEmpty) {
+      final prof = _plans.firstWhere(
+        (p) => (p['name'] as String).toLowerCase() == 'professional',
+        orElse: () => _plans.first,
+      );
+      _selectedPlanId = prof['id'] as String;
     }
 
     if (mounted) {
       setState(() => _isLoadingPlans = false);
     }
   }
+
+  static final List<Map<String, dynamic>> _defaultPlans = [
+    {
+      'id': 'plan_basic',
+      'name': 'Basic',
+      'priceETB': 500,
+      'durationDays': 30,
+      'maxListings': 3,
+    },
+    {
+      'id': 'plan_professional',
+      'name': 'Professional',
+      'priceETB': 1200,
+      'durationDays': 30,
+      'maxListings': 10,
+    },
+    {
+      'id': 'plan_business',
+      'name': 'Business',
+      'priceETB': 2500,
+      'durationDays': 30,
+      'maxListings': 100,
+    },
+  ];
 
   void _onSubscribeWithChapa() async {
     if (_selectedPlanId == null) {
@@ -78,6 +106,10 @@ class _ProviderSubscriptionGateScreenState extends State<ProviderSubscriptionGat
         setState(() => _isProcessing = false);
 
         if (res != null && (res['subscription'] != null || res['payment'] != null)) {
+          await context.read<AuthProvider>().refreshCurrentUser();
+          if (!mounted) return;
+          context.read<AuthProvider>().switchRole(UserRole.provider);
+
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Chapa Payment Successful! Subscription Plan Activated.'),

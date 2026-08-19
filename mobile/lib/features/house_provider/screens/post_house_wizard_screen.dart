@@ -153,11 +153,14 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
-              Navigator.of(context).push(
+              await Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const SubscriptionPlansScreen()),
               );
+              if (mounted) {
+                _submitListing();
+              }
             },
             child: const Text('View Plans', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),

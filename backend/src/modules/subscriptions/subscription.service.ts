@@ -80,6 +80,14 @@ export class SubscriptionService {
       include: { plan: true },
     });
 
+    // Auto-promote seeker to provider role if they subscribe to a landlord plan
+    if (user.role === 'seeker') {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { role: 'provider' },
+      });
+    }
+
     // 3. Record Payment
     await prisma.payment.create({
       data: {
