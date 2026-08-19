@@ -204,6 +204,9 @@ router.get('/analytics/kpis', authenticateToken, async (req: AuthRequest, res) =
       pendingProperties,
       verifiedProperties,
       paymentsSum,
+      locationsGroup,
+      suspendedCount,
+      rejectedCount,
     ] = await withDbRetry(() =>
       Promise.all([
         prisma.user.count(),
@@ -220,6 +223,14 @@ router.get('/analytics/kpis', authenticateToken, async (req: AuthRequest, res) =
           where: { status: 'SUCCESS' },
           _sum: { amountETB: true },
         }),
+        prisma.property.groupBy({
+          by: ['city', 'area'],
+          _count: { id: true },
+          orderBy: { _count: { id: 'desc' } },
+          take: 5,
+        }),
+        prisma.property.count({ where: { listingStatus: 'suspended' } }),
+        prisma.property.count({ where: { listingStatus: 'rejected' } }),
       ])
     );
 
@@ -227,6 +238,22 @@ router.get('/analytics/kpis', authenticateToken, async (req: AuthRequest, res) =
     const pendingIdentity = await withDbRetry(() => prisma.identityDocument.count({ where: { status: 'UNDER_REVIEW' } })).catch(() => 0);
     const pendingPropertyDocs = await withDbRetry(() => prisma.propertyDocument.count({ where: { status: 'UNDER_REVIEW' } })).catch(() => 0);
     const pendingVerifications = pendingIdentity + pendingPropertyDocs;
+
+    // Location breakdown from DB
+    const locationBreakdown = (locationsGroup || []).map((loc) => {
+      const name = `${loc.area || ''}, ${loc.city || ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '') || 'Addis Ababa';
+      const count = loc._count.id;
+      const percentage = totalProperties > 0 ? Math.round((count / totalProperties) * 100) : 0;
+      return { location: name, count, percentage };
+    });
+
+    // Property status distribution from DB
+    const propertyStatusDistribution = [
+      { status: 'Published', count: activeProperties || 0, color: '#10B981' },
+      { status: 'Pending Verification', count: pendingProperties || 0, color: '#F59E0B' },
+      { status: 'Suspended', count: suspendedCount || 0, color: '#EF4444' },
+      { status: 'Rejected', count: rejectedCount || 0, color: '#6B7280' },
+    ];
 
     return res.json({
       totalUsers: totalUsers || 0,
@@ -241,6 +268,8 @@ router.get('/analytics/kpis', authenticateToken, async (req: AuthRequest, res) =
       activeProperties: activeProperties || 0,
       pendingProperties: pendingProperties || 0,
       verifiedProperties: verifiedProperties || 0,
+      locationBreakdown: locationBreakdown.length > 0 ? locationBreakdown : undefined,
+      propertyStatusDistribution,
     });
   } catch (error) {
     console.error('KPI Fetch error:', error);
