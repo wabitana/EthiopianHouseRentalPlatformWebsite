@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_client.dart';
+import '../../../shared/models/user_model.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class SubscriptionPlansScreen extends StatefulWidget {
   const SubscriptionPlansScreen({super.key});
@@ -25,20 +28,52 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   Future<void> _loadSubscriptionData() async {
     setState(() => _isLoading = true);
     try {
-      final plansRes = await ApiClient.get('${ApiEndpoints.baseUrl}/subscriptions/plans');
-      if (plansRes != null && plansRes is List) {
+      final plansRes = await ApiClient.get(ApiEndpoints.subscriptionPlans);
+      if (plansRes != null && plansRes is List && plansRes.isNotEmpty) {
         _plans = List<Map<String, dynamic>>.from(plansRes);
+      } else {
+        _plans = _defaultPlans;
       }
 
-      final subRes = await ApiClient.get('${ApiEndpoints.baseUrl}/subscriptions/my-subscription');
+      final subRes = await ApiClient.get(ApiEndpoints.mySubscription);
       if (subRes != null && subRes is Map<String, dynamic>) {
         _activeSubscription = subRes['subscription'] as Map<String, dynamic>?;
       }
     } catch (e) {
-      debugPrint('Error loading subscription plans: $e');
+      debugPrint('Error loading subscription plans from backend: $e');
+      _plans = _defaultPlans;
     }
-    setState(() => _isLoading = false);
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
+
+  static final List<Map<String, dynamic>> _defaultPlans = [
+    {
+      'id': 'plan_basic',
+      'name': 'Basic',
+      'priceETB': 500,
+      'durationDays': 30,
+      'maxListings': 3,
+      'features': ['Up to 3 Active Property Listings', 'Basic Analytics', 'Standard Support'],
+    },
+    {
+      'id': 'plan_professional',
+      'name': 'Professional',
+      'priceETB': 1200,
+      'durationDays': 30,
+      'maxListings': 10,
+      'features': ['Up to 10 Listings + 360° Panorama Tours', 'Advanced Analytics', 'Priority Support'],
+    },
+    {
+      'id': 'plan_business',
+      'name': 'Business',
+      'priceETB': 2500,
+      'durationDays': 30,
+      'maxListings': 100,
+      'features': ['Unlimited Listings', 'Top Sponsor Placement', 'Dedicated Account Manager'],
+    },
+  ];
 
   Future<void> _subscribeToPlan(String planId, String planName, double price) async {
     setState(() => _isSubscribing = true);
@@ -50,9 +85,13 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
       if (res != null && res['subscription'] != null) {
         if (!mounted) return;
+        await context.read<AuthProvider>().refreshCurrentUser();
+        if (!mounted) return;
+        context.read<AuthProvider>().switchRole(UserRole.provider);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('🎉 $planName Subscription Activated via Chapa Payment Engine!'),
+            content: Text('🎉 $planName Subscription Activated via Chapa Payment Engine! You can now post properties.'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),

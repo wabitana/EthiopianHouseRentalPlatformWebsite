@@ -205,13 +205,9 @@ const createPropertySchema = z.object({
 router.post('/', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const userId = req.user?.id;
-    const userRole = req.user?.role;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    if (!userId || (userRole !== 'provider' && userRole !== 'admin')) {
-      return res.status(403).json({ error: 'Only House Providers can post properties' });
-    }
-
-    const providerUser = await prisma.user.findUnique({ where: { id: userId } });
+    let providerUser = await prisma.user.findUnique({ where: { id: userId } });
     if (!providerUser) return res.status(404).json({ error: 'Provider profile not found' });
 
     const isSubscribed = await subscriptionService.isOwnerSubscribed(userId);
@@ -220,6 +216,13 @@ router.post('/', authenticateToken, async (req: AuthRequest, res) => {
         error: 'Active Owner Subscription Required',
         message: 'House Providers must hold an active subscription plan (Basic, Professional, or Business) before posting property listings.',
         requiresSubscription: true,
+      });
+    }
+
+    if (providerUser.role === 'seeker') {
+      providerUser = await prisma.user.update({
+        where: { id: userId },
+        data: { role: 'provider' },
       });
     }
 
