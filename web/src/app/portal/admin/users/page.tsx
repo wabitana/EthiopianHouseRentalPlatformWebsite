@@ -19,6 +19,7 @@ import {
   X,
   AlertCircle,
   Check,
+  UserPlus,
 } from "lucide-react";
 import { mockUsers, UserItem } from "@/lib/portal-mock-data";
 import { apiFetch } from "@/lib/api";
@@ -50,6 +51,73 @@ export default function AdminUsersPage() {
     "none" | "view" | "edit" | "suspend" | "activate" | "verify" | "reject" | "delete" | "activity"
   >("none");
   const [editFormData, setEditFormData] = useState<Partial<UserItem>>({});
+
+  // Create User Modal State
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createFormData, setCreateFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+    confirmPassword: "",
+    role: "seeker",
+    city: "Addis Ababa",
+    autoVerify: false, // Default false to match mobile app business rule (starts Pending / Not Verified)
+  });
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createSuccessMsg, setCreateSuccessMsg] = useState<string | null>(null);
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateError(null);
+    setCreateSuccessMsg(null);
+
+    if (createFormData.password !== createFormData.confirmPassword) {
+      setCreateError("Password and Confirm Password do not match!");
+      return;
+    }
+
+    try {
+      const newUser = await apiFetch("/admin/users", {
+        method: "POST",
+        body: {
+          name: createFormData.name.trim(),
+          email: createFormData.email.trim().toLowerCase(),
+          phone: createFormData.phone.trim(),
+          password: createFormData.password,
+          confirmPassword: createFormData.confirmPassword,
+          role: createFormData.role,
+          city: createFormData.city.trim(),
+          autoVerify: createFormData.autoVerify,
+        },
+      });
+
+      const mapped = mapBackendUser(newUser);
+      setUsers((prev) => [mapped, ...prev]);
+
+      const otpNotice = newUser.emailVerificationCode ? ` • Generated OTP Code: ${newUser.emailVerificationCode}` : "";
+      const statusText = newUser.isVerified ? "Verified" : "Pending Verification (Mobile Rule)";
+      setCreateSuccessMsg(`User "${mapped.name}" registered! Status: ${statusText}${otpNotice}`);
+
+      setTimeout(() => {
+        setCreateModalOpen(false);
+        setCreateSuccessMsg(null);
+        setCreateFormData({
+          name: "",
+          email: "",
+          phone: "",
+          password: "",
+          confirmPassword: "",
+          role: "seeker",
+          city: "Addis Ababa",
+          autoVerify: false,
+        });
+      }, 2500);
+    } catch (err: any) {
+      console.error("Failed to create user:", err);
+      setCreateError(err?.message || "Failed to create user account. Please check input fields.");
+    }
+  };
 
   async function loadUsers() {
     try {
@@ -162,6 +230,12 @@ export default function AdminUsersPage() {
             Manage house seekers, house providers, agents, and system administrators across the platform.
           </p>
         </div>
+        <button
+          onClick={() => setCreateModalOpen(true)}
+          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-lg transition-colors shrink-0 self-start sm:self-auto"
+        >
+          <UserPlus className="h-4 w-4" /> Create New User
+        </button>
       </div>
 
       {/* Filter and Search Bar */}
@@ -508,17 +582,180 @@ export default function AdminUsersPage() {
                     <p className="text-white font-semibold">Account Registered</p>
                     <p className="text-[10px] text-slate-400">{selectedUser.registrationDate}</p>
                   </div>
-                </div>
-                <div className="flex justify-end pt-2">
-                  <button
-                    onClick={() => setModalMode("none")}
-                    className="px-4 py-2 bg-slate-700 text-white rounded-xl text-xs font-bold"
-                  >
-                    Close
-                  </button>
+                  <div className="flex justify-end pt-2">
+                    <button
+                      onClick={() => setModalMode("none")}
+                      className="px-4 py-2 bg-slate-700 text-white rounded-xl text-xs font-bold"
+                    >
+                      Close
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* CREATE NEW USER MODAL */}
+      {createModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl relative space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-700 pb-3">
+              <h3 className="font-bold text-white text-base flex items-center gap-2">
+                <UserPlus className="h-5 w-5 text-emerald-400" /> Register New Platform User
+              </h3>
+              <button
+                onClick={() => {
+                  setCreateModalOpen(false);
+                  setCreateError(null);
+                  setCreateSuccessMsg(null);
+                }}
+                className="text-slate-400 hover:text-white font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            {createError && (
+              <div className="p-3 bg-rose-500/20 border border-rose-500/30 rounded-xl text-xs text-rose-300 font-semibold">
+                ⚠️ {createError}
+              </div>
+            )}
+
+            {createSuccessMsg && (
+              <div className="p-3 bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 font-semibold">
+                ✓ {createSuccessMsg}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateUser} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Abebe Bikila"
+                  value={createFormData.name}
+                  onChange={(e) => setCreateFormData({ ...createFormData, name: e.target.value })}
+                  className="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Email Address</label>
+                <input
+                  type="email"
+                  required
+                  placeholder="user@example.com"
+                  value={createFormData.email}
+                  onChange={(e) => setCreateFormData({ ...createFormData, email: e.target.value })}
+                  className="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Phone Number</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="+251 91 123 4567"
+                  value={createFormData.phone}
+                  onChange={(e) => setCreateFormData({ ...createFormData, phone: e.target.value })}
+                  className="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Password</label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    placeholder="••••••••"
+                    value={createFormData.password}
+                    onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
+                    className="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Confirm Password</label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    placeholder="••••••••"
+                    value={createFormData.confirmPassword}
+                    onChange={(e) => setCreateFormData({ ...createFormData, confirmPassword: e.target.value })}
+                    className="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Account Role</label>
+                  <select
+                    value={createFormData.role}
+                    onChange={(e) => setCreateFormData({ ...createFormData, role: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="seeker">House Seeker</option>
+                    <option value="provider">House Provider</option>
+                    <option value="agent">Agent</option>
+                    <option value="admin">Admin</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">City / Location</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Addis Ababa"
+                    value={createFormData.city}
+                    onChange={(e) => setCreateFormData({ ...createFormData, city: e.target.value })}
+                    className="w-full px-3.5 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase mb-1">Initial Verification Status</label>
+                <select
+                  value={createFormData.autoVerify ? "verified" : "pending"}
+                  onChange={(e) => setCreateFormData({ ...createFormData, autoVerify: e.target.value === "verified" })}
+                  className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs text-white focus:outline-none focus:border-emerald-500"
+                >
+                  <option value="pending">Require Mobile OTP & ID Verification (Status: Pending)</option>
+                  <option value="verified">Auto-Verify Account (Status: Verified)</option>
+                </select>
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Mobile App Rule: House seekers and providers initially start as <span className="text-amber-400 font-bold">Pending</span> until OTP email code & ID document verification are completed.
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-3 border-t border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreateModalOpen(false);
+                    setCreateError(null);
+                    setCreateSuccessMsg(null);
+                  }}
+                  className="px-4 py-2 bg-slate-700 text-xs text-slate-300 hover:text-white rounded-xl font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-xs text-white rounded-xl font-bold shadow-lg"
+                >
+                  Save User to Database
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -9,7 +9,8 @@
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
-    "seed": "ts-node src/seed.ts",
+    "seed": "ts-node prisma/seed.ts",
+    "prisma:seed": "prisma db seed",
     "migrate:cloudinary": "ts-node src/scripts/migrate-local-images-to-cloudinary.ts"
   },
   "dependencies": {
@@ -45,5 +46,8 @@
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.3.3"
+  },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
   }
 }

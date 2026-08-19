@@ -291,23 +291,23 @@ export default function AdminDashboardPage() {
               <p className="text-xs text-slate-400">Commission & Service Fees Growth</p>
             </div>
             <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
-              ETB 4.85M Total
+              ETB {(data.revenueETB || 0).toLocaleString()} Total
             </span>
           </div>
 
           <div className="h-64 w-full pt-4 flex items-end justify-between gap-4 border-b border-slate-700 pb-2">
-            {data.revenueChart.map((item, idx) => {
-              const maxRev = 5000000;
-              const pct = (item.value / maxRev) * 100;
+            {(data.revenueChart || []).map((item, idx) => {
+              const maxRev = Math.max(...(data.revenueChart || []).map((r: any) => r.value || 0), 1000);
+              const pct = maxRev > 0 ? ((item.value || 0) / maxRev) * 100 : 0;
               return (
                 <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
                   <span className="text-[10px] text-teal-300 opacity-0 group-hover:opacity-100 transition-opacity font-bold">
-                    {(item.value / 1000000).toFixed(1)}M
+                    ETB {(item.value || 0).toLocaleString()}
                   </span>
                   <div className="w-full bg-slate-900/60 rounded-xl p-1.5 h-44 flex items-end">
                     <div
                       style={{ height: `${pct}%` }}
-                      className="w-full bg-gradient-to-t from-teal-600 to-emerald-400 rounded-lg group-hover:from-teal-500 group-hover:to-emerald-300 transition-all shadow-lg shadow-teal-500/20"
+                      className="w-full bg-gradient-to-t from-teal-600 to-emerald-400 rounded-lg group-hover:from-teal-500 group-hover:to-emerald-300 transition-all shadow-lg shadow-teal-500/20 min-h-[4px]"
                     />
                   </div>
                   <span className="text-xs font-semibold text-slate-300">{item.month}</span>
@@ -339,29 +339,37 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="space-y-3 pt-2">
-            {data.locationBreakdown.map((loc, idx) => (
-              <div key={idx} className="space-y-1">
-                <div className="flex items-center justify-between text-xs font-medium">
-                  <span className="text-white font-semibold">{loc.location}</span>
-                  <span className="text-slate-400">
-                    <strong className="text-emerald-400">{loc.count.toLocaleString()}</strong> listings ({loc.percentage}%)
-                  </span>
+            {data.locationBreakdown && data.locationBreakdown.length > 0 ? (
+              data.locationBreakdown.map((loc, idx) => (
+                <div key={idx} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs font-medium">
+                    <span className="text-white font-semibold">{loc.location}</span>
+                    <span className="text-slate-400">
+                      <strong className="text-emerald-400">{loc.count.toLocaleString()}</strong> listings ({loc.percentage}%)
+                    </span>
+                  </div>
+                  <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden p-0.5 border border-slate-700/50">
+                    <div
+                      style={{ width: `${loc.percentage}%` }}
+                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all"
+                    />
+                  </div>
                 </div>
-                <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden p-0.5 border border-slate-700/50">
-                  <div
-                    style={{ width: `${loc.percentage}%` }}
-                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all"
-                  />
-                </div>
+              ))
+            ) : (
+              <div className="p-6 text-center text-slate-400">
+                <MapPin className="h-7 w-7 text-slate-500 mx-auto mb-2" />
+                <p className="font-semibold text-slate-300 text-xs">No Active Property Locations in Database</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Listings published by providers or added by admins will display regional distributions here live.</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
         {/* Property Status Distribution */}
         <div className="p-6 rounded-2xl bg-slate-800/90 border border-slate-700/80 shadow-xl space-y-4">
           <h3 className="text-base font-bold text-white">Property Status Distribution</h3>
-          <p className="text-xs text-slate-400">Breakdown of 3,284 listings</p>
+          <p className="text-xs text-slate-400">Breakdown of {(data.totalProperties || 0).toLocaleString()} listings</p>
 
           <div className="space-y-3 pt-2">
             {data.propertyStatusDistribution.map((st, idx) => (

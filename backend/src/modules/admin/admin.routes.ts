@@ -255,6 +255,43 @@ router.get('/analytics/kpis', authenticateToken, async (req: AuthRequest, res) =
       { status: 'Rejected', count: rejectedCount || 0, color: '#6B7280' },
     ];
 
+    // Calculate real 6-month historical monthly breakdown for registrations & revenue
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 5);
+    sixMonthsAgo.setDate(1);
+
+    const [monthlyUsers, monthlyPayments] = await Promise.all([
+      prisma.user.findMany({
+        where: { createdAt: { gte: sixMonthsAgo } },
+        select: { role: true, createdAt: true },
+      }).catch(() => []),
+      prisma.payment.findMany({
+        where: { status: 'SUCCESS', createdAt: { gte: sixMonthsAgo } },
+        select: { amountETB: true, createdAt: true },
+      }).catch(() => []),
+    ]);
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const registrationsChart: any[] = [];
+    const revenueChart: any[] = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date();
+      d.setMonth(d.getMonth() - i);
+      const mIndex = d.getMonth();
+      const year = d.getFullYear();
+      const label = monthNames[mIndex];
+
+      const seekers = (monthlyUsers || []).filter(u => u.role === 'seeker' && new Date(u.createdAt).getMonth() === mIndex && new Date(u.createdAt).getFullYear() === year).length;
+      const providers = (monthlyUsers || []).filter(u => u.role === 'provider' && new Date(u.createdAt).getMonth() === mIndex && new Date(u.createdAt).getFullYear() === year).length;
+      const revenue = (monthlyPayments || [])
+        .filter(p => new Date(p.createdAt).getMonth() === mIndex && new Date(p.createdAt).getFullYear() === year)
+        .reduce((sum, p) => sum + (p.amountETB || 0), 0);
+
+      registrationsChart.push({ month: label, seekers, providers });
+      revenueChart.push({ month: label, value: revenue });
+    }
+
     return res.json({
       totalUsers: totalUsers || 0,
       totalProperties: totalProperties || 0,
@@ -268,8 +305,10 @@ router.get('/analytics/kpis', authenticateToken, async (req: AuthRequest, res) =
       activeProperties: activeProperties || 0,
       pendingProperties: pendingProperties || 0,
       verifiedProperties: verifiedProperties || 0,
-      locationBreakdown: locationBreakdown.length > 0 ? locationBreakdown : undefined,
+      locationBreakdown: locationBreakdown.length > 0 ? locationBreakdown : [],
       propertyStatusDistribution,
+      registrationsChart,
+      revenueChart,
     });
   } catch (error) {
     console.error('KPI Fetch error:', error);
@@ -400,6 +439,95 @@ router.patch('/users/:id/status', authenticateToken, async (req: AuthRequest, re
   }
 });
 
+// POST /api/v1/admin/users - Admin create/register new user account (with mobile OTP & verification business rules)
+router.post('/users', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { name, email, phone, password, confirmPassword, role, city, address, autoVerify } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Name, email, and password are required fields' });
+    }
+
+    if (confirmPassword && password !== confirmPassword) {
+      return res.status(400).json({ error: 'Password and Confirm Password do not match' });
+    }
+
+    const emailSanitized = String(email).trim().toLowerCase();
+    const nameSanitized = String(name).trim();
+    const phoneSanitized = String(phone || '+251 90 000 0000').trim();
+
+    let userRole = 'seeker';
+    if (role) {
+      const rLower = String(role).toLowerCase();
+      if (rLower === 'house provider' || rLower === 'provider') userRole = 'provider';
+      else if (rLower === 'agent') userRole = 'agent';
+      else if (rLower === 'admin') userRole = 'admin';
+      else if (rLower === 'house seeker' || rLower === 'seeker') userRole = 'seeker';
+    }
+
+    const existing = await prisma.user.findUnique({ where: { email: emailSanitized } });
+    if (existing) {
+      return res.status(400).json({ error: 'An account with this email address already exists' });
+    }
+
+    const bcrypt = require('bcryptjs');
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Generate 6-digit Email Verification OTP code for mobile business rules
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins expiry
+
+    const isVerifiedBool = Boolean(autoVerify);
+
+    const newUser = await prisma.user.create({
+      data: {
+        name: nameSanitized,
+        email: emailSanitized,
+        phone: phoneSanitized,
+        passwordHash,
+        role: userRole,
+        city: city || 'Addis Ababa',
+        address: address || null,
+        isVerified: isVerifiedBool,
+        isEmailVerified: isVerifiedBool,
+        emailVerificationCode: isVerifiedBool ? null : otpCode,
+        emailVerificationExpires: isVerifiedBool ? null : otpExpires,
+        active: true,
+        ...(userRole === 'agent' && {
+          assignedArea: address || city || 'Addis Ababa',
+          agentStatus: 'Active',
+        }),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        avatarUrl: true,
+        isVerified: true,
+        isEmailVerified: true,
+        emailVerificationCode: true,
+        active: true,
+        createdAt: true,
+        city: true,
+        address: true,
+        assignedArea: true,
+        agentStatus: true,
+      },
+    });
+
+    return res.status(201).json(newUser);
+  } catch (error) {
+    console.error('Admin create user error:', error);
+    return res.status(500).json({ error: 'Failed to create user account' });
+  }
+});
+
 // POST /api/v1/admin/agents - Register new platform agent
 router.post('/agents', authenticateToken, async (req: AuthRequest, res) => {
   try {
@@ -496,17 +624,49 @@ router.get('/reports', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
-// GET /api/v1/admin/payments - Get all financial transactions
+// GET /api/v1/admin/payments - Get all financial transactions (Supports time period filtering: 7d, 30d, 6m, 1y, all)
 router.get('/payments', authenticateToken, async (req: AuthRequest, res) => {
   try {
     if (req.user?.role !== 'admin') {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
+    const { period } = req.query;
+    let dateFilter: Date | undefined = undefined;
+
+    if (period === '7d') {
+      dateFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    } else if (period === '30d') {
+      dateFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    } else if (period === '6m') {
+      dateFilter = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
+    } else if (period === '1y') {
+      dateFilter = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+    }
+
+    const where: any = {};
+    if (dateFilter) {
+      where.createdAt = { gte: dateFilter };
+    }
+
     const payments = await prisma.payment.findMany({
+      where,
       include: {
         user: {
-          select: { name: true, email: true }
+          select: { id: true, name: true, email: true, phone: true, role: true }
+        },
+        subscription: {
+          include: {
+            plan: {
+              select: { name: true, priceETB: true, maxListings: true }
+            }
+          }
+        },
+        order: {
+          select: { id: true, orderNumber: true, total: true, subtotal: true, commission: true }
+        },
+        serviceBooking: {
+          select: { id: true, bookingNumber: true, type: true, estimatedPrice: true, finalPrice: true }
         }
       },
       orderBy: { createdAt: 'desc' },
@@ -514,7 +674,47 @@ router.get('/payments', authenticateToken, async (req: AuthRequest, res) => {
 
     return res.json(payments);
   } catch (error) {
+    console.error('Fetch payments error:', error);
     return res.status(500).json({ error: 'Failed to fetch payments' });
+  }
+});
+
+// DELETE /api/v1/admin/payments/clear-all - Clear all payment transaction logs
+router.delete('/payments/clear-all', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    await prisma.payment.deleteMany({});
+
+    return res.json({ success: true, message: 'All payment transaction logs cleared successfully' });
+  } catch (error) {
+    console.error('Clear payments error:', error);
+    return res.status(500).json({ error: 'Failed to clear payment transactions' });
+  }
+});
+
+// DELETE /api/v1/admin/payments/:id - Delete single payment transaction log
+router.delete('/payments/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({ error: 'Invalid payment ID parameter' });
+    }
+
+    await prisma.payment.delete({
+      where: { id },
+    });
+
+    return res.json({ success: true, message: 'Payment transaction deleted successfully' });
+  } catch (error) {
+    console.error('Delete payment error:', error);
+    return res.status(500).json({ error: 'Failed to delete payment transaction' });
   }
 });
 
