@@ -151,17 +151,18 @@ class _ScheduleTourModalState extends State<ScheduleTourModal> {
             onPressed: _isSubmitting
                 ? null
                 : () async {
+                    final nav = Navigator.of(context);
+                    final messenger = ScaffoldMessenger.of(context);
                     setState(() => _isSubmitting = true);
                     await Future.delayed(const Duration(milliseconds: 600));
-                    if (mounted) {
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('Visit appointment booked for ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ($_selectedTimeSlot)!'),
-                          backgroundColor: AppColors.success,
-                        ),
-                      );
-                    }
+                    if (!mounted) return;
+                    nav.pop();
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text('Visit appointment booked for ${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ($_selectedTimeSlot)!'),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
                   },
           ),
           const SizedBox(height: 16),

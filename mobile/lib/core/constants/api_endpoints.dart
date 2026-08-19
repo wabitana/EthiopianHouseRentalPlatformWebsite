@@ -35,6 +35,7 @@ class ApiEndpoints {
   static String get logout => '$baseUrl/auth/logout';
   static String get me => '$baseUrl/users/me';
   static String get verifyIdentity => '$baseUrl/auth/verify-identity';
+  static String get verificationStatus => '$baseUrl/verification/my-status';
   static String get forgotPassword => '$baseUrl/auth/forgot-password';
   static String get resetPassword => '$baseUrl/auth/reset-password';
 

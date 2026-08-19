@@ -236,6 +236,19 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> refreshCurrentUser() async {
+    try {
+      final remoteDs = ApiAuthRemoteDataSource();
+      final freshUser = await remoteDs.fetchCurrentUser();
+      if (freshUser != null) {
+        _currentUser = freshUser;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error refreshing current user profile: $e');
+    }
+  }
+
   Future<void> logout() async {
     await _authRepository.logout();
     _currentUser = null;

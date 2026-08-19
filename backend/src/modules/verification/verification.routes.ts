@@ -5,6 +5,19 @@ import { prisma } from '../../prisma';
 
 const router = Router();
 
+// GET /api/v1/verification/my-status (Fetch authenticated user verification status)
+router.get('/my-status', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const status = await verificationService.getUserVerificationStatus(userId);
+    return res.json(status);
+  } catch (error: any) {
+    return res.status(500).json({ error: error.message || 'Failed to fetch verification status' });
+  }
+});
+
 // POST /api/v1/verification/identity (Upload National ID / Passport)
 router.post('/identity', authenticateToken, async (req: AuthRequest, res) => {
   try {
