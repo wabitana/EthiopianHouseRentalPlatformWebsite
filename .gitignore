@@ -22,6 +22,11 @@ next-env.d.ts
 .env
 .env*.local
 
+# Uploads & Media
+backend/uploads/*
+!backend/uploads/.gitkeep
+uploads/
+
 # IDE & OS
 .DS_Store
 *.pem

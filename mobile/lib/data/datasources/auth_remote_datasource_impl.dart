@@ -8,6 +8,7 @@ import 'auth_remote_datasource.dart';
 
 class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId: kIsWeb ? '840131464731-dummy-web-client-id.apps.googleusercontent.com' : null,
     scopes: [
       'email',
       'profile',
