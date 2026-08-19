@@ -31,12 +31,51 @@ async function main() {
       isVerified: true,
       isEmailVerified: true,
       active: true,
-      city: 'Addis Ababa',
     },
   });
 
+  // 2. Create Field Agent Accounts
+  const agentPasswordHash = await bcrypt.hash('AgentPassword123!', 10);
 
-  // 2. Create Platform Subscription Plans
+  const agent1 = await prisma.user.create({
+    data: {
+      name: 'Dawit Wolde',
+      email: 'dawit.agent@delala.et',
+      phone: '+251 91 123 4567',
+      passwordHash: agentPasswordHash,
+      role: 'agent',
+      isVerified: true,
+      isEmailVerified: true,
+      active: true,
+      city: 'Addis Ababa',
+      assignedArea: 'Bole & Kazanchis',
+      propertiesManaged: 12,
+      verificationsCompleted: 45,
+      performanceScore: 98.5,
+      agentStatus: 'Active',
+    },
+  });
+
+  const agent2 = await prisma.user.create({
+    data: {
+      name: 'Tigist Alemu',
+      email: 'tigist.agent@delala.et',
+      phone: '+251 92 987 6543',
+      passwordHash: agentPasswordHash,
+      role: 'agent',
+      isVerified: true,
+      isEmailVerified: true,
+      active: true,
+      city: 'Addis Ababa',
+      assignedArea: 'Yeka & CMC',
+      propertiesManaged: 8,
+      verificationsCompleted: 32,
+      performanceScore: 95.0,
+      agentStatus: 'Active',
+    },
+  });
+
+  // 3. Create Platform Subscription Plans
   await prisma.subscriptionPlan.upsert({
     where: { name: 'Basic' },
     update: { priceETB: 500, durationDays: 30, maxListings: 3 },

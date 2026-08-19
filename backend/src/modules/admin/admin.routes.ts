@@ -1076,5 +1076,273 @@ router.put('/subscription-plans/:id', authenticateToken, async (req: AuthRequest
   }
 });
 
+// ==========================================
+// PLATFORM AGENT MANAGEMENT CRUD ENDPOINTS
+// ==========================================
+
+// GET /api/v1/admin/agents - Fetch all platform field agents
+router.get('/agents', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const agents = await withDbRetry(() =>
+      prisma.user.findMany({
+        where: {
+          role: { in: ['agent', 'AGENT'] }
+        },
+        include: {
+          tasks: {
+            where: { status: { in: ['Pending', 'In Progress'] } }
+          },
+          assistedTenants: true,
+          assistedBookings: true,
+          leaseAgreements: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+    );
+
+    const formattedAgents = agents.map((a) => ({
+      id: a.id,
+      name: a.name,
+      email: a.email,
+      phone: a.phone,
+      role: a.role,
+      avatarUrl: a.avatarUrl,
+      assignedArea: a.assignedArea || 'Addis Ababa',
+      propertiesManaged: a.propertiesManaged || 0,
+      verificationsCompleted: a.verificationsCompleted || 0,
+      activeTasks: a.tasks ? a.tasks.length : (a.activeTasks || 0),
+      performanceScore: a.performanceScore || 100.0,
+      agentStatus: a.agentStatus || (a.active ? 'Active' : 'Suspended'),
+      joinedDate: a.joinedDate || a.createdAt,
+      city: a.city,
+    }));
+
+    return res.json(formattedAgents);
+  } catch (error) {
+    console.error('Fetch agents error:', error);
+    return res.status(500).json({ error: 'Failed to fetch field agents' });
+  }
+});
+
+// POST /api/v1/admin/agents - Register a new field agent
+router.post('/agents', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { name, email, phone, password, assignedArea, city } = req.body;
+
+    if (!name || !email || !phone || !password) {
+      return res.status(400).json({ error: 'Name, email, phone, and password are required' });
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'An account with this email already exists' });
+    }
+
+    const passwordHash = await require('bcryptjs').hash(password, 10);
+
+    const agent = await prisma.user.create({
+      data: {
+        name,
+        email,
+        phone,
+        passwordHash,
+        role: 'agent',
+        isVerified: true,
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        active: true,
+        assignedArea: assignedArea || 'Addis Ababa',
+        city: city || 'Addis Ababa',
+        agentStatus: 'Active',
+        performanceScore: 100.0,
+        propertiesManaged: 0,
+        verificationsCompleted: 0,
+        activeTasks: 0,
+      },
+    });
+
+    await prisma.notification.create({
+      data: {
+        userId: agent.id,
+        title: 'Welcome Field Agent! 🚀',
+        message: `Your agent account for ${agent.assignedArea} has been created by Platform Administrator.`,
+        type: 'SYSTEM',
+      },
+    });
+
+    return res.status(201).json({
+      id: agent.id,
+      name: agent.name,
+      email: agent.email,
+      phone: agent.phone,
+      role: agent.role,
+      assignedArea: agent.assignedArea,
+      agentStatus: agent.agentStatus,
+      performanceScore: agent.performanceScore,
+      joinedDate: agent.joinedDate,
+    });
+  } catch (error: any) {
+    console.error('Create agent error:', error);
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'Email address is already registered' });
+    }
+    return res.status(500).json({ error: 'Failed to create field agent' });
+  }
+});
+
+// PUT /api/v1/admin/agents/:id - Update field agent details & territory
+router.put('/agents/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    const { name, phone, assignedArea, agentStatus, performanceScore, city } = req.body;
+
+    const agent = await prisma.user.findUnique({ where: { id } });
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    const updatedAgent = await prisma.user.update({
+      where: { id },
+      data: {
+        ...(name && { name }),
+        ...(phone && { phone }),
+        ...(assignedArea && { assignedArea }),
+        ...(agentStatus && {
+          agentStatus,
+          active: agentStatus === 'Active',
+        }),
+        ...(performanceScore !== undefined && { performanceScore: Number(performanceScore) }),
+        ...(city && { city }),
+      },
+    });
+
+    return res.json({
+      id: updatedAgent.id,
+      name: updatedAgent.name,
+      email: updatedAgent.email,
+      phone: updatedAgent.phone,
+      assignedArea: updatedAgent.assignedArea,
+      agentStatus: updatedAgent.agentStatus,
+      performanceScore: updatedAgent.performanceScore,
+    });
+  } catch (error) {
+    console.error('Update agent error:', error);
+    return res.status(500).json({ error: 'Failed to update agent' });
+  }
+});
+
+// DELETE /api/v1/admin/agents/:id - Delete field agent
+router.delete('/agents/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    const agent = await prisma.user.findUnique({ where: { id } });
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    await prisma.user.delete({ where: { id } });
+    return res.json({ success: true, message: 'Agent account removed successfully' });
+  } catch (error) {
+    console.error('Delete agent error:', error);
+    return res.status(500).json({ error: 'Failed to delete agent account' });
+  }
+});
+
+// POST /api/v1/admin/agents/:id/tasks - Assign a new task to field agent
+router.post('/agents/:id/tasks', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    const { title, type, priority, dueDate, description, propertyId, propertyTitle, providerName } = req.body;
+
+    if (!title || !type || !dueDate) {
+      return res.status(400).json({ error: 'Title, type, and due date are required' });
+    }
+
+    const agent = await prisma.user.findUnique({ where: { id } });
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    const task = await prisma.task.create({
+      data: {
+        title,
+        type,
+        priority: priority || 'Medium',
+        dueDate: new Date(dueDate),
+        description: description || 'Field inspection task assigned by Admin.',
+        propertyId: propertyId || null,
+        propertyTitle: propertyTitle || null,
+        providerName: providerName || null,
+        assignedAgentId: id,
+        status: 'Pending',
+      },
+    });
+
+    // Update active tasks count
+    const activeTasksCount = await prisma.task.count({
+      where: { assignedAgentId: id, status: { in: ['Pending', 'In Progress'] } }
+    });
+
+    await prisma.user.update({
+      where: { id },
+      data: { activeTasks: activeTasksCount },
+    });
+
+    return res.status(201).json(task);
+  } catch (error) {
+    console.error('Assign agent task error:', error);
+    return res.status(500).json({ error: 'Failed to assign task to agent' });
+  }
+});
+
+// GET /api/v1/admin/agents/:id/details - Fetch full agent details with linked items
+router.get('/agents/:id/details', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const { id } = req.params;
+    const agent = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        tasks: { orderBy: { dueDate: 'asc' } },
+        assistedTenants: { orderBy: { createdAt: 'desc' } },
+        assistedBookings: { include: { tenant: true, property: true }, orderBy: { createdAt: 'desc' } },
+        leaseAgreements: { orderBy: { createdAt: 'desc' } },
+      },
+    });
+
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    return res.json(agent);
+  } catch (error) {
+    console.error('Fetch agent details error:', error);
+    return res.status(500).json({ error: 'Failed to fetch agent details' });
+  }
+});
+
 export default router;
 
