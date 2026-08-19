@@ -8,6 +8,9 @@ import '../../notifications/providers/notification_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/constants/app_strings.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../core/services/tutoring_provider.dart';
+import '../../../shared/widgets/app_tutoring_overlay.dart';
 import 'seeker_home_screen.dart';
 import 'search_screen.dart';
 import 'saved_screen.dart';
@@ -42,13 +45,18 @@ class _SeekerMainLayoutState extends State<SeekerMainLayout> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final auth = context.read<AuthProvider>();
       if (auth.currentUser != null) {
         context.read<InquiryProvider>().fetchSeekerInquiries(auth.currentUser!.id);
         context.read<NotificationProvider>().fetchNotifications(auth.currentUser!.id);
       }
+      // Trigger seeker tutorial
+      AppTutorialService.checkAndShowTutorial(context, 'seeker');
     });
   }
+
+
 
   @override
   Widget build(BuildContext context) {

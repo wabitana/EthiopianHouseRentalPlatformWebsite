@@ -33,6 +33,7 @@ class _ProviderMainLayoutState extends State<ProviderMainLayout> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final auth = context.read<AuthProvider>();
       if (auth.currentUser != null) {
         context.read<PropertyProvider>().fetchProviderProperties(auth.currentUser!.id);

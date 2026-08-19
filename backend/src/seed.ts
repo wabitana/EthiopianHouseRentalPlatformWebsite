@@ -198,6 +198,8 @@ async function main() {
 
   // 4. Create Portal Admin Account matching web defaults
   const adminHash = await bcrypt.hash('admin123456', 10);
+  const ethiopianAdminHash = await bcrypt.hash('AdminPassword123!', 10);
+
   await prisma.user.upsert({
     where: { email: 'admin@example.com' },
     update: { passwordHash: adminHash },
@@ -206,6 +208,19 @@ async function main() {
       email: 'admin@example.com',
       phone: '+251 90 000 0001',
       passwordHash: adminHash,
+      role: 'admin',
+      isVerified: true,
+    },
+  });
+
+  await prisma.user.upsert({
+    where: { email: 'admin@ethiopianhouserental.et' },
+    update: { passwordHash: ethiopianAdminHash },
+    create: {
+      name: 'Ethiopian Platform Administrator',
+      email: 'admin@ethiopianhouserental.et',
+      phone: '+251 90 000 0002',
+      passwordHash: ethiopianAdminHash,
       role: 'admin',
       isVerified: true,
     },

@@ -1,4 +1,4 @@
-import { prisma } from '../../prisma';
+import { prisma, withDbRetry } from '../../prisma';
 import { sendVerificationReminderEmail } from './email.service';
 
 /**
@@ -10,14 +10,16 @@ export async function runUnverifiedUserEmailReminderJob(): Promise<void> {
 
   try {
     // 1. Fetch unverified Seekers
-    const unverifiedSeekers = await prisma.user.findMany({
-      where: {
-        role: 'seeker',
-        OR: [{ isVerified: false }, { isPhoneVerified: false }],
-      },
-      select: { email: true, name: true, role: true },
-      take: 50,
-    });
+    const unverifiedSeekers = await withDbRetry(() =>
+      prisma.user.findMany({
+        where: {
+          role: 'seeker',
+          OR: [{ isVerified: false }, { isPhoneVerified: false }],
+        },
+        select: { email: true, name: true, role: true },
+        take: 50,
+      })
+    );
 
     for (const seeker of unverifiedSeekers) {
       if (seeker.email) {
@@ -26,14 +28,16 @@ export async function runUnverifiedUserEmailReminderJob(): Promise<void> {
     }
 
     // 2. Fetch unverified Providers
-    const unverifiedProviders = await prisma.user.findMany({
-      where: {
-        role: 'provider',
-        isVerified: false,
-      },
-      select: { email: true, name: true, role: true },
-      take: 50,
-    });
+    const unverifiedProviders = await withDbRetry(() =>
+      prisma.user.findMany({
+        where: {
+          role: 'provider',
+          isVerified: false,
+        },
+        select: { email: true, name: true, role: true },
+        take: 50,
+      })
+    );
 
     for (const provider of unverifiedProviders) {
       if (provider.email) {
