@@ -112,14 +112,14 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
 
   Future<void> _submitVerification() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_idFrontPhoto == null) {
+    if (_idFrontBytes == null && _idFrontPhoto == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please scan or upload the front photo of your ID')),
       );
       return;
     }
 
-    if (widget.isProvider && _ownershipDocPhoto == null) {
+    if (widget.isProvider && _ownershipDocBytes == null && _ownershipDocPhoto == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('House Providers must upload House Ownership/License Document')),
       );
@@ -129,19 +129,29 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
     setState(() => _isSubmitting = true);
 
     try {
-      // 1. Upload ID Front Photo
-      final bytes = await _idFrontPhoto!.readAsBytes();
-      final base64Image = 'data:image/jpeg;base64,${base64Encode(bytes)}';
-      final uploadRes = await ApiClient.post(ApiEndpoints.upload, body: {'base64': base64Image});
+      // 1. Upload ID Front Photo using cross-platform Uint8List bytes
+      final frontBytes = _idFrontBytes ?? await _idFrontPhoto!.readAsBytes();
+      final frontBase64 = 'data:image/jpeg;base64,${base64Encode(frontBytes)}';
+      final uploadRes = await ApiClient.post(ApiEndpoints.upload, body: {'base64': frontBase64});
       final docUrl = uploadRes?['url'] ?? 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600';
 
-      // 2. Submit Identity Document to backend
+      // 2. Upload ID Back Photo (if selected)
+      String? backUrl;
+      if (_idBackBytes != null || _idBackPhoto != null) {
+        final backBytes = _idBackBytes ?? await _idBackPhoto!.readAsBytes();
+        final backBase64 = 'data:image/jpeg;base64,${base64Encode(backBytes)}';
+        final backUploadRes = await ApiClient.post(ApiEndpoints.upload, body: {'base64': backBase64});
+        backUrl = backUploadRes?['url'];
+      }
+
+      // 3. Submit Identity Document (Front + Back) to backend
       await ApiClient.post(
         '${ApiEndpoints.baseUrl}/verification/identity',
         body: {
           'idType': _selectedIdType,
           'idNumber': _idNumberController.text.trim(),
           'documentUrl': docUrl,
+          'selfieUrl': backUrl,
         },
       );
 

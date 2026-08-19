@@ -49,13 +49,17 @@ router.post('/', authenticateToken, upload.single('image'), async (req, res) => 
       const base64Str = req.body.base64;
 
       if (isCloudinaryConfigured) {
-        const result = await cloudinary.uploader.upload(base64Str, {
-          folder: 'delalaplatform/verification_docs',
-        });
-        return res.json({ url: result.secure_url, filename: result.public_id, cdn: true });
+        try {
+          const result = await cloudinary.uploader.upload(base64Str, {
+            folder: 'delalaplatform/verification_docs',
+          });
+          return res.json({ url: result.secure_url, filename: result.public_id, cdn: true });
+        } catch (cloudErr: any) {
+          console.warn('⚠️ Cloudinary API Error (falling back to local storage):', cloudErr?.message || cloudErr);
+        }
       }
 
-      // Fallback: Save locally if Cloudinary is not configured
+      // Fallback: Save locally if Cloudinary is not configured or fails
       const base64Data = base64Str.replace(/^data:image\/\w+;base64,/, '');
       const filename = `img-${Date.now()}-${Math.round(Math.random() * 1e9)}.jpg`;
       const filepath = path.join(uploadDir, filename);
@@ -69,15 +73,19 @@ router.post('/', authenticateToken, upload.single('image'), async (req, res) => 
     }
 
     if (isCloudinaryConfigured) {
-      const result = await cloudinary.uploader.upload(req.file.path, {
-        folder: 'delalaplatform/property_images',
-      });
-      // Remove temporary file from local disk
       try {
-        fs.unlinkSync(req.file.path);
-      } catch (_) {}
+        const result = await cloudinary.uploader.upload(req.file.path, {
+          folder: 'delalaplatform/property_images',
+        });
+        // Remove temporary file from local disk
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (_) {}
 
-      return res.json({ url: result.secure_url, filename: result.public_id, cdn: true });
+        return res.json({ url: result.secure_url, filename: result.public_id, cdn: true });
+      } catch (cloudErr: any) {
+        console.warn('⚠️ Cloudinary API Error (falling back to local storage):', cloudErr?.message || cloudErr);
+      }
     }
 
     const fileUrl = `/uploads/${req.file.filename}`;

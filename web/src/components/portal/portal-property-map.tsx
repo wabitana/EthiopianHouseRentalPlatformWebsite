@@ -23,6 +23,16 @@ interface PortalPropertyMapProps {
   onSelectRentOnBehalf?: (property: PropertyItem) => void;
 }
 
+const getMapEmbedUrl = (region: string) => {
+  const reg = region.toLowerCase();
+  if (reg.includes("hawassa")) return "https://www.openstreetmap.org/export/embed.html?bbox=38.43,7.02,38.52,7.10&layer=mapnik";
+  if (reg.includes("adama")) return "https://www.openstreetmap.org/export/embed.html?bbox=39.22,8.50,39.30,8.58&layer=mapnik";
+  if (reg.includes("bahir")) return "https://www.openstreetmap.org/export/embed.html?bbox=37.33,11.54,37.43,11.64&layer=mapnik";
+  if (reg.includes("bole")) return "https://www.openstreetmap.org/export/embed.html?bbox=38.75,8.96,38.83,9.03&layer=mapnik";
+  if (reg.includes("kazanchis")) return "https://www.openstreetmap.org/export/embed.html?bbox=38.74,8.99,38.80,9.04&layer=mapnik";
+  return "https://www.openstreetmap.org/export/embed.html?bbox=38.68,8.92,38.86,9.08&layer=mapnik";
+};
+
 export function PortalPropertyMap({
   properties,
   matchingTenant,
@@ -338,18 +348,20 @@ export function PortalPropertyMap({
               </div>
             </div>
 
-            {/* Map Body Canvas / Google Map View Simulation */}
+            {/* Map Body Canvas / Real Map View */}
             <div className="relative flex-1 bg-slate-950 flex flex-col items-center justify-center p-4 overflow-hidden">
-              {/* Background Map Grid & Roads Styling */}
-              <div
-                className="absolute inset-0 opacity-20 pointer-events-none"
-                style={{
-                  backgroundImage: `radial-gradient(#3b82f6 1px, transparent 1px), linear-gradient(to right, #1e293b 1px, transparent 1px), linear-gradient(to bottom, #1e293b 1px, transparent 1px)`,
-                  backgroundSize: "24px 24px, 48px 48px, 48px 48px",
-                }}
+              {/* Real Interactive Map Layer */}
+              <iframe
+                title="Real Map View"
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                scrolling="no"
+                src={getMapEmbedUrl(selectedRegion)}
+                className="absolute inset-0 w-full h-full border-0 pointer-events-auto opacity-75 contrast-125 saturate-150"
               />
 
-              {/* Simulated Map Coordinates Watermark */}
+              {/* Map Coordinates Overlay */}
               <div className="absolute top-3 left-3 bg-slate-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-700 text-[10px] text-slate-300 z-10 flex items-center gap-2">
                 <MapPin className="h-3.5 w-3.5 text-blue-400" />
                 <span>

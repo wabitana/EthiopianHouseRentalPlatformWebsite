@@ -20,6 +20,12 @@ import {
 import { mockVerifications, VerificationItem } from "@/lib/portal-mock-data";
 import { apiFetch } from "@/lib/api";
 
+const resolveImageUrl = (url?: string) => {
+  if (!url) return 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `http://localhost:3000${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
 const mapBackendPropertyDoc = (d: any): VerificationItem => {
   let imagesArr = [];
   try {
@@ -27,7 +33,8 @@ const mapBackendPropertyDoc = (d: any): VerificationItem => {
   } catch (e) {
     // ignore
   }
-  const imgUrl = imagesArr[0] || 'https://images.unsplash.com/photo-1580587771525-78b9dba3b914?w=600';
+  const imgUrl = resolveImageUrl(imagesArr[0]);
+  const docUrl = resolveImageUrl(d.docUrl);
 
   return {
     id: d.id,
@@ -53,25 +60,46 @@ const mapBackendPropertyDoc = (d: any): VerificationItem => {
       {
         title: `${d.docType} for ${d.property?.title || 'Listing'}`,
         type: d.docType,
-        url: d.docUrl || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600',
-        preview: d.docUrl || 'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?w=600',
+        url: docUrl,
+        preview: docUrl,
       }
     ]
   };
 };
 
 const mapBackendIdentityDoc = (d: any): VerificationItem => {
+  const docUrl = resolveImageUrl(d.documentUrl);
+  const backUrl = resolveImageUrl(d.selfieUrl);
+
+  const docs = [
+    {
+      title: `${d.idType || 'National ID'} - Front (${d.idNumber || ''})`,
+      type: `${d.idType || 'NATIONAL_ID'} (Front)`,
+      url: docUrl,
+      preview: docUrl,
+    }
+  ];
+
+  if (d.selfieUrl) {
+    docs.push({
+      title: `${d.idType || 'National ID'} - Back`,
+      type: `${d.idType || 'NATIONAL_ID'} (Back)`,
+      url: backUrl,
+      preview: backUrl,
+    });
+  }
+
   return {
     id: d.id,
     propertyId: '',
     propertyTitle: `Identity: ${d.user?.name || 'User Profile'}`,
-    propertyImage: d.user?.avatarUrl || 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400',
+    propertyImage: resolveImageUrl(d.user?.avatarUrl),
     providerId: d.userId || '',
     providerName: d.user?.name || 'User Profile',
     providerPhone: d.user?.phone || '',
     location: 'Identity Verification Queue',
     status: d.status === 'VERIFIED' ? 'Approved' : d.status === 'REJECTED' ? 'Rejected' : 'Pending',
-    documentsCount: 1,
+    documentsCount: docs.length,
     aiPreCheckScore: d.aiRiskScore || 95.0,
     aiPreCheckDetails: {
       ownershipDocsValid: true,
@@ -81,14 +109,7 @@ const mapBackendIdentityDoc = (d: any): VerificationItem => {
     },
     submittedDate: new Date(d.createdAt).toLocaleDateString(),
     notes: d.aiNotes || '',
-    documents: [
-      {
-        title: `${d.idType || 'National ID'} (${d.idNumber || ''})`,
-        type: d.idType || 'NATIONAL_ID',
-        url: d.documentUrl || 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600',
-        preview: d.documentUrl || 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600',
-      }
-    ]
+    documents: docs,
   };
 };
 
@@ -97,6 +118,7 @@ export default function AdminVerificationPage() {
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState<VerificationItem | null>(null);
   const [notesInput, setNotesInput] = useState("");
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
   async function loadPendingVerifications() {
     try {
@@ -118,6 +140,7 @@ export default function AdminVerificationPage() {
 
   const handleUpdateStatus = async (item: VerificationItem, newStatus: VerificationItem["status"]) => {
     try {
+      setActionFeedback(null);
       const apiStatus = newStatus === 'Approved' ? 'VERIFIED' : newStatus === 'Rejected' ? 'REJECTED' : 'UNDER_REVIEW';
       const endpoint = item.propertyId
         ? `/verification/property-license/${item.id}/review`
@@ -128,14 +151,16 @@ export default function AdminVerificationPage() {
         body: { status: apiStatus, adminNotes: notesInput }
       });
 
-      setQueue((prev) =>
-        prev.map((v) => (v.id === item.id ? { ...v, status: newStatus, notes: notesInput || v.notes } : v))
-      );
-      if (selectedItem && selectedItem.id === item.id) {
-        setSelectedItem({ ...selectedItem, status: newStatus, notes: notesInput || selectedItem.notes });
-      }
-    } catch (err) {
+      setQueue((prev) => prev.filter((v) => v.id !== item.id));
+
+      setActionFeedback(`🎉 Verification updated to ${newStatus}! Removed from Pending Queue.`);
+      setTimeout(() => {
+        setActionFeedback(null);
+        setSelectedItem(null);
+      }, 700);
+    } catch (err: any) {
       console.error("Failed to review document:", err);
+      setActionFeedback(`❌ Error: ${err.message || "Failed to update verification status"}`);
     }
   };
 
@@ -251,6 +276,12 @@ export default function AdminVerificationPage() {
               <h2 className="text-xl font-bold text-white mt-1">{selectedItem.propertyTitle}</h2>
               <p className="text-xs text-slate-400">{selectedItem.location} • Submitted {selectedItem.submittedDate}</p>
             </div>
+
+            {actionFeedback && (
+              <div className={`p-3.5 rounded-xl border text-xs font-bold ${actionFeedback.startsWith('❌') ? 'bg-rose-950/80 border-rose-500/50 text-rose-200' : 'bg-emerald-950/80 border-emerald-500/50 text-emerald-200'}`}>
+                {actionFeedback}
+              </div>
+            )}
 
             {/* AI Pre-Check Result UI */}
             <div className="p-4 bg-gradient-to-r from-emerald-950/70 to-slate-900 border border-emerald-500/40 rounded-2xl space-y-3">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -24,21 +24,13 @@ import {
   ExternalLink,
   PhoneOff,
 } from "lucide-react";
-import { mockNotifications } from "@/lib/portal-mock-data";
+import { apiFetch } from "@/lib/api";
 
-const agentNavItems = [
-  { href: "/portal/agent", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/portal/agent/assisted-rentals", label: "Assisted Rural Hub", icon: PhoneOff, badge: "Offline Hub", highlight: true },
-  { href: "/portal/agent/properties", label: "Properties", icon: Building2 },
-  { href: "/portal/agent/add-property", label: "Add Property", icon: PlusCircle },
-  { href: "/portal/agent/tasks", label: "My Tasks", icon: CheckSquare, badge: "5" },
-  { href: "/portal/agent/verification", label: "Verification", icon: ShieldCheck, badge: "8" },
-  { href: "/portal/agent/providers", label: "House Providers", icon: Building },
-  { href: "/portal/agent/seekers", label: "House Seekers", icon: UserCheck2 },
-  { href: "/portal/agent/messages", label: "Messages", icon: MessageSquare, badge: "2" },
-  { href: "/portal/agent/notifications", label: "Notifications", icon: Bell },
-  { href: "/portal/agent/settings", label: "Profile & Settings", icon: Settings },
-];
+const resolveImageUrl = (url?: string) => {
+  if (!url) return 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `http://localhost:3000${url.startsWith('/') ? '' : '/'}${url}`;
+};
 
 export default function AgentPortalLayout({
   children,
@@ -49,6 +41,48 @@ export default function AgentPortalLayout({
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+
+  const [agentUser, setAgentUser] = useState<any>(null);
+  const [tasksCount, setTasksCount] = useState<number>(0);
+  const [verificationsCount, setVerificationsCount] = useState<number>(0);
+
+  useEffect(() => {
+    async function loadLayoutData() {
+      try {
+        const [userData, verifData, tasksData] = await Promise.all([
+          apiFetch("/agent/profile").catch(() => null),
+          apiFetch("/verification/admin/pending").catch(() => ({ identityDocs: [], propertyDocs: [] })),
+          apiFetch("/agent/tasks").catch(() => []),
+        ]);
+
+        setAgentUser(userData);
+
+        const totalPendingVerif = (verifData.identityDocs || []).length + (verifData.propertyDocs || []).length;
+        setVerificationsCount(totalPendingVerif);
+
+        const totalActiveTasks = (tasksData || []).filter((t: any) => t.status !== 'Completed').length;
+        setTasksCount(totalActiveTasks);
+      } catch (err) {
+        console.error("Failed to load agent layout metadata:", err);
+      }
+    }
+
+    loadLayoutData();
+  }, []);
+
+  const agentNavItems = [
+    { href: "/portal/agent", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/portal/agent/assisted-rentals", label: "Assisted Rural Hub", icon: PhoneOff, badge: "Offline Hub", highlight: true },
+    { href: "/portal/agent/properties", label: "Properties", icon: Building2 },
+    { href: "/portal/agent/add-property", label: "Add Property", icon: PlusCircle },
+    { href: "/portal/agent/tasks", label: "My Tasks", icon: CheckSquare, badge: tasksCount > 0 ? String(tasksCount) : undefined },
+    { href: "/portal/agent/verification", label: "Verification", icon: ShieldCheck, badge: verificationsCount > 0 ? String(verificationsCount) : undefined },
+    { href: "/portal/agent/providers", label: "House Providers", icon: Building },
+    { href: "/portal/agent/seekers", label: "House Seekers", icon: UserCheck2 },
+    { href: "/portal/agent/messages", label: "Messages", icon: MessageSquare },
+    { href: "/portal/agent/notifications", label: "Notifications", icon: Bell },
+    { href: "/portal/agent/settings", label: "Profile & Settings", icon: Settings },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col font-sans">
@@ -105,13 +139,13 @@ export default function AgentPortalLayout({
               className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-700/60 transition-colors"
             >
               <img
-                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80"
+                src={resolveImageUrl(agentUser?.avatarUrl)}
                 alt="Agent Avatar"
                 className="h-8 w-8 rounded-lg object-cover ring-2 ring-blue-500/50"
               />
               <div className="hidden md:block text-left">
-                <p className="text-xs font-bold text-white leading-none">Dawit Wolde</p>
-                <p className="text-[10px] text-blue-400 font-medium">Bole & Kazanchis Field Agent</p>
+                <p className="text-xs font-bold text-white leading-none">{agentUser?.name || 'Agent User'}</p>
+                <p className="text-[10px] text-blue-400 font-medium">{agentUser?.assignedArea || 'Addis Ababa Field Agent'}</p>
               </div>
               <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
             </button>
@@ -119,8 +153,8 @@ export default function AgentPortalLayout({
             {profileDropdownOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-slate-800 border border-slate-700 rounded-2xl shadow-2xl z-50 p-2 text-xs">
                 <div className="p-3 border-b border-slate-700 mb-1">
-                  <p className="font-bold text-white">Dawit Wolde</p>
-                  <p className="text-slate-400 text-[11px]">dawit.agent@delala.et</p>
+                  <p className="font-bold text-white">{agentUser?.name || 'Agent User'}</p>
+                  <p className="text-slate-400 text-[11px]">{agentUser?.email || 'agent@delala.com'}</p>
                 </div>
                 <button
                   onClick={() => {
@@ -203,7 +237,7 @@ export default function AgentPortalLayout({
 
           <div className="p-4 border-t border-slate-700/80 bg-slate-850">
             <div className="flex items-center justify-between text-xs text-slate-400">
-              <span className="font-semibold text-slate-300">Territory: Bole & Kazanchis</span>
+              <span className="font-semibold text-slate-300">Territory: {agentUser?.assignedArea || 'Addis Ababa'}</span>
               <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded font-bold">Active</span>
             </div>
             <p className="text-[10px] text-slate-500 mt-1">Delala Field Agent Portal</p>
