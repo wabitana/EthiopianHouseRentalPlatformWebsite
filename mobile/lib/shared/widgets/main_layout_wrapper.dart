@@ -20,20 +20,6 @@ class _MainLayoutWrapperState extends State<MainLayoutWrapper> {
     final auth = context.watch<AuthProvider>();
     final isProvider = auth.isProvider;
 
-    // Trigger post frame callbacks whenever active role changes to fetch relevant data
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (auth.currentUser != null) {
-        final userId = auth.currentUser!.id;
-        if (isProvider) {
-          context.read<PropertyProvider>().fetchProviderProperties(userId);
-          context.read<InquiryProvider>().fetchProviderInquiries(userId);
-        } else {
-          context.read<InquiryProvider>().fetchSeekerInquiries(userId);
-          context.read<NotificationProvider>().fetchNotifications(userId);
-        }
-      }
-    });
-
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       switchInCurve: Curves.easeIn,
