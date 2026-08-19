@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_client.dart';
@@ -83,7 +84,16 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
         body: {'planId': planId},
       );
 
-      if (res != null && res['subscription'] != null) {
+      if (res != null && (res['subscription'] != null || res['payment'] != null)) {
+        final checkoutUrl = res['payment']?['checkoutUrl'] as String?;
+        if (checkoutUrl != null && checkoutUrl.startsWith('http')) {
+          try {
+            await launchUrl(Uri.parse(checkoutUrl), mode: LaunchMode.externalApplication);
+          } catch (e) {
+            debugPrint('Failed to open Chapa checkout URL: $e');
+          }
+        }
+
         if (!mounted) return;
         await context.read<AuthProvider>().refreshCurrentUser();
         if (!mounted) return;
@@ -91,7 +101,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('🎉 $planName Subscription Activated via Chapa Payment Engine! You can now post properties.'),
+            content: Text('🎉 $planName Subscription Activated via Official Chapa API Gateway! You can now post properties.'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -281,7 +291,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                               child: _isSubscribing
                                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                                   : Text(
-                                      isCurrentActive ? 'Active Plan' : 'Subscribe via Chapa Engine',
+                                      isCurrentActive ? 'Active Plan' : 'Subscribe via Chapa API',
                                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
                                     ),
                             ),
