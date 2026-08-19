@@ -726,7 +726,7 @@ router.put('/users/:id', authenticateToken, async (req: AuthRequest, res) => {
     }
 
     const { id } = req.params;
-    const { name, email, phone, role, active, assignedArea, agentStatus } = req.body;
+    const { name, email, phone, role, active, assignedArea, agentStatus, avatarUrl } = req.body;
 
     const updatedUser = await prisma.user.update({
       where: { id },
@@ -738,6 +738,7 @@ router.put('/users/:id', authenticateToken, async (req: AuthRequest, res) => {
         ...(active !== undefined && { active: Boolean(active) }),
         ...(assignedArea && { assignedArea }),
         ...(agentStatus && { agentStatus }),
+        ...(avatarUrl && { avatarUrl }),
       },
       select: {
         id: true,
@@ -748,6 +749,7 @@ router.put('/users/:id', authenticateToken, async (req: AuthRequest, res) => {
         active: true,
         assignedArea: true,
         agentStatus: true,
+        avatarUrl: true,
       }
     });
 

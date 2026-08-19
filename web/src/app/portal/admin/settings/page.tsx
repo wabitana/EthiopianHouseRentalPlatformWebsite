@@ -11,12 +11,36 @@ export default function AdminSettingsPage() {
   const [activeTab, setActiveTab] = useState<"profile" | "password" | "platform" | "security">("profile");
 
   // Profile State fetched from PostgreSQL database
-  const [adminUser, setAdminUser] = useState<{ id?: string; name: string; email: string; phone: string; role: string }>({
+  const [adminUser, setAdminUser] = useState<{ id?: string; name: string; email: string; phone: string; role: string; avatarUrl?: string }>({
     name: "",
     email: "",
     phone: "",
     role: "",
+    avatarUrl: "",
   });
+
+  const handleAvatarFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        const base64 = evt.target?.result as string;
+        const uploadRes = await apiFetch("/upload", {
+          method: "POST",
+          body: { base64 }
+        });
+
+        if (uploadRes?.url) {
+          setAdminUser((prev) => ({ ...prev, avatarUrl: uploadRes.url }));
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error("Avatar upload failed:", err);
+    }
+  };
 
   // Password State
   const [currentPassword, setCurrentPassword] = useState("");
@@ -46,6 +70,7 @@ export default function AdminSettingsPage() {
             email: meRes.user.email || "",
             phone: meRes.user.phone || "",
             role: meRes.user.role === "admin" ? "Super Administrator" : meRes.user.role || "Administrator",
+            avatarUrl: meRes.user.avatarUrl || "",
           });
         }
 
@@ -128,8 +153,13 @@ export default function AdminSettingsPage() {
             name: adminUser.name,
             email: adminUser.email,
             phone: adminUser.phone,
+            ...(adminUser.avatarUrl && { avatarUrl: adminUser.avatarUrl }),
           },
         });
+      }
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("profileUpdated"));
       }
 
       setSaved(true);
@@ -189,6 +219,29 @@ export default function AdminSettingsPage() {
         {activeTab === "profile" && (
           <div className="space-y-4 text-xs">
             <h3 className="text-base font-bold text-white">Administrator Profile</h3>
+
+            {/* Profile Avatar Card */}
+            <div className="flex items-center gap-4 bg-slate-900 p-4 rounded-xl border border-slate-700">
+              {adminUser.avatarUrl ? (
+                <img
+                  src={adminUser.avatarUrl.startsWith('http') ? adminUser.avatarUrl : `http://localhost:3000${adminUser.avatarUrl.startsWith('/') ? '' : '/'}${adminUser.avatarUrl}`}
+                  alt="Admin Avatar"
+                  className="h-16 w-16 rounded-full object-cover ring-4 ring-emerald-500/40"
+                />
+              ) : (
+                <div className="h-16 w-16 rounded-full bg-emerald-600 text-white font-extrabold flex items-center justify-center text-lg ring-4 ring-emerald-500/40 shadow-lg">
+                  {adminUser.name ? adminUser.name.split(' ').map((n) => n[0]).join('').substring(0, 2).toUpperCase() : 'EA'}
+                </div>
+              )}
+              <div>
+                <label className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md transition-all inline-block">
+                  Upload Profile Photo
+                  <input type="file" accept="image/*" onChange={handleAvatarFile} className="hidden" />
+                </label>
+                <p className="text-[10px] text-slate-400 mt-1">Upload JPEG, PNG or WebP. Saved directly to PostgreSQL database.</p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-slate-300 mb-1 font-semibold">Full Name</label>

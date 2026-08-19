@@ -138,11 +138,17 @@ export default function AgentPortalLayout({
               onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
               className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-700/60 transition-colors"
             >
-              <img
-                src={resolveImageUrl(agentUser?.avatarUrl)}
-                alt="Agent Avatar"
-                className="h-8 w-8 rounded-lg object-cover ring-2 ring-blue-500/50"
-              />
+              {agentUser?.avatarUrl ? (
+                <img
+                  src={agentUser.avatarUrl.startsWith('http') ? agentUser.avatarUrl : `http://localhost:3000${agentUser.avatarUrl.startsWith('/') ? '' : '/'}${agentUser.avatarUrl}`}
+                  alt="Agent Avatar"
+                  className="h-8 w-8 rounded-lg object-cover ring-2 ring-blue-500/50"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-lg bg-blue-600 text-white font-extrabold flex items-center justify-center text-xs ring-2 ring-blue-500/50 shadow-md">
+                  {agentUser?.name ? agentUser.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : 'AG'}
+                </div>
+              )}
               <div className="hidden md:block text-left">
                 <p className="text-xs font-bold text-white leading-none">{agentUser?.name || 'Agent User'}</p>
                 <p className="text-[10px] text-blue-400 font-medium">{agentUser?.assignedArea || 'Addis Ababa Field Agent'}</p>
