@@ -1,13 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Building2, PlusCircle } from "lucide-react";
-import { mockProperties, PropertyItem } from "@/lib/portal-mock-data";
+import { apiFetch } from "@/lib/api";
 import { PortalPropertyMap } from "@/components/portal/portal-property-map";
 
 export default function AgentPropertiesPage() {
-  const [properties] = useState<PropertyItem[]>(mockProperties);
+  const [properties, setProperties] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadProperties() {
+      try {
+        setLoading(true);
+        const data = await apiFetch("/properties");
+        setProperties(data || []);
+      } catch (err) {
+        console.error("Failed to load properties:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProperties();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -29,7 +53,7 @@ export default function AgentPropertiesPage() {
         </Link>
       </div>
 
-      {/* Interactive List & Google Map Engine */}
+      {/* Interactive List & Map Engine */}
       <PortalPropertyMap properties={properties} />
     </div>
   );

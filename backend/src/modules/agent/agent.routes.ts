@@ -387,4 +387,85 @@ router.patch('/properties/:id/inspect', authenticateToken, requireAgentOrAdmin, 
   }
 });
 
+// GET /api/v1/agent/stats - Retrieve real-time database stats for agent dashboard
+router.get('/stats', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    const isAdmin = req.user?.role?.toLowerCase() === 'admin';
+    const agentWhere = isAdmin ? {} : { agentId: userId };
+
+    const [
+      assistedTenantsCount,
+      propertiesCount,
+      houseProvidersCount,
+      activeTasksCount,
+      pendingIdentityDocs,
+      pendingPropDocs,
+    ] = await Promise.all([
+      prisma.assistedTenant.count({ where: agentWhere }).catch(() => 0),
+      prisma.property.count({ where: { availability: true } }).catch(() => 0),
+      prisma.user.count({ where: { role: 'provider' } }).catch(() => 0),
+      prisma.task.count({ where: { ...(isAdmin ? {} : { assignedAgentId: userId }), status: { in: ['Pending', 'In Progress'] } } }).catch(() => 0),
+      prisma.identityDocument.count({ where: { status: 'PENDING' } }).catch(() => 0),
+      prisma.propertyDocument.count({ where: { status: 'PENDING' } }).catch(() => 0),
+    ]);
+
+    return res.json({
+      assistedTenantsCount,
+      propertiesCount,
+      houseProvidersCount,
+      activeTasksCount,
+      pendingVerificationsCount: pendingIdentityDocs + pendingPropDocs,
+    });
+  } catch (error) {
+    console.error('Agent stats error:', error);
+    return res.status(500).json({ error: 'Failed to fetch agent stats' });
+  }
+});
+
+// GET /api/v1/agent/providers - List all house providers (landlords)
+router.get('/providers', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
+  try {
+    const providers = await prisma.user.findMany({
+      where: { role: { in: ['provider', 'PROVIDER', 'landlord'] } },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        city: true,
+        avatarUrl: true,
+        createdAt: true,
+        properties: { select: { id: true, title: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return res.json(providers);
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch house providers' });
+  }
+});
+
+// GET /api/v1/agent/seekers - List all house seekers
+router.get('/seekers', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
+  try {
+    const seekers = await prisma.user.findMany({
+      where: { role: { in: ['seeker', 'SEEKER', 'tenant'] } },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        city: true,
+        avatarUrl: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    return res.json(seekers);
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch house seekers' });
+  }
+});
+
 export default router;

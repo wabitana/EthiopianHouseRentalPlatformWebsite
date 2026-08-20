@@ -162,16 +162,18 @@ export default function AgentPortalLayout({
                   <p className="font-bold text-white">{agentUser?.name || 'Agent User'}</p>
                   <p className="text-slate-400 text-[11px]">{agentUser?.email || 'agent@delala.com'}</p>
                 </div>
-                <button
-                  onClick={() => {
-                    setProfileDropdownOpen(false);
-                    router.push("/portal/admin");
-                  }}
-                  className="w-full text-left px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"
-                >
-                  <UserCheck className="h-4 w-4 text-emerald-400" />
-                  Switch to Admin Portal
-                </button>
+                {agentUser?.role === "admin" && (
+                  <button
+                    onClick={() => {
+                      setProfileDropdownOpen(false);
+                      router.push("/portal/admin");
+                    }}
+                    className="w-full text-left px-3 py-2 rounded-xl text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"
+                  >
+                    <UserCheck className="h-4 w-4 text-emerald-400" />
+                    Switch to Admin Portal
+                  </button>
+                )}
                 <Link
                   href="/portal/agent/settings"
                   onClick={() => setProfileDropdownOpen(false)}
