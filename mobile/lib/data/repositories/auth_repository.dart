@@ -44,6 +44,9 @@ class AuthRepositoryImpl implements AuthRepository {
     required String phone,
     required String password,
     required UserRole role,
+    String? region,
+    String? city,
+    String? address,
   }) =>
       _remoteDataSource.registerUser(
         name: name,
@@ -51,6 +54,9 @@ class AuthRepositoryImpl implements AuthRepository {
         phone: phone,
         password: password,
         role: role,
+        region: region,
+        city: city,
+        address: address,
       );
 
   @override

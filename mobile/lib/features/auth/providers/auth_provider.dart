@@ -134,6 +134,9 @@ class AuthProvider extends ChangeNotifier {
     required String phone,
     required String password,
     required UserRole role,
+    String? region,
+    String? city,
+    String? address,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -146,6 +149,9 @@ class AuthProvider extends ChangeNotifier {
         phone: phone,
         password: password,
         role: role,
+        region: region,
+        city: city,
+        address: address,
       );
       _registeredRole = role;
       _activeRole = role;

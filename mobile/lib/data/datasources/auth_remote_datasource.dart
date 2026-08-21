@@ -11,6 +11,9 @@ abstract class AuthRemoteDataSource {
     required String phone,
     required String password,
     required UserRole role,
+    String? region,
+    String? city,
+    String? address,
   });
   Future<void> logoutUser();
   Future<UserModel> updateUserProfile(UserModel user);
@@ -63,6 +66,9 @@ class MockAuthRemoteDataSource implements AuthRemoteDataSource {
     required String phone,
     required String password,
     required UserRole role,
+    String? region,
+    String? city,
+    String? address,
   }) async {
     // Simulate HTTP POST /api/v1/auth/register
     await Future.delayed(const Duration(milliseconds: 500));

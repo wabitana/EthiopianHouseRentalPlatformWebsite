@@ -20,6 +20,9 @@ const registerSchema = z.object({
   phone: z.string().optional(),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   role: z.string().optional(),
+  region: z.string().optional(),
+  city: z.string().optional(),
+  address: z.string().optional(),
 });
 
 const loginSchema = z.object({
@@ -80,7 +83,7 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    const { name, email, phone, password, role } = parseResult.data;
+    const { name, email, phone, password, role, region, city, address } = parseResult.data;
 
     const normalizedRole = (role || 'seeker').toLowerCase();
 
@@ -104,6 +107,10 @@ router.post('/register', async (req, res) => {
         phone: phone || '+251 90 000 0000',
         passwordHash,
         role: normalizedRole,
+        region: region || 'Addis Ababa',
+        city: city || 'Addis Ababa',
+        address: address || null,
+        assignedArea: address || city || region || 'Addis Ababa',
         isVerified: false,
         isEmailVerified: false,
         emailVerificationCode: hashedCode,

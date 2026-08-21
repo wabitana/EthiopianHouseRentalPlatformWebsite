@@ -94,6 +94,10 @@ export default function AdminPortalLayout({
       }
     }
     checkAdminAuthAndLoadStats();
+    window.addEventListener("profileUpdated", checkAdminAuthAndLoadStats);
+    return () => {
+      window.removeEventListener("profileUpdated", checkAdminAuthAndLoadStats);
+    };
   }, []);
 
   const unreadNotifs = notifications.filter((n) => !n.read && !n.isRead);
@@ -237,11 +241,17 @@ export default function AdminPortalLayout({
               }}
               className="flex items-center gap-2.5 p-1.5 rounded-xl hover:bg-slate-700/60 transition-colors"
             >
-              <img
-                src={currentUser.avatarUrl || "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=150&q=80"}
-                alt="Admin Avatar"
-                className="h-8 w-8 rounded-lg object-cover ring-2 ring-emerald-500/50"
-              />
+              {currentUser.avatarUrl ? (
+                <img
+                  src={currentUser.avatarUrl.startsWith('http') ? currentUser.avatarUrl : `http://localhost:3000${currentUser.avatarUrl.startsWith('/') ? '' : '/'}${currentUser.avatarUrl}`}
+                  alt="Admin Avatar"
+                  className="h-8 w-8 rounded-lg object-cover ring-2 ring-emerald-500/50"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-lg bg-emerald-600 text-white font-extrabold flex items-center justify-center text-xs ring-2 ring-emerald-500/50 shadow-md">
+                  {currentUser.name ? currentUser.name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : 'EA'}
+                </div>
+              )}
               <div className="hidden md:block text-left">
                 <p className="text-xs font-bold text-white leading-none">{currentUser.name}</p>
                 <p className="text-[10px] text-emerald-400 font-medium">Super Administrator</p>

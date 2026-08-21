@@ -117,6 +117,9 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
     required String phone,
     required String password,
     required UserRole role,
+    String? region,
+    String? city,
+    String? address,
   }) async {
     final res = await ApiClient.post(
       ApiEndpoints.register,
@@ -126,6 +129,9 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
         'phone': phone,
         'password': password,
         'role': role.code,
+        if (region != null) 'region': region,
+        if (city != null) 'city': city,
+        if (address != null) 'address': address,
       },
       requireAuth: false,
     );

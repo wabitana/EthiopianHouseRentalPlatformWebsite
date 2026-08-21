@@ -8,12 +8,8 @@ import {
   CheckSquare,
   Clock,
   MapPin,
-  TrendingUp,
   ArrowUpRight,
   PlusCircle,
-  AlertCircle,
-  ChevronRight,
-  UserCheck,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
@@ -27,16 +23,30 @@ export default function AgentDashboardPage() {
   const [profile, setProfile] = useState<any>(null);
   const [pendingVerifications, setPendingVerifications] = useState<any[]>([]);
   const [activeTasks, setActiveTasks] = useState<any[]>([]);
+  const [stats, setStats] = useState<{
+    assistedTenantsCount: number;
+    propertiesCount: number;
+    houseProvidersCount: number;
+    activeTasksCount: number;
+    pendingVerificationsCount: number;
+  }>({
+    assistedTenantsCount: 0,
+    propertiesCount: 0,
+    houseProvidersCount: 0,
+    activeTasksCount: 0,
+    pendingVerificationsCount: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadDashboardData() {
       try {
         setLoading(true);
-        const [profData, verifData, tasksData] = await Promise.all([
+        const [profData, verifData, tasksData, statsData] = await Promise.all([
           apiFetch("/agent/profile").catch(() => null),
           apiFetch("/verification/admin/pending").catch(() => ({ identityDocs: [], propertyDocs: [] })),
           apiFetch("/agent/tasks").catch(() => []),
+          apiFetch("/agent/stats").catch(() => null),
         ]);
 
         setProfile(profData);
@@ -59,6 +69,9 @@ export default function AgentDashboardPage() {
 
         setPendingVerifications([...propItems, ...idItems]);
         setActiveTasks(tasksData || []);
+        if (statsData) {
+          setStats(statsData);
+        }
       } catch (err) {
         console.error("Failed to load agent dashboard data:", err);
       } finally {
@@ -71,14 +84,14 @@ export default function AgentDashboardPage() {
   const kpiCards = [
     {
       title: "Assigned Properties",
-      value: profile ? String(profile.propertiesManaged || 0) : "0",
+      value: profile ? String(profile.propertiesManaged || stats.propertiesCount || 0) : "0",
       subtitle: profile?.assignedArea || "Addis Ababa Territory",
       icon: Building2,
       color: "from-blue-500/20 to-blue-600/10 border-blue-500/30 text-blue-400",
     },
     {
       title: "Pending Verifications",
-      value: String(pendingVerifications.length),
+      value: String(pendingVerifications.length || stats.pendingVerificationsCount || 0),
       subtitle: "Document Reviews Queued",
       icon: ShieldCheck,
       color: "from-amber-500/20 to-amber-600/10 border-amber-500/30 text-amber-400",
@@ -92,12 +105,20 @@ export default function AgentDashboardPage() {
     },
     {
       title: "Active Tasks",
-      value: String(activeTasks.filter((t) => t.status !== 'Completed').length),
+      value: String(activeTasks.filter((t) => t.status !== 'Completed').length || stats.activeTasksCount || 0),
       subtitle: "Inspections Pending",
       icon: Clock,
       color: "from-purple-500/20 to-purple-600/10 border-purple-500/30 text-purple-400",
     },
   ];
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -108,7 +129,7 @@ export default function AgentDashboardPage() {
             Selam, {profile?.name || "Agent"}!
           </h1>
           <p className="text-xs sm:text-sm text-slate-300 mt-1">
-            Here is your daily field summary for <span className="text-blue-400 font-semibold">{profile?.assignedArea || "Assigned"}</span> territories.
+            Here is your daily field summary for <span className="text-blue-400 font-semibold">{profile?.assignedArea || "Addis Ababa"}</span> territories.
           </p>
         </div>
 
@@ -255,7 +276,7 @@ export default function AgentDashboardPage() {
             <span className="px-2.5 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[10px] font-extrabold uppercase border border-blue-500/30">
               Rural & Non-Smartphone Services
             </span>
-            <span className="text-xs text-emerald-400 font-bold">14 Citizens Assisted This Month</span>
+            <span className="text-xs text-emerald-400 font-bold">{stats.assistedTenantsCount} Citizens Assisted</span>
           </div>
           <h3 className="text-lg font-bold text-white">Assisted Rural Rental & Direct Matching Hub</h3>
           <p className="text-xs text-slate-300 max-w-2xl">
@@ -275,23 +296,23 @@ export default function AgentDashboardPage() {
       <div className="p-6 rounded-2xl bg-slate-800/90 border border-slate-700/80 shadow-xl space-y-3">
         <h3 className="text-base font-bold text-white flex items-center gap-2">
           <MapPin className="h-4 w-4 text-blue-400" />
-          Assigned Territory Summary (Addis Ababa Sub-Cities)
+          Assigned Territory Summary
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
           <div className="p-3 bg-slate-900 rounded-xl border border-slate-700">
-            <span className="text-slate-400 block text-[10px]">Primary Sub-City</span>
-            <p className="text-white font-bold text-sm">Bole (Medhanialem & Atlas)</p>
-            <p className="text-blue-400 text-[11px] font-semibold mt-1">28 Active Properties</p>
+            <span className="text-slate-400 block text-[10px]">Assigned Territory</span>
+            <p className="text-white font-bold text-sm">{profile?.assignedArea || "Addis Ababa Territory"}</p>
+            <p className="text-blue-400 text-[11px] font-semibold mt-1">{profile?.propertiesManaged || stats.propertiesCount} Managed Properties</p>
           </div>
           <div className="p-3 bg-slate-900 rounded-xl border border-slate-700">
-            <span className="text-slate-400 block text-[10px]">Secondary Sub-City</span>
-            <p className="text-white font-bold text-sm">Kirkos (Kazanchis & Guinea Con)</p>
-            <p className="text-blue-400 text-[11px] font-semibold mt-1">14 Active Properties</p>
+            <span className="text-slate-400 block text-[10px]">Verifications Completed</span>
+            <p className="text-white font-bold text-sm">{profile?.verificationsCompleted || 0} Inspections Done</p>
+            <p className="text-emerald-400 text-[11px] font-semibold mt-1">100% Inspection Rate</p>
           </div>
           <div className="p-3 bg-slate-900 rounded-xl border border-slate-700">
-            <span className="text-slate-400 block text-[10px]">Active Landlords Assisted</span>
-            <p className="text-white font-bold text-sm">18 House Providers</p>
-            <p className="text-emerald-400 text-[11px] font-semibold mt-1">100% Response Rate</p>
+            <span className="text-slate-400 block text-[10px]">Registered House Providers</span>
+            <p className="text-white font-bold text-sm">{stats.houseProvidersCount} House Providers</p>
+            <p className="text-purple-400 text-[11px] font-semibold mt-1">Performance Score: {profile?.performanceScore || 100}%</p>
           </div>
         </div>
       </div>

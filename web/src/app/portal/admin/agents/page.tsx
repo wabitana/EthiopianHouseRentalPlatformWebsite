@@ -32,13 +32,28 @@ interface BackendAgent {
   performanceScore?: number;
   agentStatus?: "Active" | "On Leave" | "Suspended";
   avatarUrl?: string;
-  joinedDate?: string;
 }
 
 const resolveImageUrl = (url?: string) => {
   if (!url) return 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150';
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
   return `http://localhost:3000${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
+const ETHIOPIAN_LOCATIONS: Record<string, string[]> = {
+  "Addis Ababa": ["Bole", "Kazanchis", "Yeka", "CMC", "Kirkos", "Arada", "Lideta", "Kolfe Keranio", "Akaki Kality", "Nifas Silk"],
+  "Amhara": ["Bahir Dar", "Gondar", "Debre Birhan", "Dessie", "Debre Markos", "Kombolcha", "Woldiya"],
+  "Oromia": ["Adama (Nazret)", "Jimma", "Bishoftu", "Shashamane", "Ambo", "Nekemte", "Asella", "Bale Robe"],
+  "Sidama": ["Hawassa", "Yirgalem", "Aleta Wendo"],
+  "Tigray": ["Mekelle", "Shire", "Aksum", "Adigrat", "Alamata"],
+  "Somali": ["Jijiga", "Gode", "Degehabur", "Kebri Dahar"],
+  "Dire Dawa": ["Dire Dawa City", "Melka Jebdu"],
+  "Harari": ["Harar City"],
+  "South Ethiopia": ["Arba Minch", "Sodo (Wolaita)", "Dilla", "Jinka"],
+  "Central Ethiopia": ["Hosaena", "Butajira", "Gurage Zone", "Worabe"],
+  "Afar": ["Semera", "Logia", "Asaita"],
+  "Gambela": ["Gambela City"],
+  "Benishangul-Gumuz": ["Asosa", "Metekel"],
 };
 
 export default function AdminAgentsPage() {
@@ -73,6 +88,8 @@ export default function AdminAgentsPage() {
     description: "",
   });
 
+  const [selectedTaskRegion, setSelectedTaskRegion] = useState("Addis Ababa");
+  const [selectedTaskCity, setSelectedTaskCity] = useState("Bole");
   const [newAreaInput, setNewAreaInput] = useState("");
 
   async function loadAgents() {
@@ -508,6 +525,14 @@ export default function AdminAgentsPage() {
               Assign task to agent <strong className="text-white">{selectedAgent.name}</strong> ({selectedAgent.assignedArea}).
             </p>
 
+            <div className="bg-purple-950/40 border border-purple-800/50 rounded-xl p-3 flex items-start gap-2.5 text-xs text-purple-200">
+              <MapPin className="h-4 w-4 text-purple-400 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold text-white block mb-0.5">Sub-City Territory Constraint:</span>
+                Agent <strong className="text-purple-300">{selectedAgent.name}</strong> operates in <strong className="text-emerald-400">{selectedAgent.assignedArea || 'Addis Ababa'}</strong>. Tasks assigned are auto-constrained to user & property addresses in this area.
+              </div>
+            </div>
+
             <form onSubmit={handleAssignTask} className="space-y-3 text-xs">
               <div>
                 <label className="text-slate-400 block mb-1 font-semibold">Task Title</label>
@@ -523,12 +548,53 @@ export default function AdminAgentsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
+                  <label className="text-slate-400 block mb-1 font-semibold">Target Region</label>
+                  <select
+                    value={selectedTaskRegion}
+                    onChange={(e) => {
+                      const reg = e.target.value;
+                      setSelectedTaskRegion(reg);
+                      const cities = ETHIOPIAN_LOCATIONS[reg] || [];
+                      setSelectedTaskCity(cities[0] || 'Central Area');
+                    }}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-emerald-400 focus:outline-none focus:ring-2 focus:ring-purple-500 font-bold text-xs"
+                  >
+                    <option value="All Regions">All Regions (Ethiopia Wide)</option>
+                    {Object.keys(ETHIOPIAN_LOCATIONS).map((regionName) => (
+                      <option key={regionName} value={regionName}>
+                        {regionName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-slate-400 block mb-1 font-semibold">Target City / Area Keyword</label>
+                  <input
+                    type="text"
+                    list="city-keyword-suggestions"
+                    value={selectedTaskCity}
+                    onChange={(e) => setSelectedTaskCity(e.target.value)}
+                    placeholder="Type city keyword (e.g. Bole, Debre Birhan, Hawassa...)"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-emerald-400 focus:outline-none focus:ring-2 focus:ring-purple-500 font-bold text-xs placeholder:text-slate-500"
+                  />
+                  <datalist id="city-keyword-suggestions">
+                    <option value="All Cities & Sub-Cities" />
+                    {(ETHIOPIAN_LOCATIONS[selectedTaskRegion] || []).map((cityName) => (
+                      <option key={cityName} value={cityName} />
+                    ))}
+                  </datalist>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div>
                   <label className="text-slate-400 block mb-1 font-semibold">Task Type</label>
                   <select
                     value={newTask.type}
                     onChange={(e) => setNewTask({ ...newTask, type: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-bold"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-bold text-xs"
                   >
+                    <option value="All Tasks (Full Scope)">All Tasks (Full Scope)</option>
                     <option value="Property Inspection">Property Inspection</option>
                     <option value="Landlord Verification">Landlord Verification</option>
                     <option value="Photoshoot Schedule">Photoshoot Schedule</option>
@@ -540,24 +606,24 @@ export default function AdminAgentsPage() {
                   <select
                     value={newTask.priority}
                     onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-bold"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-bold text-xs"
                   >
+                    <option value="All">All Priorities</option>
                     <option value="High">High Priority</option>
                     <option value="Medium">Medium Priority</option>
                     <option value="Low">Low Priority</option>
                   </select>
                 </div>
-              </div>
-
-              <div>
-                <label className="text-slate-400 block mb-1 font-semibold">Due Date</label>
-                <input
-                  type="date"
-                  required
-                  value={newTask.dueDate}
-                  onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
+                <div>
+                  <label className="text-slate-400 block mb-1 font-semibold">Due Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={newTask.dueDate}
+                    onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs"
+                  />
+                </div>
               </div>
 
               <div>

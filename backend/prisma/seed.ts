@@ -3,8 +3,6 @@ import { prisma } from '../src/prisma';
 
 async function main() {
   await prisma.featurePhoneSms.deleteMany({});
-  await prisma.leaseAgreement.deleteMany({});
-  await prisma.assistedBooking.deleteMany({});
   await prisma.assistedTenant.deleteMany({});
   await prisma.task.deleteMany({});
   await prisma.propertyDocument.deleteMany({});
@@ -31,6 +29,7 @@ async function main() {
       isVerified: true,
       isEmailVerified: true,
       active: true,
+      city: 'Addis Ababa',
     },
   });
 
@@ -49,10 +48,6 @@ async function main() {
       active: true,
       city: 'Addis Ababa',
       assignedArea: 'Bole & Kazanchis',
-      propertiesManaged: 12,
-      verificationsCompleted: 45,
-      performanceScore: 98.5,
-      agentStatus: 'Active',
     },
   });
 
@@ -68,10 +63,6 @@ async function main() {
       active: true,
       city: 'Addis Ababa',
       assignedArea: 'Yeka & CMC',
-      propertiesManaged: 8,
-      verificationsCompleted: 32,
-      performanceScore: 95.0,
-      agentStatus: 'Active',
     },
   });
 
