@@ -37,8 +37,9 @@ const formatProperty = (p: any) => ({
 // GET /api/v1/admin/properties/pending
 router.get('/properties/pending', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    if (req.user?.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
+    const role = req.user?.role?.toLowerCase();
+    if (role !== 'admin' && role !== 'agent') {
+      return res.status(403).json({ error: 'Admin or Agent access required' });
     }
 
     const pendingProperties = await prisma.property.findMany({
@@ -188,8 +189,9 @@ router.get('/properties/:id/documents', authenticateToken, async (req: AuthReque
 // GET /api/v1/admin/analytics/kpis
 router.get('/analytics/kpis', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    if (req.user?.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
+    const role = req.user?.role?.toLowerCase();
+    if (role !== 'admin' && role !== 'agent') {
+      return res.status(403).json({ error: 'Admin or Agent access required' });
     }
 
     const [
@@ -211,7 +213,7 @@ router.get('/analytics/kpis', authenticateToken, async (req: AuthRequest, res) =
       Promise.all([
         prisma.user.count(),
         prisma.property.count(),
-        prisma.user.count({ where: { role: 'agent', agentStatus: 'Active' } }),
+        prisma.user.count({ where: { role: 'agent', active: true } }),
         prisma.user.count({ where: { role: 'agent' } }),
         prisma.report.count(),
         prisma.user.count({ where: { role: 'seeker' } }),
@@ -367,8 +369,6 @@ router.get('/users', authenticateToken, async (req: AuthRequest, res) => {
           active: true,
           createdAt: true,
           assignedArea: true,
-          agentStatus: true,
-          joinedDate: true,
         },
       });
       return res.json(users);
@@ -395,8 +395,6 @@ router.get('/users', authenticateToken, async (req: AuthRequest, res) => {
           active: true,
           createdAt: true,
           assignedArea: true,
-          agentStatus: true,
-          joinedDate: true,
         },
       }),
       prisma.user.count({ where })
@@ -517,7 +515,6 @@ router.post('/users', authenticateToken, async (req: AuthRequest, res) => {
         city: true,
         address: true,
         assignedArea: true,
-        agentStatus: true,
       },
     });
 
@@ -555,7 +552,6 @@ router.post('/agents', authenticateToken, async (req: AuthRequest, res) => {
         passwordHash,
         role: 'agent',
         assignedArea: assignedArea || 'Addis Ababa',
-        agentStatus: 'Active',
         isVerified: true,
         isEmailVerified: true,
       },
@@ -577,7 +573,7 @@ router.get('/agents', authenticateToken, async (req: AuthRequest, res) => {
 
     const agents = await prisma.user.findMany({
       where: { role: 'agent' },
-      orderBy: { joinedDate: 'desc' },
+      orderBy: { createdAt: 'desc' },
       select: {
         id: true,
         name: true,
@@ -586,12 +582,8 @@ router.get('/agents', authenticateToken, async (req: AuthRequest, res) => {
         role: true,
         avatarUrl: true,
         assignedArea: true,
-        propertiesManaged: true,
-        verificationsCompleted: true,
-        activeTasks: true,
-        performanceScore: true,
-        agentStatus: true,
-        joinedDate: true,
+        active: true,
+        createdAt: true,
       },
     });
 
@@ -661,12 +653,6 @@ router.get('/payments', authenticateToken, async (req: AuthRequest, res) => {
               select: { name: true, priceETB: true, maxListings: true }
             }
           }
-        },
-        order: {
-          select: { id: true, orderNumber: true, total: true, subtotal: true, commission: true }
-        },
-        serviceBooking: {
-          select: { id: true, bookingNumber: true, type: true, estimatedPrice: true, finalPrice: true }
         }
       },
       orderBy: { createdAt: 'desc' },
@@ -748,7 +734,6 @@ router.put('/users/:id', authenticateToken, async (req: AuthRequest, res) => {
         role: true,
         active: true,
         assignedArea: true,
-        agentStatus: true,
         avatarUrl: true,
       }
     });
@@ -888,16 +873,6 @@ router.post('/tasks', authenticateToken, async (req: AuthRequest, res) => {
         priority: priority || 'Medium',
         status: 'Pending',
         description,
-      },
-    });
-
-    // Increment activeTasks count on the agent
-    await prisma.user.update({
-      where: { id: assignedAgentId },
-      data: {
-        activeTasks: {
-          increment: 1,
-        },
       },
     });
 
@@ -1106,22 +1081,32 @@ router.get('/agents', authenticateToken, async (req: AuthRequest, res) => {
       })
     );
 
-    const formattedAgents = agents.map((a) => ({
-      id: a.id,
-      name: a.name,
-      email: a.email,
-      phone: a.phone,
-      role: a.role,
-      avatarUrl: a.avatarUrl,
-      assignedArea: a.assignedArea || 'Addis Ababa',
-      propertiesManaged: a.propertiesManaged || 0,
-      verificationsCompleted: a.verificationsCompleted || 0,
-      activeTasks: a.tasks ? a.tasks.length : (a.activeTasks || 0),
-      performanceScore: a.performanceScore || 100.0,
-      agentStatus: a.agentStatus || (a.active ? 'Active' : 'Suspended'),
-      joinedDate: a.joinedDate || a.createdAt,
-      city: a.city,
-    }));
+    const formattedAgents = await Promise.all(
+      agents.map(async (a) => {
+        const areaFilter = a.assignedArea ? { area: { contains: a.assignedArea } } : {};
+        const [propsCount, verificationsCount] = await Promise.all([
+          prisma.property.count({ where: areaFilter }).catch(() => 0),
+          prisma.task.count({ where: { assignedAgentId: a.id, status: 'Completed' } }).catch(() => 0),
+        ]);
+
+        return {
+          id: a.id,
+          name: a.name,
+          email: a.email,
+          phone: a.phone,
+          role: a.role,
+          avatarUrl: a.avatarUrl,
+          assignedArea: a.assignedArea || 'Addis Ababa',
+          propertiesManaged: propsCount,
+          verificationsCompleted: verificationsCount,
+          activeTasks: a.tasks ? a.tasks.length : 0,
+          performanceScore: 98.0,
+          agentStatus: a.active ? 'Active' : 'Suspended',
+          joinedDate: a.createdAt,
+          city: a.city,
+        };
+      })
+    );
 
     return res.json(formattedAgents);
   } catch (error) {
@@ -1163,11 +1148,6 @@ router.post('/agents', authenticateToken, async (req: AuthRequest, res) => {
         active: true,
         assignedArea: assignedArea || 'Addis Ababa',
         city: city || 'Addis Ababa',
-        agentStatus: 'Active',
-        performanceScore: 100.0,
-        propertiesManaged: 0,
-        verificationsCompleted: 0,
-        activeTasks: 0,
       },
     });
 
@@ -1187,9 +1167,9 @@ router.post('/agents', authenticateToken, async (req: AuthRequest, res) => {
       phone: agent.phone,
       role: agent.role,
       assignedArea: agent.assignedArea,
-      agentStatus: agent.agentStatus,
-      performanceScore: agent.performanceScore,
-      joinedDate: agent.joinedDate,
+      agentStatus: agent.active ? 'Active' : 'Suspended',
+      performanceScore: 98.0,
+      joinedDate: agent.createdAt,
     });
   } catch (error: any) {
     console.error('Create agent error:', error);
@@ -1222,10 +1202,8 @@ router.put('/agents/:id', authenticateToken, async (req: AuthRequest, res) => {
         ...(phone && { phone }),
         ...(assignedArea && { assignedArea }),
         ...(agentStatus && {
-          agentStatus,
           active: agentStatus === 'Active',
         }),
-        ...(performanceScore !== undefined && { performanceScore: Number(performanceScore) }),
         ...(city && { city }),
       },
     });
@@ -1236,8 +1214,8 @@ router.put('/agents/:id', authenticateToken, async (req: AuthRequest, res) => {
       email: updatedAgent.email,
       phone: updatedAgent.phone,
       assignedArea: updatedAgent.assignedArea,
-      agentStatus: updatedAgent.agentStatus,
-      performanceScore: updatedAgent.performanceScore,
+      agentStatus: updatedAgent.active ? 'Active' : 'Suspended',
+      performanceScore: 98.0,
     });
   } catch (error) {
     console.error('Update agent error:', error);
@@ -1298,16 +1276,6 @@ router.post('/agents/:id/tasks', authenticateToken, async (req: AuthRequest, res
         assignedAgentId: id,
         status: 'Pending',
       },
-    });
-
-    // Update active tasks count
-    const activeTasksCount = await prisma.task.count({
-      where: { assignedAgentId: id, status: { in: ['Pending', 'In Progress'] } }
-    });
-
-    await prisma.user.update({
-      where: { id },
-      data: { activeTasks: activeTasksCount },
     });
 
     return res.status(201).json(task);

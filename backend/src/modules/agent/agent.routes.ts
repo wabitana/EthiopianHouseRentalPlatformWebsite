@@ -27,17 +27,30 @@ router.get('/profile', authenticateToken, requireAgentOrAdmin, async (req: AuthR
         role: true,
         avatarUrl: true,
         assignedArea: true,
-        propertiesManaged: true,
-        verificationsCompleted: true,
-        activeTasks: true,
-        performanceScore: true,
-        agentStatus: true,
-        joinedDate: true,
+        active: true,
+        createdAt: true,
       },
     });
 
     if (!user) return res.status(404).json({ error: 'Agent profile not found' });
-    return res.json(user);
+
+    // Calculate dynamic stats
+    const areaFilter = user.assignedArea ? { area: { contains: user.assignedArea } } : {};
+    const [propsCount, verificationsCount, activeTasksCount] = await Promise.all([
+      prisma.property.count({ where: areaFilter }).catch(() => 0),
+      prisma.task.count({ where: { assignedAgentId: user.id, status: 'Completed' } }).catch(() => 0),
+      prisma.task.count({ where: { assignedAgentId: user.id, status: { in: ['Pending', 'In Progress'] } } }).catch(() => 0),
+    ]);
+
+    return res.json({
+      ...user,
+      propertiesManaged: propsCount,
+      verificationsCompleted: verificationsCount,
+      activeTasks: activeTasksCount,
+      performanceScore: 98.0,
+      agentStatus: user.active ? 'Active' : 'Suspended',
+      joinedDate: user.createdAt,
+    });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to fetch agent profile' });
   }
@@ -76,23 +89,6 @@ router.patch('/tasks/:id/status', authenticateToken, requireAgentOrAdmin, async 
     const updatedTask = await prisma.task.update({
       where: { id },
       data: { status },
-    });
-
-    // Update agent active tasks count
-    const activeTasksCount = await prisma.task.count({
-      where: { assignedAgentId: task.assignedAgentId, status: { in: ['Pending', 'In Progress'] } }
-    });
-
-    const completedTasksCount = await prisma.task.count({
-      where: { assignedAgentId: task.assignedAgentId, status: 'Completed' }
-    });
-
-    await prisma.user.update({
-      where: { id: task.assignedAgentId },
-      data: {
-        activeTasks: activeTasksCount,
-        verificationsCompleted: completedTasksCount,
-      }
     });
 
     return res.json(updatedTask);
@@ -255,14 +251,17 @@ router.post('/leases', authenticateToken, requireAgentOrAdmin, async (req: AuthR
 
     const lease = await prisma.leaseAgreement.create({
       data: {
+        contractNumber: `LEA-${Date.now()}`,
         bookingId,
         tenantName,
         tenantKebeleId,
+        landlordName: providerName || 'Landlord',
         providerName,
         providerIdNumber: providerIdNumber || 'PRV-OFFLINE',
         propertyTitle,
         location,
         monthlyRentETB: Number(monthlyRentETB),
+        depositETB: 0,
         startDate: new Date(startDate || Date.now()),
         endDate: new Date(endDate || Date.now() + 365 * 24 * 60 * 60 * 1000),
         kebeleWitnessName,
@@ -359,17 +358,6 @@ router.patch('/properties/:id/inspect', authenticateToken, requireAgentOrAdmin, 
       });
     }
 
-    // Increment agent verifications completed
-    const userId = req.user?.id;
-    if (userId && req.user?.role?.toLowerCase() === 'agent') {
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          verificationsCompleted: { increment: 1 },
-        },
-      });
-    }
-
     // Create system notification
     await prisma.notification.create({
       data: {
@@ -387,12 +375,18 @@ router.patch('/properties/:id/inspect', authenticateToken, requireAgentOrAdmin, 
   }
 });
 
-// GET /api/v1/agent/stats - Retrieve real-time database stats for agent dashboard
 router.get('/stats', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
   try {
     const userId = req.user?.id;
     const isAdmin = req.user?.role?.toLowerCase() === 'admin';
+    const agentUser = await prisma.user.findUnique({ where: { id: userId } });
+    const assignedArea = agentUser?.assignedArea || agentUser?.city || 'Addis Ababa';
+
     const agentWhere = isAdmin ? {} : { agentId: userId };
+    const propertyWhere = isAdmin ? { availability: true } : { availability: true, area: { contains: assignedArea } };
+    const providerWhere = isAdmin
+      ? { role: 'provider' }
+      : { role: 'provider', OR: [{ city: { contains: assignedArea } }, { address: { contains: assignedArea } }] };
 
     const [
       assistedTenantsCount,
@@ -403,8 +397,8 @@ router.get('/stats', authenticateToken, requireAgentOrAdmin, async (req: AuthReq
       pendingPropDocs,
     ] = await Promise.all([
       prisma.assistedTenant.count({ where: agentWhere }).catch(() => 0),
-      prisma.property.count({ where: { availability: true } }).catch(() => 0),
-      prisma.user.count({ where: { role: 'provider' } }).catch(() => 0),
+      prisma.property.count({ where: propertyWhere }).catch(() => 0),
+      prisma.user.count({ where: providerWhere }).catch(() => 0),
       prisma.task.count({ where: { ...(isAdmin ? {} : { assignedAgentId: userId }), status: { in: ['Pending', 'In Progress'] } } }).catch(() => 0),
       prisma.identityDocument.count({ where: { status: 'PENDING' } }).catch(() => 0),
       prisma.propertyDocument.count({ where: { status: 'PENDING' } }).catch(() => 0),
@@ -416,6 +410,7 @@ router.get('/stats', authenticateToken, requireAgentOrAdmin, async (req: AuthReq
       houseProvidersCount,
       activeTasksCount,
       pendingVerificationsCount: pendingIdentityDocs + pendingPropDocs,
+      assignedArea,
     });
   } catch (error) {
     console.error('Agent stats error:', error);

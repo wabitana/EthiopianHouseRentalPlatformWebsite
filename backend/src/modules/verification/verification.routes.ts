@@ -70,8 +70,9 @@ router.post('/property-license', authenticateToken, async (req: AuthRequest, res
 // GET /api/v1/verification/admin/pending (Admin review queue)
 router.get('/admin/pending', authenticateToken, async (req: AuthRequest, res) => {
   try {
-    if (req.user?.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
+    const role = req.user?.role?.toLowerCase();
+    if (role !== 'admin' && role !== 'agent') {
+      return res.status(403).json({ error: 'Admin or Agent access required' });
     }
 
     const data = await verificationService.getPendingVerifications();
@@ -97,19 +98,6 @@ router.patch('/identity/:id/review', authenticateToken, async (req: AuthRequest,
     }
 
     const updatedDoc = await verificationService.reviewIdentityDocument(id, status, adminNotes);
-
-    // Increment agent verifications completed
-    if (role === 'agent' && req.user?.id) {
-      await prisma.user.update({
-        where: { id: req.user.id },
-        data: {
-          verificationsCompleted: {
-            increment: 1,
-          },
-        },
-      });
-    }
-
     return res.json({ success: true, document: updatedDoc });
   } catch (error: any) {
     console.error('Identity review error:', error);
@@ -133,19 +121,6 @@ router.patch('/property-license/:id/review', authenticateToken, async (req: Auth
     }
 
     const updatedDoc = await verificationService.reviewPropertyDocument(id, status, adminNotes);
-
-    // Increment agent verifications completed
-    if (role === 'agent' && req.user?.id) {
-      await prisma.user.update({
-        where: { id: req.user.id },
-        data: {
-          verificationsCompleted: {
-            increment: 1,
-          },
-        },
-      });
-    }
-
     return res.json({ success: true, document: updatedDoc });
   } catch (error: any) {
     console.error('Property document review error:', error);

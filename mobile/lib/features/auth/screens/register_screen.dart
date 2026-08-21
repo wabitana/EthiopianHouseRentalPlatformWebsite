@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/constants/ethiopia_locations.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
@@ -22,9 +23,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
+  final _addressController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
+  String _selectedRegion = 'Addis Ababa';
+  String _selectedCity = 'Bole';
   UserRole _selectedRole = UserRole.seeker;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -48,6 +52,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : '+251 90 000 0000',
         password: _passwordController.text,
         role: _selectedRole,
+        region: _selectedRegion,
+        city: _selectedCity,
+        address: _addressController.text.trim().isNotEmpty ? _addressController.text.trim() : _selectedCity,
       );
 
       if (success && mounted) {
@@ -91,6 +98,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _nameController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
+    _addressController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -362,6 +370,69 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             if (val == null || !val.contains('@')) return 'Please enter a valid email address';
                             return null;
                           },
+                        ),
+                        const SizedBox(height: 24),
+
+                        const Text(
+                          '3. REGION & CITY LOCATION',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textSecondary,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Region Selector
+                        DropdownButtonFormField<String>(
+                          value: _selectedRegion,
+                          decoration: InputDecoration(
+                            labelText: 'Administrative Region',
+                            prefixIcon: const Icon(Icons.map_rounded, color: AppColors.primary),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                          items: EthiopiaLocations.regions
+                              .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _selectedRegion = val;
+                                final availableCities = EthiopiaLocations.getCitiesForRegion(val);
+                                _selectedCity = availableCities.isNotEmpty ? availableCities.first : 'Central Area';
+                              });
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // City / Area Selector
+                        DropdownButtonFormField<String>(
+                          value: EthiopiaLocations.getCitiesForRegion(_selectedRegion).contains(_selectedCity)
+                              ? _selectedCity
+                              : EthiopiaLocations.getCitiesForRegion(_selectedRegion).first,
+                          decoration: InputDecoration(
+                            labelText: 'City / Sub-City Area',
+                            prefixIcon: const Icon(Icons.location_city_rounded, color: AppColors.primary),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                          items: EthiopiaLocations.getCitiesForRegion(_selectedRegion)
+                              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) setState(() => _selectedCity = val);
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        CustomTextField(
+                          label: 'Specific Neighborhood / Kebele (Optional)',
+                          hint: 'e.g. House #104, Kebele 03',
+                          controller: _addressController,
+                          prefixIcon: Icons.home_work_outlined,
                         ),
                         const SizedBox(height: 16),
 
