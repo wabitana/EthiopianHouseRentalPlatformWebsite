@@ -9,7 +9,10 @@ import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'email_verification_screen.dart';
 import '../../../shared/widgets/main_layout_wrapper.dart';
-import '../../../shared/widgets/google_account_picker_dialog.dart';
+import '../../../shared/widgets/google_location_dialog.dart';
+import '../../../core/config/app_config.dart';
+import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -55,7 +58,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final success = await authProvider.register(
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
-        phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : '+251 90 000 0000',
+        phone: _phoneController.text.trim(),
         password: _passwordController.text,
         role: _selectedRole,
         region: _selectedRegion,
@@ -76,27 +79,64 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  void _onGoogleRegister() {
-    showDialog(
-      context: context,
-      builder: (ctx) => GoogleAccountPickerDialog(
-        onAccountSelected: (account) async {
-          final authProvider = context.read<AuthProvider>();
-          final success = await authProvider.loginWithGoogle(
-            _selectedRole,
-            email: account.email,
-            name: account.name,
-            avatarUrl: account.avatarUrl,
-          );
-          if (success && mounted) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const MainLayoutWrapper()),
-              (route) => false,
+  Future<void> _onGoogleRegister() async {
+    try {
+      final googleSignIn = GoogleSignIn(
+        clientId: kIsWeb && AppConfig.googleWebClientId.isNotEmpty ? AppConfig.googleWebClientId : null,
+        scopes: ['email', 'profile'],
+      );
+
+      final GoogleSignInAccount? account = await googleSignIn.signIn();
+      if (account == null) return; // User cancelled
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => GoogleLocationDialog(
+          googleName: account.displayName ?? 'Google User',
+          googleEmail: account.email,
+          googlePhoto: account.photoUrl,
+          onSubmit: (locResult) async {
+            final authProvider = context.read<AuthProvider>();
+            final success = await authProvider.loginWithGoogle(
+              _selectedRole,
+              email: account.email,
+              name: account.displayName ?? 'Google User',
+              avatarUrl: account.photoUrl,
+              region: locResult.region,
+              city: locResult.city,
+              address: locResult.address,
+              phone: locResult.phone,
             );
-          }
-        },
-      ),
-    );
+
+            if (success && mounted) {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const MainLayoutWrapper()),
+                (route) => false,
+              );
+            } else if (mounted && authProvider.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(authProvider.errorMessage!),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          },
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google Sign-In error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -394,6 +434,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         // Region Selector
                         DropdownButtonFormField<String>(
                           initialValue: _selectedRegion,
+                          isExpanded: true,
                           decoration: InputDecoration(
                             labelText: 'Administrative Region',
                             prefixIcon: const Icon(Icons.map_rounded, color: AppColors.primary),
@@ -401,7 +442,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           ),
                           items: EthiopiaLocations.regions
-                              .map((r) => DropdownMenuItem(value: r, child: Text(r)))
+                              .map((r) => DropdownMenuItem(value: r, child: Text(r, overflow: TextOverflow.ellipsis)))
                               .toList(),
                           onChanged: (val) {
                             if (val != null) {
@@ -420,6 +461,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           initialValue: EthiopiaLocations.getCitiesForRegion(_selectedRegion).contains(_selectedCity)
                               ? _selectedCity
                               : EthiopiaLocations.getCitiesForRegion(_selectedRegion).first,
+                          isExpanded: true,
                           decoration: InputDecoration(
                             labelText: 'City / Sub-City Area',
                             prefixIcon: const Icon(Icons.location_city_rounded, color: AppColors.primary),
@@ -427,7 +469,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           ),
                           items: EthiopiaLocations.getCitiesForRegion(_selectedRegion)
-                              .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                              .map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis)))
                               .toList(),
                           onChanged: (val) {
                             if (val != null) {
@@ -669,7 +711,7 @@ class _RoleCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
@@ -688,51 +730,50 @@ class _RoleCard extends StatelessWidget {
           ],
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: isSelected ? AppColors.primaryContainer : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     icon,
-                    size: 22,
+                    size: 20,
                     color: isSelected ? AppColors.primary : AppColors.textMuted,
                   ),
                 ),
                 Icon(
                   isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                  size: 20,
+                  size: 18,
                   color: isSelected ? AppColors.primary : const Color(0xFFCBD5E1),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: isSelected ? AppColors.primary : AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                  height: 1.25,
-                ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 10.5,
+                color: AppColors.textSecondary,
+                height: 1.2,
               ),
             ),
           ],

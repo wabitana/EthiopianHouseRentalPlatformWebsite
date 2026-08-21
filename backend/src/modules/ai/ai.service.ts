@@ -128,7 +128,7 @@ export async function processAiChat(options: AiProcessOptions): Promise<AiProces
 }
 
 // Fallback direct backend DB search engine when OpenRouter is unconfigured or unavailable
-async function handleDirectDbFallback(message: string, conversationId: string, ctx: ToolContext): Promise<AiProcessResult> {
+export async function handleDirectDbFallback(message: string, conversationId: string, ctx: ToolContext): Promise<AiProcessResult> {
   const lowerMsg = message.toLowerCase();
   const isAmharic = /[\u1200-\u137F]/.test(message);
 

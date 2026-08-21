@@ -13,7 +13,7 @@ class AuthProvider extends ChangeNotifier {
   String? _errorMessage;
 
   AuthProvider({AuthRepository? authRepository})
-      : _authRepository = authRepository ?? AuthRepositoryImpl() {
+      : _authRepository = authRepository ?? MockAuthRepository() {
     _init();
   }
 
@@ -91,13 +91,26 @@ class AuthProvider extends ChangeNotifier {
     String? email,
     String? name,
     String? avatarUrl,
+    String? region,
+    String? city,
+    String? address,
+    String? phone,
   }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final user = await _authRepository.loginWithGoogle(role, email: email, name: name, avatarUrl: avatarUrl);
+      final user = await _authRepository.loginWithGoogle(
+        role,
+        email: email,
+        name: name,
+        avatarUrl: avatarUrl,
+        region: region,
+        city: city,
+        address: address,
+        phone: phone,
+      );
 
       if (user.role != role) {
         _currentUser = null;
@@ -187,7 +200,10 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = 'Invalid email verification code';
+      final msg = e.toString();
+      _errorMessage = msg.startsWith('Exception: ')
+          ? msg.replaceFirst('Exception: ', '')
+          : (msg.isEmpty ? 'Invalid email verification code' : msg);
       _isLoading = false;
       notifyListeners();
       return false;
@@ -219,12 +235,15 @@ class AuthProvider extends ChangeNotifier {
     try {
       final remoteDs = ApiAuthRemoteDataSource();
       final success = await remoteDs.verifyPhoneOtp(code);
-      if (success && _currentUser != null) {
-        _currentUser = _currentUser!.copyWith(isPhoneVerified: true);
+      if (success) {
+        await refreshCurrentUser();
+        _isLoading = false;
+        notifyListeners();
+        return true;
       }
       _isLoading = false;
       notifyListeners();
-      return true;
+      return false;
     } catch (e) {
       _errorMessage = 'Invalid phone SMS OTP code';
       _isLoading = false;

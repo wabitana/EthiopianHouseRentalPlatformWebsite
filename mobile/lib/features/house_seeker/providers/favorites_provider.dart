@@ -29,19 +29,18 @@ class FavoritesProvider extends ChangeNotifier {
 
       if (localList != null) {
         _favoritePropertyIds.addAll(localList);
-      } else {
-        // Seed initial demo favorites if first run
-        _favoritePropertyIds.addAll(['prop_1', 'prop_3']);
-        await prefs.setStringList(_storageKey, _favoritePropertyIds.toList());
       }
+
+      // Clean legacy dummy property IDs
+      _favoritePropertyIds.removeWhere((id) => id.startsWith('prop_'));
 
       if (userId != null && userId.isNotEmpty) {
         final apiIds = await _favoritesRepository.getFavoriteIds(userId);
         if (apiIds.isNotEmpty) {
-          _favoritePropertyIds.addAll(apiIds);
-          await prefs.setStringList(_storageKey, _favoritePropertyIds.toList());
+          _favoritePropertyIds.addAll(apiIds.where((id) => !id.startsWith('prop_')));
         }
       }
+      await prefs.setStringList(_storageKey, _favoritePropertyIds.toList());
     } catch (e) {
       debugPrint('Error loading favorites: $e');
     } finally {

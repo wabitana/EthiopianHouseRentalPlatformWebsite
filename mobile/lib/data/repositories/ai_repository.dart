@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import '../../core/constants/api_endpoints.dart';
 import '../../core/network/api_client.dart';
 import '../../shared/models/property_model.dart';
@@ -67,13 +68,24 @@ class AiRepository {
 
     List<PropertyModel> properties = [];
     if (data['properties'] is List) {
-      properties = (data['properties'] as List)
-          .map((p) => PropertyModel.fromJson(p as Map<String, dynamic>))
-          .toList();
+      for (final p in (data['properties'] as List)) {
+        try {
+          if (p is Map<String, dynamic>) {
+            properties.add(PropertyModel.fromJson(p));
+          }
+        } catch (e) {
+          debugPrint('Error parsing AI property card: $e');
+        }
+      }
     }
 
+    final messageText = (data['message'] as String?) ??
+        (data['text'] as String?) ??
+        (data['reply'] as String?) ??
+        'I completed your request.';
+
     return {
-      'message': data['message'] ?? 'I completed your request.',
+      'message': messageText,
       'properties': properties,
       'actions': List<String>.from(data['actions'] ?? []),
       'conversationId': data['conversationId'] ?? conversationId,

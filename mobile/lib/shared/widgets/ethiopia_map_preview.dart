@@ -1,11 +1,8 @@
-import 'dart:js_interop';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:web/web.dart' as web;
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/ethiopian_coordinates.dart';
 
@@ -80,48 +77,6 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
       _isLocating = true;
     });
 
-    if (kIsWeb) {
-      try {
-        web.window.navigator.geolocation.getCurrentPosition(
-          (web.GeolocationPosition pos) {
-            final lat = pos.coords.latitude;
-            final lng = pos.coords.longitude;
-            final currentLatLng = LatLng(lat, lng);
-            if (mounted) {
-              setState(() {
-                _currentCenter = currentLatLng;
-                _zoomLevel = 16.0;
-                _isLocating = false;
-              });
-              _mapController.move(currentLatLng, 16.0);
-              widget.onLocationSelected?.call(currentLatLng);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    'Location set to your GPS position (${lat.toStringAsFixed(4)}, ${lng.toStringAsFixed(4)})',
-                  ),
-                  backgroundColor: AppColors.primary,
-                ),
-              );
-            }
-          }.toJS,
-          (web.GeolocationPositionError err) {
-            if (mounted) {
-              setState(() => _isLocating = false);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Location permission denied or unavailable.'),
-                ),
-              );
-            }
-          }.toJS,
-        );
-        return;
-      } catch (e) {
-        debugPrint('Web geolocation fallback info: $e');
-      }
-    }
-
     try {
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
@@ -166,16 +121,6 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
         '${widget.neighborhood}, ${widget.area}, ${widget.city}, Ethiopia';
     final targetUrlString =
         'https://www.google.com/maps/dir/?api=1&destination=${_currentCenter.latitude},${_currentCenter.longitude}&travelmode=driving';
-
-    // On Web: Use native browser window.open to bypass MissingPluginException on hot-reloaded dev sessions
-    if (kIsWeb) {
-      try {
-        web.window.open(targetUrlString, '_blank');
-        return;
-      } catch (e) {
-        debugPrint('Web window.open info: $e');
-      }
-    }
 
     final googleMapsDirectionsUrl = Uri.parse(targetUrlString);
     final fallbackUrl = Uri.parse(
@@ -482,35 +427,42 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.95),
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: const [
-                        BoxShadow(color: Colors.black12, blurRadius: 4),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.location_on,
-                          size: 14,
-                          color: AppColors.secondary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${widget.city}, Ethiopia',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black12, blurRadius: 4),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.location_on,
+                            size: 14,
+                            color: AppColors.secondary,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              '${widget.city}, Ethiopia',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   ElevatedButton.icon(

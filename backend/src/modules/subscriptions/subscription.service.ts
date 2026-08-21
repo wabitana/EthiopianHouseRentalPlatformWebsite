@@ -56,7 +56,7 @@ export class SubscriptionService {
       userId,
       amountETB: plan.priceETB,
       email: user.email,
-      phone: user.phone,
+      phone: user.phone || '+251 90 000 0000',
       title: `${plan.name} Owner Subscription Plan`,
     });
 

@@ -67,7 +67,7 @@ model User {
   id            String   @id @default(uuid())
   name          String
   email         String   @unique
-  phone         String   @unique
+  phone         String?  @unique
   passwordHash  String
 
   role          String   @default("seeker") // seeker, provider, admin, agent
@@ -578,18 +578,18 @@ model LeaseAgreement {
   bookingId          String?
   booking            AssistedBooking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
 
-  contractNumber     String          @unique
+  contractNumber     String?         @unique
 
   tenantName         String
   tenantKebeleId     String?
   providerName       String?
   providerIdNumber   String?
-  landlordName       String
+  landlordName       String          @default("Landlord")
   propertyTitle      String
   location           String?
 
   monthlyRentETB     Float
-  depositETB         Float
+  depositETB         Float           @default(0)
 
   startDate          DateTime
   endDate            DateTime
