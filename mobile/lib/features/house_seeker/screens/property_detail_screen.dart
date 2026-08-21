@@ -601,11 +601,11 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _SpecItem(Icons.king_bed_outlined, '${property.rooms} Rooms'),
+                              Expanded(child: _SpecItem(Icons.king_bed_outlined, '${property.rooms} Rooms')),
                               const _VerticalDivider(),
-                              _SpecItem(Icons.bathtub_outlined, '${property.bathrooms} Baths'),
+                              Expanded(child: _SpecItem(Icons.bathtub_outlined, '${property.bathrooms} Baths')),
                               const _VerticalDivider(),
-                              _SpecItem(Icons.apartment_outlined, property.propertyType),
+                              Expanded(child: _SpecItem(Icons.apartment_outlined, property.propertyType)),
                             ],
                           ),
                         ),
@@ -741,6 +741,9 @@ class _SpecItem extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
         ),
       ],

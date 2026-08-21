@@ -39,4 +39,13 @@ class AppConfig {
     }
     return '';
   }
+
+  static String get apiBaseUrl {
+    const compileTimeEnv = String.fromEnvironment('API_BASE_URL');
+    if (compileTimeEnv.isNotEmpty) return compileTimeEnv;
+    if (_dotenvInitialized && dotenv.env['API_BASE_URL'] != null && dotenv.env['API_BASE_URL']!.isNotEmpty) {
+      return dotenv.env['API_BASE_URL']!;
+    }
+    return '';
+  }
 }

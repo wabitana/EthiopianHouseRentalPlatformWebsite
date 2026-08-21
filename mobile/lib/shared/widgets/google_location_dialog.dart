@@ -162,13 +162,14 @@ class _GoogleLocationDialogState extends State<GoogleLocationDialog> {
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
                   initialValue: _selectedRegion,
+                  isExpanded: true,
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.map_outlined, color: AppColors.primary),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                   ),
                   items: EthiopiaLocations.regions.map((reg) {
-                    return DropdownMenuItem(value: reg, child: Text(reg));
+                    return DropdownMenuItem(value: reg, child: Text(reg, overflow: TextOverflow.ellipsis));
                   }).toList(),
                   onChanged: (val) {
                     if (val != null) {
@@ -191,13 +192,14 @@ class _GoogleLocationDialogState extends State<GoogleLocationDialog> {
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
                   initialValue: cities.contains(_selectedCity) ? _selectedCity : cities.first,
+                  isExpanded: true,
                   decoration: InputDecoration(
                     prefixIcon: const Icon(Icons.location_city_outlined, color: AppColors.primary),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                   ),
                   items: cities.map((c) {
-                    return DropdownMenuItem(value: c, child: Text(c));
+                    return DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis));
                   }).toList(),
                   onChanged: (val) {
                     if (val != null) {
