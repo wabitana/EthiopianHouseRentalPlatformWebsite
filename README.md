@@ -165,9 +165,9 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## Name   ===============                ID
 
 ### 1. shanbel kibre CTC-416-26
-### 2. wabi  TEna CTC-416-26
-### 3. Serawit Shimels CTC-416-26
-### 4. Tomas  CTC-416-26
+### 2. wabi  Tena CTC-338-26
+### 3. Serawit Shimels CTC-271-26
+### 4. Tomas   Godefa CTC-2336-26
 
 
 
