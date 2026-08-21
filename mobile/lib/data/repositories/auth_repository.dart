@@ -12,6 +12,9 @@ abstract class AuthRepository {
     required String phone,
     required String password,
     required UserRole role,
+    String? region,
+    String? city,
+    String? address,
   });
   Future<void> logout();
   Future<bool> forgotPassword(String emailOrPhone);

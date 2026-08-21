@@ -53,6 +53,24 @@ router.get('/properties/pending', authenticateToken, async (req: AuthRequest, re
   }
 });
 
+// GET /api/v1/admin/properties/all (Fetch all properties for Admin/Agent)
+router.get('/properties/all', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const role = req.user?.role?.toLowerCase();
+    if (role !== 'admin' && role !== 'agent') {
+      return res.status(403).json({ error: 'Admin or Agent access required' });
+    }
+
+    const allProperties = await prisma.property.findMany({
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return res.json(allProperties.map(formatProperty));
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch all properties' });
+  }
+});
+
 // PATCH /api/v1/admin/properties/:id/approve
 router.patch('/properties/:id/approve', authenticateToken, async (req: AuthRequest, res) => {
   try {

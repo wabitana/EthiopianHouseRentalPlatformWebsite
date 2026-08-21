@@ -122,19 +122,29 @@ router.post('/', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
-// GET /api/v1/inquiries (Role-aware: Seekers see sent, Providers see received)
+// GET /api/v1/inquiries (Role-aware: Seekers/Providers see theirs, Admin/Agent see all)
 router.get('/', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const userId = req.user?.id;
-    const role = req.user?.role;
+    const role = req.user?.role?.toLowerCase();
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const where = role === 'provider' ? { providerId: userId } : { seekerId: userId };
-
-    const inquiries = await prisma.inquiry.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-    });
+    let inquiries;
+    if (role === 'admin' || role === 'agent') {
+      inquiries = await prisma.inquiry.findMany({
+        orderBy: { createdAt: 'desc' },
+      });
+    } else {
+      inquiries = await prisma.inquiry.findMany({
+        where: {
+          OR: [
+            { providerId: userId },
+            { seekerId: userId },
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    }
 
     return res.json(inquiries.map(formatInquiry));
   } catch (error) {
@@ -314,6 +324,89 @@ router.patch('/:id', authenticateToken, async (req: AuthRequest, res) => {
     return res.json(formatInquiry(updated));
   } catch (error) {
     return res.status(500).json({ error: 'Failed to update inquiry' });
+  }
+});
+
+// DELETE /api/v1/inquiries/clear-all (Clear all inquiries)
+router.delete('/clear-all', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    const role = req.user?.role?.toLowerCase();
+
+    if (role === 'admin' || role === 'agent') {
+      await prisma.inquiry.deleteMany({});
+    } else if (userId) {
+      await prisma.inquiry.deleteMany({
+        where: {
+          OR: [{ seekerId: userId }, { providerId: userId }],
+        },
+      });
+    }
+
+    return res.json({ success: true, message: 'All inquiries cleared' });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to clear inquiries' });
+  }
+});
+
+// DELETE /api/v1/inquiries/:id (Delete single conversation)
+router.delete('/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const role = req.user?.role?.toLowerCase();
+
+    const inquiry = await prisma.inquiry.findUnique({ where: { id } });
+    if (!inquiry) return res.status(404).json({ error: 'Inquiry not found' });
+
+    if (role !== 'admin' && role !== 'agent' && inquiry.seekerId !== userId && inquiry.providerId !== userId) {
+      return res.status(403).json({ error: 'Not authorized to delete this inquiry' });
+    }
+
+    await prisma.inquiry.delete({ where: { id } });
+    return res.json({ success: true, message: 'Inquiry conversation deleted' });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to delete inquiry' });
+  }
+});
+
+// DELETE /api/v1/inquiries/:id/messages/:messageId (Delete single message inside conversation)
+router.delete('/:id/messages/:messageId', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { id, messageId } = req.params;
+    const userId = req.user?.id;
+    const role = req.user?.role?.toLowerCase();
+
+    const inquiry = await prisma.inquiry.findUnique({ where: { id } });
+    if (!inquiry) return res.status(404).json({ error: 'Inquiry not found' });
+
+    if (role !== 'admin' && role !== 'agent' && inquiry.seekerId !== userId && inquiry.providerId !== userId) {
+      return res.status(403).json({ error: 'Not authorized to delete messages in this inquiry' });
+    }
+
+    let currentMessages: any[] = [];
+    try {
+      if (inquiry.messages && typeof inquiry.messages === 'string') {
+        currentMessages = JSON.parse(inquiry.messages);
+      }
+    } catch (_) {
+      currentMessages = [];
+    }
+
+    const updatedMessages = currentMessages.filter((m) => m.id !== messageId);
+    const lastMsgObj = updatedMessages[updatedMessages.length - 1];
+
+    await prisma.inquiry.update({
+      where: { id },
+      data: {
+        messages: JSON.stringify(updatedMessages),
+        message: lastMsgObj ? lastMsgObj.text : 'No messages',
+      },
+    });
+
+    return res.json({ success: true, message: 'Message deleted' });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to delete message' });
   }
 });
 

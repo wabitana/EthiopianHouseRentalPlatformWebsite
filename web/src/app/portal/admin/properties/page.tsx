@@ -82,7 +82,7 @@ export default function AdminPropertiesPage() {
   async function loadProperties() {
     try {
       setLoading(true);
-      const data = await apiFetch("/properties");
+      const data = await apiFetch("/admin/properties/all");
       setProperties(data.map(mapBackendProperty));
     } catch (err) {
       console.error("Failed to load properties:", err);

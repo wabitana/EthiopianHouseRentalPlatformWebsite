@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
@@ -284,10 +285,30 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
 
               CustomTextField(
                 label: 'ID Number',
-                hint: 'e.g. FIN-9081-4211 or KBL-09-881',
+                hint: _selectedIdType.contains('Fayda')
+                    ? 'Enter 16-digit Fayda ID (e.g. 1234567890123456)'
+                    : 'e.g. FIN-9081-4211 or KBL-09-881',
                 controller: _idNumberController,
                 prefixIcon: Icons.badge_outlined,
-                validator: (val) => val == null || val.trim().isEmpty ? 'Please enter your ID number' : null,
+                keyboardType: _selectedIdType.contains('Fayda') ? TextInputType.number : TextInputType.text,
+                inputFormatters: _selectedIdType.contains('Fayda')
+                    ? [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(16),
+                      ]
+                    : null,
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) {
+                    return 'Please enter your ID number';
+                  }
+                  final trimmed = val.trim();
+                  if (_selectedIdType.contains('Fayda')) {
+                    if (!RegExp(r'^\d{16}$').hasMatch(trimmed)) {
+                      return 'Fayda ID must be exactly 16 numeric digits (not more, not less)';
+                    }
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 20),
 
@@ -427,9 +448,9 @@ class _UploadBox extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: isFullWidth ? 130 : 120,
+        height: isFullWidth ? 220 : 180,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: hasImage ? const Color(0xFF0F172A) : Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: hasImage ? AppColors.primary : const Color(0xFFCBD5E1),
@@ -437,13 +458,47 @@ class _UploadBox extends StatelessWidget {
           ),
         ),
         child: hasImage
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: bytes != null
-                    ? Image.memory(bytes!, fit: BoxFit.cover, width: double.infinity)
-                    : (kIsWeb
-                        ? const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 36)
-                        : Image.file(file!, fit: BoxFit.cover, width: double.infinity)),
+            ? Stack(
+                alignment: Alignment.center,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: bytes != null
+                        ? Image.memory(
+                            bytes!,
+                            fit: BoxFit.contain,
+                            width: double.infinity,
+                            height: double.infinity,
+                          )
+                        : (kIsWeb
+                            ? const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 44)
+                            : Image.file(
+                                file!,
+                                fit: BoxFit.contain,
+                                width: double.infinity,
+                                height: double.infinity,
+                              )),
+                  ),
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.edit_rounded, color: Colors.white, size: 12),
+                          SizedBox(width: 4),
+                          Text('Change Photo', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               )
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,

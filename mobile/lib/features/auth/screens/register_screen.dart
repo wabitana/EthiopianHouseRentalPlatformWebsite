@@ -24,11 +24,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
+  final _customCityController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
   String _selectedRegion = 'Addis Ababa';
   String _selectedCity = 'Bole';
+  bool _isCustomCity = false;
   UserRole _selectedRole = UserRole.seeker;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -45,6 +47,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         return;
       }
 
+      final finalCity = _isCustomCity && _customCityController.text.trim().isNotEmpty
+          ? _customCityController.text.trim()
+          : _selectedCity;
+
       final authProvider = context.read<AuthProvider>();
       final success = await authProvider.register(
         name: _nameController.text.trim(),
@@ -53,8 +59,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         password: _passwordController.text,
         role: _selectedRole,
         region: _selectedRegion,
-        city: _selectedCity,
-        address: _addressController.text.trim().isNotEmpty ? _addressController.text.trim() : _selectedCity,
+        city: finalCity,
+        address: _addressController.text.trim().isNotEmpty ? _addressController.text.trim() : finalCity,
       );
 
       if (success && mounted) {
@@ -99,6 +105,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _phoneController.dispose();
     _emailController.dispose();
     _addressController.dispose();
+    _customCityController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -386,7 +393,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                         // Region Selector
                         DropdownButtonFormField<String>(
-                          value: _selectedRegion,
+                          initialValue: _selectedRegion,
                           decoration: InputDecoration(
                             labelText: 'Administrative Region',
                             prefixIcon: const Icon(Icons.map_rounded, color: AppColors.primary),
@@ -410,7 +417,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                         // City / Area Selector
                         DropdownButtonFormField<String>(
-                          value: EthiopiaLocations.getCitiesForRegion(_selectedRegion).contains(_selectedCity)
+                          initialValue: EthiopiaLocations.getCitiesForRegion(_selectedRegion).contains(_selectedCity)
                               ? _selectedCity
                               : EthiopiaLocations.getCitiesForRegion(_selectedRegion).first,
                           decoration: InputDecoration(
@@ -423,14 +430,34 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                               .toList(),
                           onChanged: (val) {
-                            if (val != null) setState(() => _selectedCity = val);
+                            if (val != null) {
+                              setState(() {
+                                _selectedCity = val;
+                                _isCustomCity = (val == '+ Other / Custom City Keyword');
+                              });
+                            }
                           },
                         ),
+                        if (_isCustomCity) ...[
+                          const SizedBox(height: 12),
+                          CustomTextField(
+                            label: 'Custom City / Town Keyword',
+                            hint: 'e.g. Debre Birhan, Bale Robe, Woldiya...',
+                            controller: _customCityController,
+                            prefixIcon: Icons.edit_location_alt_rounded,
+                            validator: (val) {
+                              if (_isCustomCity && (val == null || val.trim().isEmpty)) {
+                                return 'Please enter your custom city or town keyword';
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
                         const SizedBox(height: 16),
 
                         CustomTextField(
-                          label: 'Specific Neighborhood / Kebele (Optional)',
-                          hint: 'e.g. House #104, Kebele 03',
+                          label: 'Zone, Woreda / Kifle Ketema & Kebele (Optional)',
+                          hint: 'e.g. Zone 1, Woreda 04 / Kifle Ketema, Kebele 03, House #104',
                           controller: _addressController,
                           prefixIcon: Icons.home_work_outlined,
                         ),

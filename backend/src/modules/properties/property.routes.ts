@@ -271,8 +271,8 @@ router.post('/', authenticateToken, async (req: AuthRequest, res) => {
         images: JSON.stringify(images || []),
         amenities: JSON.stringify(amenities || []),
         availability: true,
-        isVerified: true,
-        listingStatus: 'active',
+        isVerified: false,
+        listingStatus: 'pending',
       },
     });
 
@@ -426,6 +426,50 @@ router.patch('/:id/availability', authenticateToken, async (req: AuthRequest, re
     return res.json(formatProperty(updated));
   } catch (error) {
     return res.status(500).json({ error: 'Failed to update availability' });
+  }
+});
+
+// PATCH /api/v1/properties/:id/status (Admin / Agent verify & approve property)
+router.patch('/:id/status', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { listingStatus, adminNotes } = req.body;
+    const userRole = req.user?.role;
+
+    if (userRole !== 'admin' && userRole !== 'agent') {
+      return res.status(403).json({ error: 'Only Admins and Field Agents can review and approve property listings' });
+    }
+
+    const property = await prisma.property.findUnique({ where: { id } });
+    if (!property) return res.status(404).json({ error: 'Property not found' });
+
+    const newStatus = listingStatus === 'active' ? 'active' : 'rejected';
+    const isVerified = newStatus === 'active';
+
+    const updated = await prisma.property.update({
+      where: { id },
+      data: {
+        listingStatus: newStatus,
+        isVerified,
+        availability: isVerified,
+      },
+    });
+
+    // Notify House Owner
+    await prisma.notification.create({
+      data: {
+        userId: property.providerId,
+        title: isVerified ? '🎉 Property Listing Approved!' : '✕ Property Listing Review Update',
+        message: isVerified
+          ? `Your property listing "${property.title}" has been verified by ${userRole.toUpperCase()} and is now live for house seekers!`
+          : `Your property listing "${property.title}" was reviewed. ${adminNotes || 'Please update property details and resubmit.'}`,
+        type: 'PROPERTY',
+      },
+    });
+
+    return res.json(formatProperty(updated));
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to update property status' });
   }
 });
 
