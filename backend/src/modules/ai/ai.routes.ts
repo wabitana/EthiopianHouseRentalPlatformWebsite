@@ -1,6 +1,6 @@
 import { Router, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { processAiChat } from './ai.service';
+import { processAiChat, handleDirectDbFallback } from './ai.service';
 import { clearConversationHistory } from './ai.memory';
 import { AuthRequest } from '../../middleware/auth';
 
@@ -55,14 +55,29 @@ router.post(['/', '/chat'], parseUserContext, async (req: AuthRequest, res: Resp
     });
   } catch (error: any) {
     console.error('AI Chat Route Error:', error);
-    return res.status(500).json({
-      error: 'An error occurred while processing your AI request.',
-      message: 'Sorry, I am having trouble processing your request right now. Please try again.',
-      reply: 'Sorry, I am having trouble processing your request right now. Please try again.',
-      text: 'Sorry, I am having trouble processing your request right now. Please try again.',
-      properties: [],
-      actions: [],
-    });
+    try {
+      const { message, conversationId } = req.body;
+      const userPrompt = typeof message === 'string' && message.trim().length > 0 ? message.trim() : 'home in Addis Ababa';
+      const context = {
+        userId: req.user?.id,
+        userRole: req.user?.role || 'seeker',
+        userName: req.user?.name,
+      };
+      const fallbackResult = await handleDirectDbFallback(userPrompt, conversationId || `conv-${Date.now()}`, context);
+      return res.json({
+        ...fallbackResult,
+        text: fallbackResult.message,
+        reply: fallbackResult.message,
+      });
+    } catch (_) {
+      return res.status(200).json({
+        message: 'I am happy to assist you with properties in Ethiopia.',
+        text: 'I am happy to assist you with properties in Ethiopia.',
+        reply: 'I am happy to assist you with properties in Ethiopia.',
+        properties: [],
+        actions: [],
+      });
+    }
   }
 });
 

@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/constants/api_endpoints.dart';
+import '../../../core/network/api_client.dart';
+import '../../../shared/models/user_model.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/main_layout_wrapper.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class ProviderSubscriptionGateScreen extends StatefulWidget {
   const ProviderSubscriptionGateScreen({super.key});
@@ -11,25 +17,134 @@ class ProviderSubscriptionGateScreen extends StatefulWidget {
 }
 
 class _ProviderSubscriptionGateScreenState extends State<ProviderSubscriptionGateScreen> {
-  String _selectedPlan = 'Professional';
+  bool _isLoadingPlans = true;
   bool _isProcessing = false;
+  String? _errorMessage;
+  List<Map<String, dynamic>> _plans = [];
+  String? _selectedPlanId;
 
-  void _onSubscribeWithChapa() async {
-    setState(() => _isProcessing = true);
-    await Future.delayed(const Duration(seconds: 2));
+  @override
+  void initState() {
+    super.initState();
+    _fetchPlans();
+  }
+
+  Future<void> _fetchPlans() async {
+    setState(() {
+      _isLoadingPlans = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final res = await ApiClient.get(ApiEndpoints.subscriptionPlans);
+      if (res != null && res is List && res.isNotEmpty) {
+        _plans = List<Map<String, dynamic>>.from(res);
+      } else {
+        _plans = _defaultPlans;
+      }
+    } catch (e) {
+      debugPrint('Error fetching backend subscription plans: $e');
+      _plans = _defaultPlans;
+    }
+
+    if (_plans.isNotEmpty) {
+      final prof = _plans.firstWhere(
+        (p) => (p['name'] as String).toLowerCase() == 'professional',
+        orElse: () => _plans.first,
+      );
+      _selectedPlanId = prof['id'] as String;
+    }
 
     if (mounted) {
-      setState(() => _isProcessing = false);
+      setState(() => _isLoadingPlans = false);
+    }
+  }
+
+  static final List<Map<String, dynamic>> _defaultPlans = [
+    {
+      'id': 'plan_basic',
+      'name': 'Basic',
+      'priceETB': 500,
+      'durationDays': 30,
+      'maxListings': 3,
+    },
+    {
+      'id': 'plan_professional',
+      'name': 'Professional',
+      'priceETB': 1200,
+      'durationDays': 30,
+      'maxListings': 10,
+    },
+    {
+      'id': 'plan_business',
+      'name': 'Business',
+      'priceETB': 2500,
+      'durationDays': 30,
+      'maxListings': 100,
+    },
+  ];
+
+  void _onSubscribeWithChapa() async {
+    if (_selectedPlanId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Chapa Payment Successful! $_selectedPlan Plan Activated.'),
-          backgroundColor: AppColors.primary,
-        ),
+        const SnackBar(content: Text('Please select a subscription plan')),
       );
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const MainLayoutWrapper()),
-        (route) => false,
+      return;
+    }
+
+    setState(() {
+      _isProcessing = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final res = await ApiClient.post(
+        ApiEndpoints.subscribe,
+        body: {'planId': _selectedPlanId},
       );
+
+      if (mounted) {
+        setState(() => _isProcessing = false);
+
+        if (res != null && (res['subscription'] != null || res['payment'] != null)) {
+          final checkoutUrl = res['payment']?['checkoutUrl'] as String?;
+          if (checkoutUrl != null && checkoutUrl.startsWith('http')) {
+            try {
+              await launchUrl(Uri.parse(checkoutUrl), mode: LaunchMode.externalApplication);
+            } catch (e) {
+              debugPrint('Failed to open Chapa checkout URL: $e');
+            }
+          }
+
+          if (!mounted) return;
+          await context.read<AuthProvider>().refreshCurrentUser();
+          if (!mounted) return;
+          context.read<AuthProvider>().switchRole(UserRole.provider);
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Chapa Payment Gateway Connected! Subscription Plan Activated.'),
+              backgroundColor: AppColors.primary,
+            ),
+          );
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const MainLayoutWrapper()),
+            (route) => false,
+          );
+        } else {
+          final err = res?['error'] ?? 'Subscription transaction failed';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(err), backgroundColor: Colors.redAccent),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Subscription failed: $e'), backgroundColor: Colors.redAccent),
+        );
+      }
     }
   }
 
@@ -94,38 +209,57 @@ class _ProviderSubscriptionGateScreenState extends State<ProviderSubscriptionGat
               ),
               const SizedBox(height: 28),
 
-              // Plans Selection
-              _PlanCard(
-                title: 'Basic Plan',
-                price: '500 ETB / mo',
-                listings: 'Up to 3 Active Property Listings',
-                isSelected: _selectedPlan == 'Basic',
-                onTap: () => setState(() => _selectedPlan = 'Basic'),
-              ),
-              const SizedBox(height: 12),
-              _PlanCard(
-                title: 'Professional Plan',
-                price: '1,200 ETB / mo',
-                listings: 'Up to 10 Listings + 360° Panorama Tours',
-                isSelected: _selectedPlan == 'Professional',
-                isPopular: true,
-                onTap: () => setState(() => _selectedPlan = 'Professional'),
-              ),
-              const SizedBox(height: 12),
-              _PlanCard(
-                title: 'Business Plan',
-                price: '2,500 ETB / mo',
-                listings: 'Unlimited Listings + Top Sponsor Placement',
-                isSelected: _selectedPlan == 'Business',
-                onTap: () => setState(() => _selectedPlan = 'Business'),
-              ),
+              if (_isLoadingPlans)
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 40),
+                  child: CircularProgressIndicator(color: Colors.amber),
+                )
+              else if (_errorMessage != null)
+                Column(
+                  children: [
+                    Text(
+                      _errorMessage!,
+                      style: const TextStyle(color: Colors.redAccent, fontSize: 14),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton.icon(
+                      onPressed: _fetchPlans,
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Retry Loading Plans'),
+                    ),
+                  ],
+                )
+              else ...[
+                // Dynamic Plans Selection from Backend API
+                ..._plans.map((plan) {
+                  final id = plan['id'] as String;
+                  final name = plan['name'] as String? ?? 'Plan';
+                  final price = plan['priceETB'] ?? 0;
+                  final isSelected = _selectedPlanId == id;
+                  final isPopular = name.toLowerCase() == 'professional';
+                  final maxListings = plan['maxListings'] ?? 5;
 
-              const SizedBox(height: 28),
-              CustomButton(
-                text: _isProcessing ? 'Connecting Chapa Gateway...' : 'Subscribe & Continue with Chapa',
-                isLoading: _isProcessing,
-                onPressed: _onSubscribeWithChapa,
-              ),
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _PlanCard(
+                      title: '$name Plan',
+                      price: '$price ETB / mo',
+                      listings: 'Up to $maxListings Active Property Listings',
+                      isSelected: isSelected,
+                      isPopular: isPopular,
+                      onTap: () => setState(() => _selectedPlanId = id),
+                    ),
+                  );
+                }),
+
+                const SizedBox(height: 28),
+                CustomButton(
+                  text: _isProcessing ? 'Connecting Chapa Gateway...' : 'Subscribe & Continue with Chapa',
+                  isLoading: _isProcessing,
+                  onPressed: _onSubscribeWithChapa,
+                ),
+              ],
 
               const SizedBox(height: 16),
               TextButton(

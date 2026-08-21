@@ -25,17 +25,11 @@ export class VerificationService {
       },
     });
 
-    // Update user status
-    await prisma.user.update({
-      where: { id: data.userId },
-      data: { isVerified: true },
-    });
-
     await prisma.notification.create({
       data: {
         userId: data.userId,
         title: 'Identity Document Submitted',
-        message: `Your ${data.idType} (${data.idNumber}) has been submitted for admin verification. AI Risk Score: ${aiRiskScore}/100.`,
+        message: `Your ${data.idType} (${data.idNumber}) has been submitted for admin verification. AI Risk Score: ${aiRiskScore}/100. Status: Under Review.`,
         type: 'SYSTEM',
       },
     });
@@ -86,7 +80,7 @@ export class VerificationService {
     };
   }
 
-  async reviewIdentityDocument(docId: string, status: 'VERIFIED' | 'REJECTED', adminNotes?: string) {
+  async reviewIdentityDocument(docId: string, status: 'VERIFIED' | 'REJECTED' | 'UNDER_REVIEW', adminNotes?: string) {
     const doc = await prisma.identityDocument.update({
       where: { id: docId },
       data: {
@@ -99,6 +93,11 @@ export class VerificationService {
       await prisma.user.update({
         where: { id: doc.userId },
         data: { isVerified: true },
+      });
+    } else if (status === 'REJECTED') {
+      await prisma.user.update({
+        where: { id: doc.userId },
+        data: { isVerified: false },
       });
     }
 
@@ -133,6 +132,27 @@ export class VerificationService {
     }
 
     return doc;
+  }
+
+  async getUserVerificationStatus(userId: string) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const latestIdentityDoc = await prisma.identityDocument.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+    const latestPropertyDocs = await prisma.propertyDocument.findMany({
+      where: { ownerId: userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return {
+      isVerified: user?.isVerified ?? false,
+      isPhoneVerified: user?.isPhoneVerified ?? false,
+      identityStatus: latestIdentityDoc?.status || 'NONE',
+      identityDoc: latestIdentityDoc,
+      propertyDocsCount: latestPropertyDocs.length,
+      hasApprovedPropertyDoc: latestPropertyDocs.some(d => d.status === 'VERIFIED'),
+    };
   }
 }
 

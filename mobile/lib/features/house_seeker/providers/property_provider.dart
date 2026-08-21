@@ -23,7 +23,7 @@ class PropertyProvider extends ChangeNotifier {
   String _sortBy = 'Recommended';
 
   PropertyProvider({PropertyRepository? propertyRepository})
-      : _propertyRepository = propertyRepository ?? MockPropertyRepository() {
+      : _propertyRepository = propertyRepository ?? PropertyRepositoryImpl() {
     fetchProperties();
   }
 
@@ -164,6 +164,7 @@ class PropertyProvider extends ChangeNotifier {
 
   Future<bool> createProperty(PropertyModel newProperty) async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
     try {
       final created = await _propertyRepository.createProperty(newProperty);
@@ -172,6 +173,7 @@ class PropertyProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       debugPrint('Error creating property: $e');
+      _errorMessage = e.toString();
       return false;
     } finally {
       _isLoading = false;

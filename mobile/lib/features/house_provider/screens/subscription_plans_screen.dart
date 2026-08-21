@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_client.dart';
+import '../../../shared/models/user_model.dart';
+import '../../auth/providers/auth_provider.dart';
 
 class SubscriptionPlansScreen extends StatefulWidget {
   const SubscriptionPlansScreen({super.key});
@@ -25,20 +29,52 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
   Future<void> _loadSubscriptionData() async {
     setState(() => _isLoading = true);
     try {
-      final plansRes = await ApiClient.get('${ApiEndpoints.baseUrl}/subscriptions/plans');
-      if (plansRes != null && plansRes is List) {
+      final plansRes = await ApiClient.get(ApiEndpoints.subscriptionPlans);
+      if (plansRes != null && plansRes is List && plansRes.isNotEmpty) {
         _plans = List<Map<String, dynamic>>.from(plansRes);
+      } else {
+        _plans = _defaultPlans;
       }
 
-      final subRes = await ApiClient.get('${ApiEndpoints.baseUrl}/subscriptions/my-subscription');
+      final subRes = await ApiClient.get(ApiEndpoints.mySubscription);
       if (subRes != null && subRes is Map<String, dynamic>) {
         _activeSubscription = subRes['subscription'] as Map<String, dynamic>?;
       }
     } catch (e) {
-      debugPrint('Error loading subscription plans: $e');
+      debugPrint('Error loading subscription plans from backend: $e');
+      _plans = _defaultPlans;
     }
-    setState(() => _isLoading = false);
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
+
+  static final List<Map<String, dynamic>> _defaultPlans = [
+    {
+      'id': 'plan_basic',
+      'name': 'Basic',
+      'priceETB': 500,
+      'durationDays': 30,
+      'maxListings': 3,
+      'features': ['Up to 3 Active Property Listings', 'Basic Analytics', 'Standard Support'],
+    },
+    {
+      'id': 'plan_professional',
+      'name': 'Professional',
+      'priceETB': 1200,
+      'durationDays': 30,
+      'maxListings': 10,
+      'features': ['Up to 10 Listings + 360° Panorama Tours', 'Advanced Analytics', 'Priority Support'],
+    },
+    {
+      'id': 'plan_business',
+      'name': 'Business',
+      'priceETB': 2500,
+      'durationDays': 30,
+      'maxListings': 100,
+      'features': ['Unlimited Listings', 'Top Sponsor Placement', 'Dedicated Account Manager'],
+    },
+  ];
 
   Future<void> _subscribeToPlan(String planId, String planName, double price) async {
     setState(() => _isSubscribing = true);
@@ -48,11 +84,24 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
         body: {'planId': planId},
       );
 
-      if (res != null && res['subscription'] != null) {
+      if (res != null && (res['subscription'] != null || res['payment'] != null)) {
+        final checkoutUrl = res['payment']?['checkoutUrl'] as String?;
+        if (checkoutUrl != null && checkoutUrl.startsWith('http')) {
+          try {
+            await launchUrl(Uri.parse(checkoutUrl), mode: LaunchMode.externalApplication);
+          } catch (e) {
+            debugPrint('Failed to open Chapa checkout URL: $e');
+          }
+        }
+
         if (!mounted) return;
+        await context.read<AuthProvider>().refreshCurrentUser();
+        if (!mounted) return;
+        context.read<AuthProvider>().switchRole(UserRole.provider);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('🎉 $planName Subscription Activated via Chapa Payment Engine!'),
+            content: Text('🎉 $planName Subscription Activated via Official Chapa API Gateway! You can now post properties.'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -242,7 +291,7 @@ class _SubscriptionPlansScreenState extends State<SubscriptionPlansScreen> {
                               child: _isSubscribing
                                   ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                                   : Text(
-                                      isCurrentActive ? 'Active Plan' : 'Subscribe via Chapa Engine',
+                                      isCurrentActive ? 'Active Plan' : 'Subscribe via Chapa API',
                                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
                                     ),
                             ),

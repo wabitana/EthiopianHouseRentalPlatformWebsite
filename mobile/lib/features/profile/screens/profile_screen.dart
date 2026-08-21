@@ -18,8 +18,23 @@ import '../../auth/screens/phone_verification_screen.dart';
 import '../../verification/screens/document_verification_screen.dart';
 import 'theme_settings_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<AuthProvider>().refreshCurrentUser();
+      }
+    });
+  }
 
   // 1. Edit Personal Info Modal Sheet
   void _showEditProfileModal(BuildContext context, UserModel user) {
@@ -693,11 +708,12 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // 4. Account Verification Status Modal Sheet
   // 4. Account Verification Status Modal Sheet with Independent Seeker vs Provider Workflows
   void _showAccountVerificationModal(BuildContext context, UserModel user) {
     final authProvider = context.read<AuthProvider>();
     final isProvider = authProvider.isProvider;
+    String identityStatus = 'NONE';
+    bool isLoadingStatus = true;
 
     showModalBottomSheet(
       context: context,
@@ -705,6 +721,37 @@ class ProfileScreen extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) {
+          // Fetch real-time status on modal open
+          if (isLoadingStatus) {
+            ApiClient.get(ApiEndpoints.verificationStatus).then((res) {
+              if (ctx.mounted && res != null) {
+                setModalState(() {
+                  identityStatus = res['identityStatus'] as String? ?? 'NONE';
+                  isLoadingStatus = false;
+                });
+              }
+            }).catchError((_) {
+              if (ctx.mounted) {
+                setModalState(() => isLoadingStatus = false);
+              }
+            });
+          }
+
+          final bool isDocUnderReview = identityStatus == 'UNDER_REVIEW';
+          final bool isDocVerified = user.isVerified || identityStatus == 'VERIFIED';
+          final bool isDocRejected = identityStatus == 'REJECTED';
+
+          String idSubtitle;
+          if (isDocVerified) {
+            idSubtitle = 'Verified ✓ Official Ethiopian ID on File';
+          } else if (isDocUnderReview) {
+            idSubtitle = 'Under Review ⏳ • Awaiting Web Admin Approval';
+          } else if (isDocRejected) {
+            idSubtitle = 'Rejected ❌ • Please Re-upload Valid Fayda / Kebele ID';
+          } else {
+            idSubtitle = 'Not Verified • Upload Fayda / Kebele ID photo';
+          }
+
           return Container(
             padding: EdgeInsets.only(
               top: 24,
@@ -741,19 +788,33 @@ class ProfileScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: user.isVerified ? const Color(0xFFECFDF5) : const Color(0xFFFFFBEB),
+                      color: isDocVerified
+                          ? const Color(0xFFECFDF5)
+                          : (isDocUnderReview ? const Color(0xFFFFFBEB) : const Color(0xFFFEF2F2)),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: user.isVerified ? const Color(0xFFA7F3D0) : const Color(0xFFFDE68A)),
+                      border: Border.all(
+                        color: isDocVerified
+                            ? const Color(0xFFA7F3D0)
+                            : (isDocUnderReview ? const Color(0xFFFDE68A) : const Color(0xFFFCA5A5)),
+                      ),
                     ),
                     child: Row(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: user.isVerified ? const Color(0xFF10B981) : Colors.amber.shade700,
+                            color: isDocVerified
+                                ? const Color(0xFF10B981)
+                                : (isDocUnderReview ? Colors.amber.shade700 : const Color(0xFFEF4444)),
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(user.isVerified ? Icons.verified_rounded : Icons.shield_outlined, color: Colors.white, size: 22),
+                          child: Icon(
+                            isDocVerified
+                                ? Icons.verified_rounded
+                                : (isDocUnderReview ? Icons.hourglass_top_rounded : Icons.shield_outlined),
+                            color: Colors.white,
+                            size: 22,
+                          ),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -761,19 +822,34 @@ class ProfileScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                user.isVerified ? 'Fully Verified Account ✓' : (isProvider ? 'Owner Verification Required' : 'Optional Verification Status'),
+                                isDocVerified
+                                    ? 'Fully Verified Account ✓'
+                                    : (isDocUnderReview
+                                        ? 'Under Review ⏳'
+                                        : (isProvider ? 'Owner Verification Required' : 'Optional Verification Status')),
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.bold,
-                                  color: user.isVerified ? const Color(0xFF065F46) : Colors.amber.shade900,
+                                  color: isDocVerified
+                                      ? const Color(0xFF065F46)
+                                      : (isDocUnderReview ? Colors.amber.shade900 : const Color(0xFF991B1B)),
                                 ),
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                isProvider
-                                    ? 'Providers must submit National ID + Ownership Deed for AI Pre-check & Admin approval to post rentals.'
-                                    : 'House Seekers can use all search and inquiry features freely without verification.',
-                                style: TextStyle(fontSize: 12, color: user.isVerified ? const Color(0xFF047857) : Colors.amber.shade800),
+                                isDocVerified
+                                    ? 'Your Identity & Documents have been approved by Admin.'
+                                    : (isDocUnderReview
+                                        ? 'Submitted ID document is being reviewed by Web Admin.'
+                                        : (isProvider
+                                            ? 'Providers must submit National ID + Ownership Deed for Admin approval.'
+                                            : 'House Seekers can use all search and inquiry features freely without verification.')),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDocVerified
+                                      ? const Color(0xFF047857)
+                                      : (isDocUnderReview ? Colors.amber.shade800 : const Color(0xFFB91C1C)),
+                                ),
                               ),
                             ],
                           ),
@@ -783,7 +859,7 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
-                  // Independent Trust Badges Checklist for Seekers & Providers
+                  // Phone Tile
                   _buildVerificationTile(
                     icon: Icons.phone_android_rounded,
                     title: 'Phone Number Verification',
@@ -797,19 +873,24 @@ class ProfileScreen extends StatelessWidget {
                             Navigator.pop(ctx);
                             Navigator.of(context).push(
                               MaterialPageRoute(builder: (_) => const PhoneVerificationScreen()),
-                            );
+                            ).then((_) {
+                              if (context.mounted) {
+                                context.read<AuthProvider>().refreshCurrentUser();
+                              }
+                            });
                           },
                   ),
                   const SizedBox(height: 12),
 
+                  // Identity Tile
                   _buildVerificationTile(
                     icon: Icons.badge_outlined,
                     title: 'Identity Document (Fayda / Kebele)',
-                    subtitle: user.isVerified
-                        ? 'Verified ✓ Official Ethiopian ID on File'
-                        : 'Not Verified • Upload Fayda / Kebele ID photo',
-                    isVerified: user.isVerified,
-                    onTap: user.isVerified
+                    subtitle: idSubtitle,
+                    isVerified: isDocVerified,
+                    isUnderReview: isDocUnderReview,
+                    isRejected: isDocRejected,
+                    onTap: isDocVerified
                         ? null
                         : () {
                             Navigator.pop(ctx);
@@ -817,7 +898,11 @@ class ProfileScreen extends StatelessWidget {
                               MaterialPageRoute(
                                 builder: (_) => DocumentVerificationScreen(isProvider: isProvider),
                               ),
-                            );
+                            ).then((_) {
+                              if (context.mounted) {
+                                context.read<AuthProvider>().refreshCurrentUser();
+                              }
+                            });
                           },
                   ),
 
@@ -826,17 +911,22 @@ class ProfileScreen extends StatelessWidget {
                     _buildVerificationTile(
                       icon: Icons.home_work_outlined,
                       title: 'House Ownership & License Document',
-                      subtitle: user.isVerified
+                      subtitle: isDocVerified
                           ? 'Verified ✓ Title Deed & Property License Approved'
                           : 'Pending Upload • Upload Deed / Site Plan for AI & Admin review',
-                      isVerified: user.isVerified,
+                      isVerified: isDocVerified,
+                      isUnderReview: isDocUnderReview,
                       onTap: () {
                         Navigator.pop(ctx);
                         Navigator.of(context).push(
                           MaterialPageRoute(
                             builder: (_) => const DocumentVerificationScreen(isProvider: true),
                           ),
-                        );
+                        ).then((_) {
+                          if (context.mounted) {
+                            context.read<AuthProvider>().refreshCurrentUser();
+                          }
+                        });
                       },
                     ),
                   ],
@@ -844,16 +934,24 @@ class ProfileScreen extends StatelessWidget {
                   const SizedBox(height: 24),
 
                   CustomButton(
-                    text: user.isVerified ? 'View Submitted Verification Documents' : 'Proceed to Document Verification',
-                    icon: Icons.shield_rounded,
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => DocumentVerificationScreen(isProvider: isProvider),
-                        ),
-                      );
-                    },
+                    text: isDocVerified
+                        ? 'View Verified Trust Status'
+                        : (isDocUnderReview ? 'Submitted Document Under Review ⏳' : 'Proceed to Document Verification'),
+                    icon: isDocVerified ? Icons.check_circle_rounded : Icons.shield_rounded,
+                    onPressed: isDocUnderReview
+                        ? null
+                        : () {
+                            Navigator.pop(ctx);
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => DocumentVerificationScreen(isProvider: isProvider),
+                              ),
+                            ).then((_) {
+                              if (context.mounted) {
+                                context.read<AuthProvider>().refreshCurrentUser();
+                              }
+                            });
+                          },
                   ),
                 ],
               ),
@@ -869,8 +967,34 @@ class ProfileScreen extends StatelessWidget {
     required String title,
     required String subtitle,
     required bool isVerified,
+    bool isUnderReview = false,
+    bool isRejected = false,
     VoidCallback? onTap,
   }) {
+    final borderColor = isVerified
+        ? const Color(0xFFA7F3D0)
+        : (isUnderReview
+            ? const Color(0xFFFDE68A)
+            : (isRejected ? const Color(0xFFFCA5A5) : const Color(0xFFE2E8F0)));
+
+    final iconColor = isVerified
+        ? AppColors.primary
+        : (isUnderReview
+            ? Colors.amber.shade700
+            : (isRejected ? const Color(0xFFEF4444) : AppColors.textMuted));
+
+    final subtitleColor = isVerified
+        ? AppColors.success
+        : (isUnderReview
+            ? Colors.amber.shade900
+            : (isRejected ? const Color(0xFFB91C1C) : AppColors.textSecondary));
+
+    final trailingIcon = isVerified
+        ? Icons.check_circle_rounded
+        : (isUnderReview
+            ? Icons.hourglass_bottom_rounded
+            : (isRejected ? Icons.error_outline_rounded : Icons.chevron_right_rounded));
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -878,24 +1002,24 @@ class ProfileScreen extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: isVerified ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0)),
+          border: Border.all(color: borderColor),
         ),
         child: Row(
           children: [
-            Icon(icon, color: isVerified ? AppColors.primary : AppColors.textMuted, size: 22),
+            Icon(icon, color: iconColor, size: 22),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppColors.textPrimary)),
-                  Text(subtitle, style: TextStyle(fontSize: 11, color: isVerified ? AppColors.success : AppColors.textSecondary)),
+                  Text(subtitle, style: TextStyle(fontSize: 11, color: subtitleColor)),
                 ],
               ),
             ),
             Icon(
-              isVerified ? Icons.check_circle_rounded : Icons.chevron_right_rounded,
-              color: isVerified ? AppColors.success : AppColors.textMuted,
+              trailingIcon,
+              color: iconColor,
               size: 20,
             ),
           ],
@@ -1501,9 +1625,14 @@ class ProfileScreen extends StatelessWidget {
       ),
       body: user == null
           ? const Center(child: Text('Not Logged In'))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
+          : RefreshIndicator(
+              onRefresh: () async {
+                await context.read<AuthProvider>().refreshCurrentUser();
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
                 children: [
                   // User Avatar & Name Card
                   Container(
@@ -1585,47 +1714,67 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   if (!user.isVerified || !user.isPhoneVerified) ...[
                     const SizedBox(height: 14),
-                    GestureDetector(
-                      onTap: () => _showAccountVerificationModal(context, user),
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF2F2),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFFCA5A5)),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFFEF4444),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                    Builder(
+                      builder: (context) {
+                        String bannerTitle;
+                        String bannerSubtitle;
+
+                        if (!user.isVerified && !user.isPhoneVerified) {
+                          bannerTitle = 'Action Required: Account Unverified';
+                          bannerSubtitle = authProvider.isProvider
+                              ? 'Submit National ID & House Deed to activate property posting.'
+                              : 'Verify phone & National ID to earn your Verified Trust Badge.';
+                        } else if (user.isVerified && !user.isPhoneVerified) {
+                          bannerTitle = 'Action Required: Phone Number Unverified';
+                          bannerSubtitle = 'Your mobile number is not verified. Verify via SMS OTP to complete profile trust status.';
+                        } else {
+                          bannerTitle = 'Action Required: Identity Unverified';
+                          bannerSubtitle = authProvider.isProvider
+                              ? 'Submit National Fayda/Kebele ID & House Deed to activate posting.'
+                              : 'Upload National Fayda/Kebele ID photo for Admin verification.';
+                        }
+
+                        return GestureDetector(
+                          onTap: () => _showAccountVerificationModal(context, user),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF2F2),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFFCA5A5)),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Action Required: Account Unverified',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF991B1B)),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: const BoxDecoration(
+                                    color: Color(0xFFEF4444),
+                                    shape: BoxShape.circle,
                                   ),
-                                  Text(
-                                    authProvider.isProvider
-                                        ? 'Submit National ID & House Deed to activate property posting.'
-                                        : 'Verify phone & National ID to earn your Verified Trust Badge.',
-                                    style: const TextStyle(fontSize: 11, color: Color(0xFFB91C1C)),
+                                  child: const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        bannerTitle,
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF991B1B)),
+                                      ),
+                                      Text(
+                                        bannerSubtitle,
+                                        style: const TextStyle(fontSize: 11, color: Color(0xFFB91C1C)),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
+                                ),
+                                const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF991B1B)),
+                              ],
                             ),
-                            const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFF991B1B)),
-                          ],
-                        ),
-                      ),
+                          ),
+                        );
+                      },
                     ),
                   ],
                   const SizedBox(height: 16),
@@ -1988,6 +2137,7 @@ class ProfileScreen extends StatelessWidget {
                 ],
               ),
             ),
+          ),
     );
   }
 

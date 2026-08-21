@@ -98,8 +98,8 @@ export async function apiFetch(path: string, options: ApiRequestInit = {}) {
   // --- First attempt ---
   let response = await doFetch(getToken());
 
-  // --- On 401: try a silent token refresh, then retry once ---
-  if (response.status === 401 || response.status === 403) {
+  // --- On 401 Unauthorized: try silent token refresh, then retry once ---
+  if (response.status === 401) {
     const newToken = await silentRefresh();
 
     if (newToken) {
@@ -107,8 +107,8 @@ export async function apiFetch(path: string, options: ApiRequestInit = {}) {
       response = await doFetch(newToken);
     }
 
-    // If refresh failed or retry also 401'd, force logout
-    if (response.status === 401 || response.status === 403) {
+    // If refresh failed or retry still 401'd, force logout
+    if (response.status === 401) {
       forceLogout();
       let errorMsg = `API error: ${response.status} ${response.statusText}`;
       try {
@@ -119,6 +119,7 @@ export async function apiFetch(path: string, options: ApiRequestInit = {}) {
     }
   }
 
+  // On 403 Forbidden or other non-OK status: throw error without forceLogout
   if (!response.ok) {
     let errorMsg = `API error: ${response.status} ${response.statusText}`;
     try {

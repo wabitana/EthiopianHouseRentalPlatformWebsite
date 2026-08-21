@@ -4,17 +4,32 @@ import '../mock_data.dart';
 abstract class AuthRemoteDataSource {
   Future<UserModel?> fetchCurrentUser();
   Future<UserModel> loginUser(String emailOrPhone, String password, UserRole role);
-  Future<UserModel> loginWithGoogle(UserRole role, {String? email, String? name, String? avatarUrl});
+  Future<UserModel> loginWithGoogle(
+    UserRole role, {
+    String? email,
+    String? name,
+    String? avatarUrl,
+    String? region,
+    String? city,
+    String? address,
+    String? phone,
+  });
+
   Future<UserModel> registerUser({
     required String name,
     required String email,
     required String phone,
     required String password,
     required UserRole role,
+    String? region,
+    String? city,
+    String? address,
   });
   Future<void> logoutUser();
   Future<UserModel> updateUserProfile(UserModel user);
   Future<UserModel> verifyIdentity(String idType, String idNumber, {String? documentImage, String? selfieImage});
+  Future<bool> forgotPassword(String email);
+  Future<bool> resetPassword(String email, String code, String newPassword);
 }
 
 class MockAuthRemoteDataSource implements AuthRemoteDataSource {
@@ -40,16 +55,28 @@ class MockAuthRemoteDataSource implements AuthRemoteDataSource {
   }
 
   @override
-  Future<UserModel> loginWithGoogle(UserRole role, {String? email, String? name, String? avatarUrl}) async {
+  Future<UserModel> loginWithGoogle(
+    UserRole role, {
+    String? email,
+    String? name,
+    String? avatarUrl,
+    String? region,
+    String? city,
+    String? address,
+    String? phone,
+  }) async {
     await Future.delayed(const Duration(milliseconds: 600));
     _currentUser = UserModel(
       id: 'google_user_101',
       name: name ?? 'Abebe Bikila (Google User)',
       email: email ?? 'abebe.google@gmail.com',
-      phone: '+251 91 122 3344',
+      phone: phone ?? '+251 91 122 3344',
       role: role,
       avatarUrl: avatarUrl ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
       isVerified: true,
+      city: city ?? 'Addis Ababa',
+      region: region ?? 'Addis Ababa',
+      address: address,
     );
     return _currentUser!;
   }
@@ -61,6 +88,9 @@ class MockAuthRemoteDataSource implements AuthRemoteDataSource {
     required String phone,
     required String password,
     required UserRole role,
+    String? region,
+    String? city,
+    String? address,
   }) async {
     // Simulate HTTP POST /api/v1/auth/register
     await Future.delayed(const Duration(milliseconds: 500));
@@ -96,5 +126,17 @@ class MockAuthRemoteDataSource implements AuthRemoteDataSource {
       _currentUser = _currentUser!.copyWith(isVerified: true);
     }
     return _currentUser!;
+  }
+
+  @override
+  Future<bool> forgotPassword(String email) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    return true;
+  }
+
+  @override
+  Future<bool> resetPassword(String email, String code, String newPassword) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    return true;
   }
 }

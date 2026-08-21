@@ -5,16 +5,29 @@ import '../../shared/models/user_model.dart';
 abstract class AuthRepository {
   Future<UserModel?> getCurrentUser();
   Future<UserModel> login(String emailOrPhone, String password, UserRole role);
-  Future<UserModel> loginWithGoogle(UserRole role, {String? email, String? name, String? avatarUrl});
+  Future<UserModel> loginWithGoogle(
+    UserRole role, {
+    String? email,
+    String? name,
+    String? avatarUrl,
+    String? region,
+    String? city,
+    String? address,
+    String? phone,
+  });
   Future<UserModel> register({
     required String name,
     required String email,
     required String phone,
     required String password,
     required UserRole role,
+    String? region,
+    String? city,
+    String? address,
   });
   Future<void> logout();
-  Future<void> resetPassword(String emailOrPhone);
+  Future<bool> forgotPassword(String emailOrPhone);
+  Future<bool> performResetPassword(String email, String code, String newPassword);
   Future<UserModel> updateProfile(UserModel updatedUser);
   Future<UserModel> verifyIdentity(String idType, String idNumber, {String? documentImage, String? selfieImage});
 }
@@ -33,8 +46,26 @@ class AuthRepositoryImpl implements AuthRepository {
       _remoteDataSource.loginUser(emailOrPhone, password, role);
 
   @override
-  Future<UserModel> loginWithGoogle(UserRole role, {String? email, String? name, String? avatarUrl}) =>
-      _remoteDataSource.loginWithGoogle(role, email: email, name: name, avatarUrl: avatarUrl);
+  Future<UserModel> loginWithGoogle(
+    UserRole role, {
+    String? email,
+    String? name,
+    String? avatarUrl,
+    String? region,
+    String? city,
+    String? address,
+    String? phone,
+  }) =>
+      _remoteDataSource.loginWithGoogle(
+        role,
+        email: email,
+        name: name,
+        avatarUrl: avatarUrl,
+        region: region,
+        city: city,
+        address: address,
+        phone: phone,
+      );
 
   @override
   Future<UserModel> register({
@@ -43,6 +74,9 @@ class AuthRepositoryImpl implements AuthRepository {
     required String phone,
     required String password,
     required UserRole role,
+    String? region,
+    String? city,
+    String? address,
   }) =>
       _remoteDataSource.registerUser(
         name: name,
@@ -50,15 +84,20 @@ class AuthRepositoryImpl implements AuthRepository {
         phone: phone,
         password: password,
         role: role,
+        region: region,
+        city: city,
+        address: address,
       );
 
   @override
   Future<void> logout() => _remoteDataSource.logoutUser();
 
   @override
-  Future<void> resetPassword(String emailOrPhone) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-  }
+  Future<bool> forgotPassword(String emailOrPhone) => _remoteDataSource.forgotPassword(emailOrPhone);
+
+  @override
+  Future<bool> performResetPassword(String email, String code, String newPassword) =>
+      _remoteDataSource.resetPassword(email, code, newPassword);
 
   @override
   Future<UserModel> updateProfile(UserModel updatedUser) => _remoteDataSource.updateUserProfile(updatedUser);

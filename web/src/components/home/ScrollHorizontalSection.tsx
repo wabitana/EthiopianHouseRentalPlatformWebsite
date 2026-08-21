@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import {
   MapPin,
@@ -118,8 +118,64 @@ const scrollHouses: FeaturedHouse[] = [
   },
 ];
 
+const mapBackendToFeaturedHouse = (p: any): FeaturedHouse => {
+  let imagesArr: string[] = [];
+  try {
+    imagesArr = typeof p.images === 'string' ? JSON.parse(p.images) : p.images || [];
+  } catch (e) {
+    imagesArr = [];
+  }
+
+  let badge = "Verified Listing";
+  if (p.propertyType === "Villa") badge = "Luxury Villa";
+  else if (p.propertyType === "Apartment") badge = "Modern Apartment";
+  else if (p.propertyType === "Studio") badge = "Popular Studio";
+  else if (p.isVerified) badge = "360° Virtual Tour";
+
+  const mainImage = imagesArr.length > 0
+    ? (imagesArr[0].startsWith('http') || imagesArr[0].startsWith('/') ? imagesArr[0] : `/${imagesArr[0]}`)
+    : "/images/villas_family_homes.png";
+
+  return {
+    id: p.id,
+    title: p.title,
+    category: p.propertyType || "Luxury Property",
+    city: p.city || "Addis Ababa",
+    neighborhood: p.area || p.neighborhood || "Bole",
+    pricePerMonth: p.price || p.rentPrice || 0,
+    bedrooms: p.rooms || 2,
+    bathrooms: p.bathrooms || 1,
+    areaSqm: p.areaSqm || 150,
+    image: mainImage,
+    description: p.description || "Verified residential house rental in prime Ethiopian neighborhood with modern amenities.",
+    badge,
+  };
+};
+
 export default function ScrollHorizontalSection() {
   const targetRef = useRef<HTMLDivElement>(null);
+  const [houses, setHouses] = useState<FeaturedHouse[]>(scrollHouses);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    async function loadDbProperties() {
+      try {
+        const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
+        const res = await fetch(`${backendUrl}/properties`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            setHouses(data.map(mapBackendToFeaturedHouse));
+          }
+        }
+      } catch (err) {
+        console.warn("Could not fetch DB properties for home horizontal scroll, falling back to defaults:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadDbProperties();
+  }, []);
 
   // Hook into page vertical scroll progress
   const { scrollYProgress } = useScroll({
@@ -184,7 +240,7 @@ export default function ScrollHorizontalSection() {
           </div>
 
           {/* Property Cards Track (Clean White Aesthetic) */}
-          {scrollHouses.map(house => (
+          {houses.map(house => (
             <div
               key={house.id}
               className="w-[340px] sm:w-[420px] shrink-0 bg-slate-50 border border-slate-200 hover:border-emerald-500 rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 h-[480px] flex flex-col justify-between group"

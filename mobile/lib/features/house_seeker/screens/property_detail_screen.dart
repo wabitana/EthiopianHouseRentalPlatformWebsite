@@ -20,7 +20,7 @@ import '../../../shared/widgets/neighborhood_radar_widget.dart';
 import '../../rentals/screens/digital_lease_generator_screen.dart';
 import '../../rentals/screens/schedule_tour_modal.dart';
 import '../../rentals/screens/roommate_rent_splitter_screen.dart';
-import '../../../data/mock_data.dart';
+
 
 class PropertyDetailScreen extends StatefulWidget {
   final String propertyId;
@@ -262,36 +262,27 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     final favoritesProvider = context.watch<FavoritesProvider>();
     final user = context.watch<AuthProvider>().currentUser;
 
-    PropertyModel property;
+    PropertyModel? found;
     try {
-      property = propertyProvider.properties.firstWhere((p) => p.id == widget.propertyId);
+      found = propertyProvider.properties.firstWhere((p) => p.id == widget.propertyId);
     } catch (_) {
       try {
-        property = propertyProvider.providerProperties.firstWhere((p) => p.id == widget.propertyId);
+        found = propertyProvider.providerProperties.firstWhere((p) => p.id == widget.propertyId);
       } catch (_) {
-        try {
-          property = MockData.mockProperties.firstWhere((p) => p.id == widget.propertyId);
-        } catch (_) {
-          property = PropertyModel(
-            id: widget.propertyId,
-            providerId: 'user_provider_1',
-            providerName: 'Solomon Kifle',
-            providerPhone: '+251 91 123 4567',
-            title: 'Modern House for Rent',
-            description: 'Spacious home with all modern amenities in a serene neighborhood.',
-            propertyType: 'Apartment',
-            price: 25000,
-            rooms: 3,
-            bathrooms: 2,
-            city: 'Addis Ababa',
-            area: 'Bole',
-            neighborhood: 'Atlas',
-            images: const [],
-            amenities: const ['Water', 'Electricity', 'Wi-Fi', 'Parking'],
-          );
-        }
+        found = null;
       }
     }
+
+    if (found == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Property Details')),
+        body: const Center(
+          child: Text('Property not found or unavailable.'),
+        ),
+      );
+    }
+
+    final PropertyModel property = found;
 
     final isFav = favoritesProvider.isFavorite(property.id);
     final hasImages = property.images.isNotEmpty;
@@ -610,11 +601,11 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _SpecItem(Icons.king_bed_outlined, '${property.rooms} Rooms'),
+                              Expanded(child: _SpecItem(Icons.king_bed_outlined, '${property.rooms} Rooms')),
                               const _VerticalDivider(),
-                              _SpecItem(Icons.bathtub_outlined, '${property.bathrooms} Baths'),
+                              Expanded(child: _SpecItem(Icons.bathtub_outlined, '${property.bathrooms} Baths')),
                               const _VerticalDivider(),
-                              _SpecItem(Icons.apartment_outlined, property.propertyType),
+                              Expanded(child: _SpecItem(Icons.apartment_outlined, property.propertyType)),
                             ],
                           ),
                         ),
@@ -750,6 +741,9 @@ class _SpecItem extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
         ),
       ],

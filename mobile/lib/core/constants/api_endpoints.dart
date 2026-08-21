@@ -1,10 +1,18 @@
 import 'package:flutter/foundation.dart';
+import '../config/app_config.dart';
 
 class ApiEndpoints {
   // Configurable base URL:
+  // Custom API_BASE_URL from .env or compile-time flag takes precedence.
   // Android Emulator: 10.0.2.2:3000
   // Windows Desktop / iOS / Web: localhost:3000
   static String get baseUrl {
+    final customUrl = AppConfig.apiBaseUrl;
+    if (customUrl.isNotEmpty) {
+      final cleanUrl = customUrl.endsWith('/') ? customUrl.substring(0, customUrl.length - 1) : customUrl;
+      return cleanUrl.endsWith('/api/v1') ? cleanUrl : '$cleanUrl/api/v1';
+    }
+
     if (kIsWeb) {
       return 'http://localhost:3000/api/v1';
     } else if (defaultTargetPlatform == TargetPlatform.android) {
@@ -15,6 +23,12 @@ class ApiEndpoints {
   }
 
   static String get mediaBaseUrl {
+    final customUrl = AppConfig.apiBaseUrl;
+    if (customUrl.isNotEmpty) {
+      final cleanUrl = customUrl.endsWith('/') ? customUrl.substring(0, customUrl.length - 1) : customUrl;
+      return cleanUrl.replaceFirst('/api/v1', '');
+    }
+
     if (kIsWeb) {
       return 'http://localhost:3000';
     } else if (defaultTargetPlatform == TargetPlatform.android) {
@@ -35,6 +49,14 @@ class ApiEndpoints {
   static String get logout => '$baseUrl/auth/logout';
   static String get me => '$baseUrl/users/me';
   static String get verifyIdentity => '$baseUrl/auth/verify-identity';
+  static String get verificationStatus => '$baseUrl/verification/my-status';
+  static String get forgotPassword => '$baseUrl/auth/forgot-password';
+  static String get resetPassword => '$baseUrl/auth/reset-password';
+
+  // Subscriptions endpoints
+  static String get subscriptionPlans => '$baseUrl/subscriptions/plans';
+  static String get subscribe => '$baseUrl/subscriptions/subscribe';
+  static String get mySubscription => '$baseUrl/subscriptions/my-subscription';
 
   // Properties endpoints
   static String get properties => '$baseUrl/properties';

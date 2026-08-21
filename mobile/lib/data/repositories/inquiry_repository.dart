@@ -20,7 +20,7 @@ class ApiInquiryRepository implements InquiryRepository {
         return res.map((item) => InquiryModel.fromJson(item as Map<String, dynamic>)).toList();
       }
     } catch (_) {}
-    return MockInquiryRepository().getSeekerInquiries(seekerId);
+    return [];
   }
 
   @override
@@ -31,40 +31,36 @@ class ApiInquiryRepository implements InquiryRepository {
         return res.map((item) => InquiryModel.fromJson(item as Map<String, dynamic>)).toList();
       }
     } catch (_) {}
-    return MockInquiryRepository().getProviderInquiries(providerId);
+    return [];
   }
 
   @override
   Future<InquiryModel> sendInquiry(InquiryModel inquiry) async {
-    try {
-      final res = await ApiClient.post(
-        ApiEndpoints.inquiries,
-        body: {
-          'propertyId': inquiry.propertyId,
-          'message': inquiry.message,
-        },
-      );
-      if (res is Map<String, dynamic>) {
-        return InquiryModel.fromJson(res);
-      }
-    } catch (_) {}
-    return MockInquiryRepository().sendInquiry(inquiry);
+    final res = await ApiClient.post(
+      ApiEndpoints.inquiries,
+      body: {
+        'propertyId': inquiry.propertyId,
+        'message': inquiry.message,
+      },
+    );
+    if (res is Map<String, dynamic>) {
+      return InquiryModel.fromJson(res);
+    }
+    throw Exception('Failed to send inquiry to server');
   }
 
   @override
   Future<InquiryModel> respondToInquiry(String inquiryId, String reply, InquiryStatus newStatus) async {
-    try {
-      final res = await ApiClient.post(
-        '${ApiEndpoints.inquiries}/$inquiryId/messages',
-        body: {
-          'message': reply,
-        },
-      );
-      if (res is Map<String, dynamic>) {
-        return InquiryModel.fromJson(res);
-      }
-    } catch (_) {}
-    return MockInquiryRepository().respondToInquiry(inquiryId, reply, newStatus);
+    final res = await ApiClient.post(
+      '${ApiEndpoints.inquiries}/$inquiryId/messages',
+      body: {
+        'message': reply,
+      },
+    );
+    if (res is Map<String, dynamic>) {
+      return InquiryModel.fromJson(res);
+    }
+    throw Exception('Failed to respond to inquiry');
   }
 
   @override
@@ -75,18 +71,16 @@ class ApiInquiryRepository implements InquiryRepository {
     String senderRole,
     String senderName,
   ) async {
-    try {
-      final res = await ApiClient.post(
-        '${ApiEndpoints.inquiries}/$inquiryId/messages',
-        body: {
-          'message': messageText,
-        },
-      );
-      if (res is Map<String, dynamic>) {
-        return InquiryModel.fromJson(res);
-      }
-    } catch (_) {}
-    return MockInquiryRepository().sendChatMessage(inquiryId, messageText, senderId, senderRole, senderName);
+    final res = await ApiClient.post(
+      '${ApiEndpoints.inquiries}/$inquiryId/messages',
+      body: {
+        'message': messageText,
+      },
+    );
+    if (res is Map<String, dynamic>) {
+      return InquiryModel.fromJson(res);
+    }
+    throw Exception('Failed to send chat message');
   }
 }
 

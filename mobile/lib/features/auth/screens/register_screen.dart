@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/constants/ethiopia_locations.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../shared/widgets/custom_text_field.dart';
@@ -8,7 +9,10 @@ import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'email_verification_screen.dart';
 import '../../../shared/widgets/main_layout_wrapper.dart';
-import '../../../shared/widgets/google_account_picker_dialog.dart';
+import '../../../shared/widgets/google_location_dialog.dart';
+import '../../../core/config/app_config.dart';
+import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -22,20 +26,44 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _customCityController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
+  String _selectedRegion = 'Addis Ababa';
+  String _selectedCity = 'Bole';
+  bool _isCustomCity = false;
   UserRole _selectedRole = UserRole.seeker;
   bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   void _onRegister() async {
     if (_formKey.currentState!.validate()) {
+      if (_passwordController.text != _confirmPasswordController.text) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Passwords do not match! Please verify your password.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      final finalCity = _isCustomCity && _customCityController.text.trim().isNotEmpty
+          ? _customCityController.text.trim()
+          : _selectedCity;
+
       final authProvider = context.read<AuthProvider>();
       final success = await authProvider.register(
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
-        phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : '+251 90 000 0000',
+        phone: _phoneController.text.trim(),
         password: _passwordController.text,
         role: _selectedRole,
+        region: _selectedRegion,
+        city: finalCity,
+        address: _addressController.text.trim().isNotEmpty ? _addressController.text.trim() : finalCity,
       );
 
       if (success && mounted) {
@@ -51,27 +79,64 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  void _onGoogleRegister() {
-    showDialog(
-      context: context,
-      builder: (ctx) => GoogleAccountPickerDialog(
-        onAccountSelected: (account) async {
-          final authProvider = context.read<AuthProvider>();
-          final success = await authProvider.loginWithGoogle(
-            _selectedRole,
-            email: account.email,
-            name: account.name,
-            avatarUrl: account.avatarUrl,
-          );
-          if (success && mounted) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const MainLayoutWrapper()),
-              (route) => false,
+  Future<void> _onGoogleRegister() async {
+    try {
+      final googleSignIn = GoogleSignIn(
+        clientId: kIsWeb && AppConfig.googleWebClientId.isNotEmpty ? AppConfig.googleWebClientId : null,
+        scopes: ['email', 'profile'],
+      );
+
+      final GoogleSignInAccount? account = await googleSignIn.signIn();
+      if (account == null) return; // User cancelled
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => GoogleLocationDialog(
+          googleName: account.displayName ?? 'Google User',
+          googleEmail: account.email,
+          googlePhoto: account.photoUrl,
+          onSubmit: (locResult) async {
+            final authProvider = context.read<AuthProvider>();
+            final success = await authProvider.loginWithGoogle(
+              _selectedRole,
+              email: account.email,
+              name: account.displayName ?? 'Google User',
+              avatarUrl: account.photoUrl,
+              region: locResult.region,
+              city: locResult.city,
+              address: locResult.address,
+              phone: locResult.phone,
             );
-          }
-        },
-      ),
-    );
+
+            if (success && mounted) {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const MainLayoutWrapper()),
+                (route) => false,
+              );
+            } else if (mounted && authProvider.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(authProvider.errorMessage!),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          },
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google Sign-In error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -79,7 +144,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _nameController.dispose();
     _phoneController.dispose();
     _emailController.dispose();
+    _addressController.dispose();
+    _customCityController.dispose();
     _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
@@ -350,6 +418,91 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             return null;
                           },
                         ),
+                        const SizedBox(height: 24),
+
+                        const Text(
+                          '3. REGION & CITY LOCATION',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textSecondary,
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Region Selector
+                        DropdownButtonFormField<String>(
+                          initialValue: _selectedRegion,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            labelText: 'Administrative Region',
+                            prefixIcon: const Icon(Icons.map_rounded, color: AppColors.primary),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                          items: EthiopiaLocations.regions
+                              .map((r) => DropdownMenuItem(value: r, child: Text(r, overflow: TextOverflow.ellipsis)))
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _selectedRegion = val;
+                                final availableCities = EthiopiaLocations.getCitiesForRegion(val);
+                                _selectedCity = availableCities.isNotEmpty ? availableCities.first : 'Central Area';
+                              });
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        // City / Area Selector
+                        DropdownButtonFormField<String>(
+                          initialValue: EthiopiaLocations.getCitiesForRegion(_selectedRegion).contains(_selectedCity)
+                              ? _selectedCity
+                              : EthiopiaLocations.getCitiesForRegion(_selectedRegion).first,
+                          isExpanded: true,
+                          decoration: InputDecoration(
+                            labelText: 'City / Sub-City Area',
+                            prefixIcon: const Icon(Icons.location_city_rounded, color: AppColors.primary),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                          items: EthiopiaLocations.getCitiesForRegion(_selectedRegion)
+                              .map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis)))
+                              .toList(),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setState(() {
+                                _selectedCity = val;
+                                _isCustomCity = (val == '+ Other / Custom City Keyword');
+                              });
+                            }
+                          },
+                        ),
+                        if (_isCustomCity) ...[
+                          const SizedBox(height: 12),
+                          CustomTextField(
+                            label: 'Custom City / Town Keyword',
+                            hint: 'e.g. Debre Birhan, Bale Robe, Woldiya...',
+                            controller: _customCityController,
+                            prefixIcon: Icons.edit_location_alt_rounded,
+                            validator: (val) {
+                              if (_isCustomCity && (val == null || val.trim().isEmpty)) {
+                                return 'Please enter your custom city or town keyword';
+                              }
+                              return null;
+                            },
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+
+                        CustomTextField(
+                          label: 'Zone, Woreda / Kifle Ketema & Kebele (Optional)',
+                          hint: 'e.g. Zone 1, Woreda 04 / Kifle Ketema, Kebele 03, House #104',
+                          controller: _addressController,
+                          prefixIcon: Icons.home_work_outlined,
+                        ),
                         const SizedBox(height: 16),
 
                         CustomTextField(
@@ -372,6 +525,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           ),
                           validator: (val) {
                             if (val == null || val.length < 6) return 'Password must be at least 6 characters';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 16),
+
+                        CustomTextField(
+                          label: 'Confirm Password',
+                          hint: '••••••••',
+                          controller: _confirmPasswordController,
+                          obscureText: _obscureConfirmPassword,
+                          prefixIcon: Icons.lock_clock_outlined,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                              color: AppColors.textMuted,
+                              size: 20,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _obscureConfirmPassword = !_obscureConfirmPassword;
+                              });
+                            },
+                          ),
+                          validator: (val) {
+                            if (val == null || val.isEmpty) return 'Please confirm your password';
+                            if (val != _passwordController.text) return 'Passwords do not match';
                             return null;
                           },
                         ),
@@ -532,7 +711,7 @@ class _RoleCard extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
@@ -551,51 +730,50 @@ class _RoleCard extends StatelessWidget {
           ],
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: isSelected ? AppColors.primaryContainer : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     icon,
-                    size: 22,
+                    size: 20,
                     color: isSelected ? AppColors.primary : AppColors.textMuted,
                   ),
                 ),
                 Icon(
                   isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                  size: 20,
+                  size: 18,
                   color: isSelected ? AppColors.primary : const Color(0xFFCBD5E1),
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                title,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: isSelected ? AppColors.primary : AppColors.textPrimary,
-                ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: isSelected ? AppColors.primary : AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: AppColors.textSecondary,
-                  height: 1.25,
-                ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 10.5,
+                color: AppColors.textSecondary,
+                height: 1.2,
               ),
             ),
           ],

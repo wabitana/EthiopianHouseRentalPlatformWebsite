@@ -6,8 +6,14 @@ import '../../core/storage/token_storage.dart';
 import '../../shared/models/user_model.dart';
 import 'auth_remote_datasource.dart';
 
+import '../../core/config/app_config.dart';
+
 class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId: kIsWeb && AppConfig.googleWebClientId.isNotEmpty ? AppConfig.googleWebClientId : null,
+    serverClientId: !kIsWeb && AppConfig.googleServerClientId.isNotEmpty
+        ? AppConfig.googleServerClientId
+        : (!kIsWeb && AppConfig.googleWebClientId.isNotEmpty ? AppConfig.googleWebClientId : null),
     scopes: [
       'email',
       'profile',
@@ -66,25 +72,36 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
   }
 
   @override
-  Future<UserModel> loginWithGoogle(UserRole role, {String? email, String? name, String? avatarUrl}) async {
+  Future<UserModel> loginWithGoogle(
+    UserRole role, {
+    String? email,
+    String? name,
+    String? avatarUrl,
+    String? region,
+    String? city,
+    String? address,
+    String? phone,
+  }) async {
     String googleEmail = email ?? '';
     String googleName = name ?? '';
     String? googlePhoto = avatarUrl;
 
-    try {
-      final GoogleSignInAccount? account = await _googleSignIn.signIn();
-      if (account != null) {
-        googleEmail = account.email;
-        googleName = account.displayName ?? 'Google User';
-        googlePhoto = account.photoUrl;
+    if (googleEmail.isEmpty) {
+      try {
+        final GoogleSignInAccount? account = await _googleSignIn.signIn();
+        if (account != null) {
+          googleEmail = account.email;
+          googleName = account.displayName ?? 'Google User';
+          googlePhoto = account.photoUrl;
+        }
+      } catch (e) {
+        debugPrint('Google Sign-In native prompt error: $e');
+        throw ApiException('Google Sign-In error: ${e.toString()}');
       }
-    } catch (e) {
-      debugPrint('Google Sign-In native prompt info: $e');
     }
 
     if (googleEmail.isEmpty) {
-      googleEmail = 'google_user@gmail.com';
-      googleName = 'Abebe Bikila';
+      throw ApiException('Google sign-in was cancelled');
     }
 
     final res = await ApiClient.post(
@@ -94,19 +111,24 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
         'name': googleName,
         'avatarUrl': googlePhoto ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
         'role': role.code,
+        'region': region,
+        'city': city,
+        'address': address,
+        'phone': phone,
       },
       requireAuth: false,
     );
 
-    if (res != null && res['token'] != null && res['user'] != null) {
-      await TokenStorage.saveToken(res['token'] as String);
+    final tokenStr = res != null ? ((res['accessToken'] ?? res['token']) as String?) : null;
+    if (res != null && tokenStr != null && res['user'] != null) {
+      await TokenStorage.saveToken(tokenStr);
       final userMap = res['user'] as Map<String, dynamic>;
       await TokenStorage.saveUserData(userMap);
       final user = UserModel.fromJson(userMap);
       await TokenStorage.saveUserRole(user.role.code);
       return user;
     }
-    throw ApiException('Failed to parse Google login response');
+    throw ApiException('Failed to parse Google OAuth login response');
   }
 
   @override
@@ -116,6 +138,9 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
     required String phone,
     required String password,
     required UserRole role,
+    String? region,
+    String? city,
+    String? address,
   }) async {
     final res = await ApiClient.post(
       ApiEndpoints.register,
@@ -125,6 +150,9 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
         'phone': phone,
         'password': password,
         'role': role.code,
+        'region': ?region,
+        'city': ?city,
+        'address': ?address,
       },
       requireAuth: false,
     );
@@ -244,5 +272,29 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
       return UserModel.fromJson(userMap);
     }
     throw ApiException('Failed to parse identity verification response');
+  }
+
+  @override
+  Future<bool> forgotPassword(String email) async {
+    final res = await ApiClient.post(
+      ApiEndpoints.forgotPassword,
+      body: {'email': email},
+      requireAuth: false,
+    );
+    return res != null && res['message'] != null;
+  }
+
+  @override
+  Future<bool> resetPassword(String email, String code, String newPassword) async {
+    final res = await ApiClient.post(
+      ApiEndpoints.resetPassword,
+      body: {
+        'email': email,
+        'code': code,
+        'newPassword': newPassword,
+      },
+      requireAuth: false,
+    );
+    return res != null && res['message'] != null;
   }
 }

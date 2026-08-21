@@ -3,9 +3,6 @@ import 'package:provider/provider.dart';
 import '../../features/auth/providers/auth_provider.dart';
 import '../../features/house_seeker/screens/seeker_main_layout.dart';
 import '../../features/house_provider/screens/provider_main_layout.dart';
-import '../../features/house_seeker/providers/property_provider.dart';
-import '../../features/house_seeker/providers/inquiry_provider.dart';
-import '../../features/notifications/providers/notification_provider.dart';
 
 class MainLayoutWrapper extends StatefulWidget {
   const MainLayoutWrapper({super.key});

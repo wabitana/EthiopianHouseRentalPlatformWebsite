@@ -67,29 +67,17 @@ class PropertyRepositoryImpl implements PropertyRepository {
 
       return list;
     } catch (_) {
-      // Fallback to mock data source if offline
-      return MockPropertyRemoteDataSource().fetchProperties(
-        city: city,
-        area: area,
-        propertyType: propertyType,
-        minPrice: minPrice,
-        maxPrice: maxPrice,
-        minRooms: minRooms,
-        minBathrooms: minBathrooms,
-        requiredAmenities: requiredAmenities,
-        searchQuery: searchQuery,
-        sortBy: sortBy,
-      );
+      return [];
     }
   }
 
   @override
   Future<PropertyModel?> getPropertyById(String id) async {
     try {
-      final property = await _remoteDataSource.fetchPropertyById(id);
-      if (property != null) return property;
-    } catch (_) {}
-    return MockPropertyRemoteDataSource().fetchPropertyById(id);
+      return await _remoteDataSource.fetchPropertyById(id);
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -97,7 +85,7 @@ class PropertyRepositoryImpl implements PropertyRepository {
     try {
       return await _remoteDataSource.fetchProviderProperties(providerId);
     } catch (_) {
-      return MockPropertyRemoteDataSource().fetchProviderProperties(providerId);
+      return [];
     }
   }
 

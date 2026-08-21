@@ -1,11 +1,11 @@
 import { prisma } from '../../prisma';
-import { ChapaSimulationProvider, IPaymentProvider } from '../payments/payment.provider';
+import { createPaymentProvider, IPaymentProvider } from '../payments/payment.provider';
 
 export class SubscriptionService {
   private paymentProvider: IPaymentProvider;
 
   constructor(provider?: IPaymentProvider) {
-    this.paymentProvider = provider || new ChapaSimulationProvider();
+    this.paymentProvider = provider || createPaymentProvider();
   }
 
   async getSubscriptionPlans() {
@@ -56,7 +56,7 @@ export class SubscriptionService {
       userId,
       amountETB: plan.priceETB,
       email: user.email,
-      phone: user.phone,
+      phone: user.phone || '+251 90 000 0000',
       title: `${plan.name} Owner Subscription Plan`,
     });
 
@@ -79,6 +79,14 @@ export class SubscriptionService {
       },
       include: { plan: true },
     });
+
+    // Auto-promote seeker to provider role if they subscribe to a landlord plan
+    if (user.role === 'seeker') {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { role: 'provider' },
+      });
+    }
 
     // 3. Record Payment
     await prisma.payment.create({

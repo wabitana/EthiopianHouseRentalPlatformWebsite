@@ -30,14 +30,27 @@ router.get('/my-subscription', authenticateToken, async (req: AuthRequest, res) 
   }
 });
 
+import { z } from 'zod';
+
+const subscribeSchema = z.object({
+  planId: z.string().min(1, 'Subscription planId is required'),
+});
+
 // POST /api/v1/subscriptions/subscribe (Landlord subscribes with Chapa simulation)
 router.post('/subscribe', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const userId = req.user?.id;
-    const { planId } = req.body;
-
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
-    if (!planId) return res.status(400).json({ error: 'Subscription planId is required' });
+
+    const parseResult = subscribeSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        details: parseResult.error.flatten().fieldErrors,
+      });
+    }
+
+    const { planId } = parseResult.data;
 
     const result = await subscriptionService.subscribe(userId, planId);
     return res.status(201).json(result);

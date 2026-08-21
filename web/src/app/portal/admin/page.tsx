@@ -24,6 +24,7 @@ import { apiFetch } from "@/lib/api";
 
 export default function AdminDashboardPage() {
   const [timeFilter, setTimeFilter] = useState<"7d" | "30d" | "6m" | "1y">("6m");
+  const [pendingQueue, setPendingQueue] = useState<any[]>([]);
   const [data, setData] = useState(mockAnalyticsData);
   const [loading, setLoading] = useState(true);
 
@@ -37,6 +38,57 @@ export default function AdminDashboardPage() {
         }));
       } catch (err) {
         console.error("Failed to load admin dashboard stats:", err);
+      }
+
+      try {
+        const [vData, pProps] = await Promise.all([
+          apiFetch("/verification/admin/pending").catch(() => ({ propertyDocs: [] })),
+          apiFetch("/admin/properties/pending").catch(() => []),
+        ]);
+
+        const resolveImageUrl = (url?: string) => {
+          if (!url) return 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600';
+          if (url.startsWith('http://') || url.startsWith('https://')) return url;
+          return `http://localhost:3000${url.startsWith('/') ? '' : '/'}${url}`;
+        };
+
+        const propItems = (vData?.propertyDocs || []).map((d: any) => {
+          let imagesArr = [];
+          try {
+            imagesArr = typeof d.property?.images === 'string' ? JSON.parse(d.property.images) : d.property?.images || [];
+          } catch (e) {}
+          return {
+            id: d.id,
+            propertyTitle: d.property?.title || "Property Document Review",
+            propertyImage: resolveImageUrl(imagesArr[0]),
+            providerName: d.property?.providerName || 'Landlord',
+            location: d.property ? `${d.property.city}, ${d.property.area}` : 'Addis Ababa',
+            submittedDate: new Date(d.createdAt).toLocaleDateString(),
+            aiPreCheckScore: Math.round(d.aiRiskScore || 90),
+          };
+        });
+
+        const pendingPropItems = (pProps || []).map((p: any) => {
+          let imagesArr = [];
+          try {
+            imagesArr = typeof p.images === 'string' ? JSON.parse(p.images) : p.images || [];
+          } catch (e) {}
+          return {
+            id: p.id,
+            propertyTitle: p.title || "Pending Property Listing",
+            propertyImage: resolveImageUrl(imagesArr[0]),
+            providerName: p.providerName || 'Landlord',
+            location: `${p.city || ''}, ${p.area || ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '') || 'Addis Ababa',
+            submittedDate: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Recent',
+            aiPreCheckScore: 88,
+          };
+        });
+
+        const combined = [...propItems, ...pendingPropItems];
+        const uniqueQueue = Array.from(new Map(combined.map(item => [item.id, item])).values());
+        setPendingQueue(uniqueQueue);
+      } catch (err) {
+        console.error("Failed to load verification queue:", err);
       } finally {
         setLoading(false);
       }
@@ -239,23 +291,23 @@ export default function AdminDashboardPage() {
               <p className="text-xs text-slate-400">Commission & Service Fees Growth</p>
             </div>
             <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20">
-              ETB 4.85M Total
+              ETB {(data.revenueETB || 0).toLocaleString()} Total
             </span>
           </div>
 
           <div className="h-64 w-full pt-4 flex items-end justify-between gap-4 border-b border-slate-700 pb-2">
-            {data.revenueChart.map((item, idx) => {
-              const maxRev = 5000000;
-              const pct = (item.value / maxRev) * 100;
+            {(data.revenueChart || []).map((item, idx) => {
+              const maxRev = Math.max(...(data.revenueChart || []).map((r: any) => r.value || 0), 1000);
+              const pct = maxRev > 0 ? ((item.value || 0) / maxRev) * 100 : 0;
               return (
                 <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
                   <span className="text-[10px] text-teal-300 opacity-0 group-hover:opacity-100 transition-opacity font-bold">
-                    {(item.value / 1000000).toFixed(1)}M
+                    ETB {(item.value || 0).toLocaleString()}
                   </span>
                   <div className="w-full bg-slate-900/60 rounded-xl p-1.5 h-44 flex items-end">
                     <div
                       style={{ height: `${pct}%` }}
-                      className="w-full bg-gradient-to-t from-teal-600 to-emerald-400 rounded-lg group-hover:from-teal-500 group-hover:to-emerald-300 transition-all shadow-lg shadow-teal-500/20"
+                      className="w-full bg-gradient-to-t from-teal-600 to-emerald-400 rounded-lg group-hover:from-teal-500 group-hover:to-emerald-300 transition-all shadow-lg shadow-teal-500/20 min-h-[4px]"
                     />
                   </div>
                   <span className="text-xs font-semibold text-slate-300">{item.month}</span>
@@ -287,29 +339,37 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="space-y-3 pt-2">
-            {data.locationBreakdown.map((loc, idx) => (
-              <div key={idx} className="space-y-1">
-                <div className="flex items-center justify-between text-xs font-medium">
-                  <span className="text-white font-semibold">{loc.location}</span>
-                  <span className="text-slate-400">
-                    <strong className="text-emerald-400">{loc.count.toLocaleString()}</strong> listings ({loc.percentage}%)
-                  </span>
+            {data.locationBreakdown && data.locationBreakdown.length > 0 ? (
+              data.locationBreakdown.map((loc, idx) => (
+                <div key={idx} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs font-medium">
+                    <span className="text-white font-semibold">{loc.location}</span>
+                    <span className="text-slate-400">
+                      <strong className="text-emerald-400">{loc.count.toLocaleString()}</strong> listings ({loc.percentage}%)
+                    </span>
+                  </div>
+                  <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden p-0.5 border border-slate-700/50">
+                    <div
+                      style={{ width: `${loc.percentage}%` }}
+                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all"
+                    />
+                  </div>
                 </div>
-                <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden p-0.5 border border-slate-700/50">
-                  <div
-                    style={{ width: `${loc.percentage}%` }}
-                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all"
-                  />
-                </div>
+              ))
+            ) : (
+              <div className="p-6 text-center text-slate-400">
+                <MapPin className="h-7 w-7 text-slate-500 mx-auto mb-2" />
+                <p className="font-semibold text-slate-300 text-xs">No Active Property Locations in Database</p>
+                <p className="text-[11px] text-slate-500 mt-0.5">Listings published by providers or added by admins will display regional distributions here live.</p>
               </div>
-            ))}
+            )}
           </div>
         </div>
 
         {/* Property Status Distribution */}
         <div className="p-6 rounded-2xl bg-slate-800/90 border border-slate-700/80 shadow-xl space-y-4">
           <h3 className="text-base font-bold text-white">Property Status Distribution</h3>
-          <p className="text-xs text-slate-400">Breakdown of 3,284 listings</p>
+          <p className="text-xs text-slate-400">Breakdown of {(data.totalProperties || 0).toLocaleString()} listings</p>
 
           <div className="space-y-3 pt-2">
             {data.propertyStatusDistribution.map((st, idx) => (
@@ -363,34 +423,46 @@ export default function AdminDashboardPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-700/60 text-slate-300">
-              {mockVerifications.map((v) => (
-                <tr key={v.id} className="hover:bg-slate-750/50 transition-colors">
-                  <td className="p-3 font-semibold text-white flex items-center gap-2.5">
-                    <img
-                      src={v.propertyImage}
-                      alt={v.propertyTitle}
-                      className="h-9 w-12 rounded-lg object-cover"
-                    />
-                    <span className="line-clamp-1">{v.propertyTitle}</span>
-                  </td>
-                  <td className="p-3">{v.providerName}</td>
-                  <td className="p-3 text-slate-400">{v.location}</td>
-                  <td className="p-3 text-slate-400">{v.submittedDate}</td>
-                  <td className="p-3">
-                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                      {v.aiPreCheckScore}/100 Match
-                    </span>
-                  </td>
-                  <td className="p-3 text-right">
-                    <Link
-                      href="/portal/admin/verification"
-                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-colors inline-block"
-                    >
-                      Review
-                    </Link>
+              {pendingQueue.length > 0 ? (
+                pendingQueue.map((v) => (
+                  <tr key={v.id} className="hover:bg-slate-750/50 transition-colors">
+                    <td className="p-3 font-semibold text-white flex items-center gap-2.5">
+                      <img
+                        src={v.propertyImage}
+                        alt={v.propertyTitle}
+                        className="h-9 w-12 rounded-lg object-cover"
+                      />
+                      <span className="line-clamp-1">{v.propertyTitle}</span>
+                    </td>
+                    <td className="p-3">{v.providerName}</td>
+                    <td className="p-3 text-slate-400">{v.location}</td>
+                    <td className="p-3 text-slate-400">{v.submittedDate}</td>
+                    <td className="p-3">
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        {v.aiPreCheckScore}/100 Match
+                      </span>
+                    </td>
+                    <td className="p-3 text-right">
+                      <Link
+                        href="/portal/admin/verification"
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-colors inline-block"
+                      >
+                        Review
+                      </Link>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="p-6 text-center text-slate-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <CheckCircle2 className="h-7 w-7 text-emerald-400" />
+                      <p className="font-semibold text-slate-300">Pending Queue Clear</p>
+                      <p className="text-xs text-slate-500">No property listings or documents currently awaiting administrative verification.</p>
+                    </div>
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

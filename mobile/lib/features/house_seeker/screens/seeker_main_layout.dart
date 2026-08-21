@@ -3,13 +3,12 @@ import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../shared/widgets/custom_bottom_nav_bar.dart';
 import '../providers/favorites_provider.dart';
+import '../providers/property_provider.dart';
 import '../providers/inquiry_provider.dart';
 import '../../notifications/providers/notification_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/localization/language_provider.dart';
 import '../../../core/constants/app_strings.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../../core/services/tutoring_provider.dart';
 import '../../../shared/widgets/app_tutoring_overlay.dart';
 import 'seeker_home_screen.dart';
 import 'search_screen.dart';
@@ -60,7 +59,11 @@ class _SeekerMainLayoutState extends State<SeekerMainLayout> {
 
   @override
   Widget build(BuildContext context) {
-    final favoritesCount = context.watch<FavoritesProvider>().favoritePropertyIds.length;
+    final propertyProvider = context.watch<PropertyProvider>();
+    final favoritesProvider = context.watch<FavoritesProvider>();
+    final favoritesCount = propertyProvider.properties
+        .where((p) => favoritesProvider.isFavorite(p.id))
+        .length;
     final inquiries = context.watch<InquiryProvider>().seekerInquiries;
     final respondedCount = inquiries.where((inq) => inq.providerReply != null).length;
     final lang = context.watch<LanguageProvider>().currentLanguage;

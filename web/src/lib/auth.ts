@@ -74,15 +74,16 @@ async function tryServerSideRefresh(): Promise<SessionUser | null> {
     const response = await fetch(`${BACKEND_URL}/auth/refresh-token`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      // Pass refresh token in body since we can't forward HttpOnly cookies in server-to-server fetch
       body: JSON.stringify({ refreshToken }),
       cache: "no-store",
     });
 
     if (!response.ok) {
-      // Refresh failed — clear both cookies so the next request goes to login
-      cookieStore.delete("delala_token");
-      cookieStore.delete("delala_refresh_token");
+      // Refresh failed — attempt to clear cookies if allowed, ignore if in Server Component
+      try {
+        cookieStore.delete("delala_token");
+        cookieStore.delete("delala_refresh_token");
+      } catch {}
       return null;
     }
 
@@ -92,30 +93,30 @@ async function tryServerSideRefresh(): Promise<SessionUser | null> {
 
     if (!newToken) return null;
 
-    // Update cookies for subsequent server renders in this request
+    // Safely attempt to set updated cookies if running in Route Handler / Action
     const isProduction = process.env.NODE_ENV === "production";
-
-    cookieStore.set("delala_token", newToken, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: "lax",
-      maxAge: 15 * 60, // 15 minutes
-      path: "/",
-    });
-
-    if (newRefreshToken) {
-      cookieStore.set("delala_refresh_token", newRefreshToken, {
+    try {
+      cookieStore.set("delala_token", newToken, {
         httpOnly: true,
         secure: isProduction,
         sameSite: "lax",
-        maxAge: 7 * 24 * 60 * 60, // 7 days
+        maxAge: 60 * 60, // 1 hour
         path: "/",
       });
-    }
+
+      if (newRefreshToken) {
+        cookieStore.set("delala_refresh_token", newRefreshToken, {
+          httpOnly: true,
+          secure: isProduction,
+          sameSite: "lax",
+          maxAge: 7 * 24 * 60 * 60, // 7 days
+          path: "/",
+        });
+      }
+    } catch {}
 
     return verifyToken(newToken);
   } catch (error) {
-    console.warn("Server-side token refresh failed:", error);
     return null;
   }
 }
@@ -154,18 +155,22 @@ export async function requireSession(roles?: Role[]): Promise<SessionUser> {
 }
 
 export async function setAuthCookie(token: string) {
-  const cookieStore = await cookies();
-  cookieStore.set("delala_token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 15 * 60, // 15 minutes — always short-lived
-    path: "/",
-  });
+  try {
+    const cookieStore = await cookies();
+    cookieStore.set("delala_token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60, // 1 hour
+      path: "/",
+    });
+  } catch {}
 }
 
 export async function clearAuthCookie() {
-  const cookieStore = await cookies();
-  cookieStore.delete("delala_token");
-  cookieStore.delete("delala_refresh_token");
+  try {
+    const cookieStore = await cookies();
+    cookieStore.delete("delala_token");
+    cookieStore.delete("delala_refresh_token");
+  } catch {}
 }

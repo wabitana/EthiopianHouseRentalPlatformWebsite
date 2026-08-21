@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/theme/app_colors.dart';
@@ -34,6 +36,10 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
   File? _idBackPhoto;
   File? _ownershipDocPhoto;
 
+  Uint8List? _idFrontBytes;
+  Uint8List? _idBackBytes;
+  Uint8List? _ownershipDocBytes;
+
   bool _isSubmitting = false;
   double? _aiRiskScore;
   String? _aiNotes;
@@ -49,10 +55,20 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
     );
 
     if (file != null) {
+      final bytes = await file.readAsBytes();
       setState(() {
-        if (target == 1) _idFrontPhoto = File(file.path);
-        if (target == 2) _idBackPhoto = File(file.path);
-        if (target == 3) _ownershipDocPhoto = File(file.path);
+        if (target == 1) {
+          _idFrontPhoto = File(file.path);
+          _idFrontBytes = bytes;
+        }
+        if (target == 2) {
+          _idBackPhoto = File(file.path);
+          _idBackBytes = bytes;
+        }
+        if (target == 3) {
+          _ownershipDocPhoto = File(file.path);
+          _ownershipDocBytes = bytes;
+        }
       });
     }
   }
@@ -97,14 +113,14 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
 
   Future<void> _submitVerification() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_idFrontPhoto == null) {
+    if (_idFrontBytes == null && _idFrontPhoto == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please scan or upload the front photo of your ID')),
       );
       return;
     }
 
-    if (widget.isProvider && _ownershipDocPhoto == null) {
+    if (widget.isProvider && _ownershipDocBytes == null && _ownershipDocPhoto == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('House Providers must upload House Ownership/License Document')),
       );
@@ -114,19 +130,29 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
     setState(() => _isSubmitting = true);
 
     try {
-      // 1. Upload ID Front Photo
-      final bytes = await _idFrontPhoto!.readAsBytes();
-      final base64Image = 'data:image/jpeg;base64,${base64Encode(bytes)}';
-      final uploadRes = await ApiClient.post(ApiEndpoints.upload, body: {'base64': base64Image});
+      // 1. Upload ID Front Photo using cross-platform Uint8List bytes
+      final frontBytes = _idFrontBytes ?? await _idFrontPhoto!.readAsBytes();
+      final frontBase64 = 'data:image/jpeg;base64,${base64Encode(frontBytes)}';
+      final uploadRes = await ApiClient.post(ApiEndpoints.upload, body: {'base64': frontBase64});
       final docUrl = uploadRes?['url'] ?? 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600';
 
-      // 2. Submit Identity Document to backend
+      // 2. Upload ID Back Photo (if selected)
+      String? backUrl;
+      if (_idBackBytes != null || _idBackPhoto != null) {
+        final backBytes = _idBackBytes ?? await _idBackPhoto!.readAsBytes();
+        final backBase64 = 'data:image/jpeg;base64,${base64Encode(backBytes)}';
+        final backUploadRes = await ApiClient.post(ApiEndpoints.upload, body: {'base64': backBase64});
+        backUrl = backUploadRes?['url'];
+      }
+
+      // 3. Submit Identity Document (Front + Back) to backend
       await ApiClient.post(
         '${ApiEndpoints.baseUrl}/verification/identity',
         body: {
           'idType': _selectedIdType,
           'idNumber': _idNumberController.text.trim(),
           'documentUrl': docUrl,
+          'selfieUrl': backUrl,
         },
       );
 
@@ -137,14 +163,15 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
       });
 
       if (mounted) {
-        context.read<AuthProvider>().updateVerificationStatus(true);
+        await context.read<AuthProvider>().refreshCurrentUser();
+        if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               widget.isProvider
-                  ? '🎉 Documents submitted! AI Pre-Check Passed (94.2/100). Sent to Admin Queue for final approval.'
-                  : '🎉 Identity verification submitted successfully! Verified Badge updated ✓',
+                  ? '🎉 Documents submitted! AI Pre-Check Passed (94.2/100). Sent to Web Admin Queue for final approval.'
+                  : '🎉 Identity document submitted successfully! Placed in Web Admin Queue for approval ⏳',
             ),
             backgroundColor: AppColors.success,
             duration: const Duration(seconds: 4),
@@ -258,10 +285,30 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
 
               CustomTextField(
                 label: 'ID Number',
-                hint: 'e.g. FIN-9081-4211 or KBL-09-881',
+                hint: _selectedIdType.contains('Fayda')
+                    ? 'Enter 16-digit Fayda ID (e.g. 1234567890123456)'
+                    : 'e.g. FIN-9081-4211 or KBL-09-881',
                 controller: _idNumberController,
                 prefixIcon: Icons.badge_outlined,
-                validator: (val) => val == null || val.trim().isEmpty ? 'Please enter your ID number' : null,
+                keyboardType: _selectedIdType.contains('Fayda') ? TextInputType.number : TextInputType.text,
+                inputFormatters: _selectedIdType.contains('Fayda')
+                    ? [
+                        FilteringTextInputFormatter.digitsOnly,
+                        LengthLimitingTextInputFormatter(16),
+                      ]
+                    : null,
+                validator: (val) {
+                  if (val == null || val.trim().isEmpty) {
+                    return 'Please enter your ID number';
+                  }
+                  final trimmed = val.trim();
+                  if (_selectedIdType.contains('Fayda')) {
+                    if (!RegExp(r'^\d{16}$').hasMatch(trimmed)) {
+                      return 'Fayda ID must be exactly 16 numeric digits (not more, not less)';
+                    }
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 20),
 
@@ -275,6 +322,7 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
                     child: _UploadBox(
                       title: 'ID Front Side',
                       file: _idFrontPhoto,
+                      bytes: _idFrontBytes,
                       onTap: () => _showImagePickerOptions(1),
                     ),
                   ),
@@ -283,6 +331,7 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
                     child: _UploadBox(
                       title: 'ID Back Side (Optional)',
                       file: _idBackPhoto,
+                      bytes: _idBackBytes,
                       onTap: () => _showImagePickerOptions(2),
                     ),
                   ),
@@ -324,6 +373,7 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
                 _UploadBox(
                   title: 'Upload House Ownership Document Photo',
                   file: _ownershipDocPhoto,
+                  bytes: _ownershipDocBytes,
                   isFullWidth: true,
                   onTap: () => _showImagePickerOptions(3),
                 ),
@@ -380,34 +430,75 @@ class _DocumentVerificationScreenState extends State<DocumentVerificationScreen>
 class _UploadBox extends StatelessWidget {
   final String title;
   final File? file;
+  final Uint8List? bytes;
   final bool isFullWidth;
   final VoidCallback onTap;
 
   const _UploadBox({
     required this.title,
     required this.file,
+    this.bytes,
     this.isFullWidth = false,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
+    final hasImage = bytes != null || file != null;
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        height: isFullWidth ? 130 : 120,
+        height: isFullWidth ? 220 : 180,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: hasImage ? const Color(0xFF0F172A) : Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: file != null ? AppColors.primary : const Color(0xFFCBD5E1),
-            width: file != null ? 2 : 1,
+            color: hasImage ? AppColors.primary : const Color(0xFFCBD5E1),
+            width: hasImage ? 2 : 1,
           ),
         ),
-        child: file != null
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.file(file!, fit: BoxFit.cover, width: double.infinity),
+        child: hasImage
+            ? Stack(
+                alignment: Alignment.center,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: bytes != null
+                        ? Image.memory(
+                            bytes!,
+                            fit: BoxFit.contain,
+                            width: double.infinity,
+                            height: double.infinity,
+                          )
+                        : (kIsWeb
+                            ? const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 44)
+                            : Image.file(
+                                file!,
+                                fit: BoxFit.contain,
+                                width: double.infinity,
+                                height: double.infinity,
+                              )),
+                  ),
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.edit_rounded, color: Colors.white, size: 12),
+                          SizedBox(width: 4),
+                          Text('Change Photo', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               )
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,

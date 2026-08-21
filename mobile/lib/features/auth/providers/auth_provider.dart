@@ -91,13 +91,26 @@ class AuthProvider extends ChangeNotifier {
     String? email,
     String? name,
     String? avatarUrl,
+    String? region,
+    String? city,
+    String? address,
+    String? phone,
   }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final user = await _authRepository.loginWithGoogle(role, email: email, name: name, avatarUrl: avatarUrl);
+      final user = await _authRepository.loginWithGoogle(
+        role,
+        email: email,
+        name: name,
+        avatarUrl: avatarUrl,
+        region: region,
+        city: city,
+        address: address,
+        phone: phone,
+      );
 
       if (user.role != role) {
         _currentUser = null;
@@ -134,6 +147,9 @@ class AuthProvider extends ChangeNotifier {
     required String phone,
     required String password,
     required UserRole role,
+    String? region,
+    String? city,
+    String? address,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -146,6 +162,9 @@ class AuthProvider extends ChangeNotifier {
         phone: phone,
         password: password,
         role: role,
+        region: region,
+        city: city,
+        address: address,
       );
       _registeredRole = role;
       _activeRole = role;
@@ -153,7 +172,10 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = 'Failed to register account';
+      final msg = e.toString();
+      _errorMessage = msg.startsWith('Exception: ')
+          ? msg.replaceFirst('Exception: ', '')
+          : (msg.isEmpty ? 'Failed to register account' : msg);
       _isLoading = false;
       notifyListeners();
       return false;
@@ -178,7 +200,10 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return true;
     } catch (e) {
-      _errorMessage = 'Invalid email verification code';
+      final msg = e.toString();
+      _errorMessage = msg.startsWith('Exception: ')
+          ? msg.replaceFirst('Exception: ', '')
+          : (msg.isEmpty ? 'Invalid email verification code' : msg);
       _isLoading = false;
       notifyListeners();
       return false;
@@ -210,12 +235,15 @@ class AuthProvider extends ChangeNotifier {
     try {
       final remoteDs = ApiAuthRemoteDataSource();
       final success = await remoteDs.verifyPhoneOtp(code);
-      if (success && _currentUser != null) {
-        _currentUser = _currentUser!.copyWith(isPhoneVerified: true);
+      if (success) {
+        await refreshCurrentUser();
+        _isLoading = false;
+        notifyListeners();
+        return true;
       }
       _isLoading = false;
       notifyListeners();
-      return true;
+      return false;
     } catch (e) {
       _errorMessage = 'Invalid phone SMS OTP code';
       _isLoading = false;
@@ -230,6 +258,19 @@ class AuthProvider extends ChangeNotifier {
       _activeRole = newRole;
       _currentUser = _currentUser!.copyWith(role: newRole);
       notifyListeners();
+    }
+  }
+
+  Future<void> refreshCurrentUser() async {
+    try {
+      final remoteDs = ApiAuthRemoteDataSource();
+      final freshUser = await remoteDs.fetchCurrentUser();
+      if (freshUser != null) {
+        _currentUser = freshUser;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error refreshing current user profile: $e');
     }
   }
 
@@ -279,6 +320,40 @@ class AuthProvider extends ChangeNotifier {
       }
     }
     return false;
+  }
+
+  Future<bool> sendForgotPassword(String email) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final success = await _authRepository.forgotPassword(email);
+      _isLoading = false;
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _errorMessage = 'Failed to send password reset code';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<bool> resetPassword(String email, String code, String newPassword) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      final success = await _authRepository.performResetPassword(email, code, newPassword);
+      _isLoading = false;
+      notifyListeners();
+      return success;
+    } catch (e) {
+      _errorMessage = 'Failed to reset password. Check verification code.';
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<bool> changePassword(String currentPassword, String newPassword) async {

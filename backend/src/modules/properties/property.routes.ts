@@ -183,18 +183,66 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+import { z } from 'zod';
+
+const createPropertySchema = z.object({
+  title: z.string().min(3, 'Title must be at least 3 characters'),
+  description: z.string().min(10, 'Description must be at least 10 characters'),
+  propertyType: z.string().min(1, 'Property type is required'),
+  price: z.coerce.number().positive('Price must be a positive number'),
+  rentalPeriod: z.string().optional(),
+  rooms: z.coerce.number().int().min(0).optional(),
+  bathrooms: z.coerce.number().int().min(0).optional(),
+  city: z.string().min(1, 'City is required'),
+  area: z.string().min(1, 'Area is required'),
+  neighborhood: z.string().min(1, 'Neighborhood is required'),
+  addressDetails: z.string().optional(),
+  images: z.array(z.string()).optional(),
+  amenities: z.array(z.string()).optional(),
+});
+
 // POST /api/v1/properties (House Provider only)
 router.post('/', authenticateToken, async (req: AuthRequest, res) => {
   try {
     const userId = req.user?.id;
-    const userRole = req.user?.role;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    if (!userId || userRole !== 'provider') {
-      return res.status(403).json({ error: 'Only House Providers can post properties' });
+    let providerUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!providerUser) return res.status(404).json({ error: 'Provider profile not found' });
+
+    // 1. Account Level Verification Check (National ID & House Deed)
+    if (!providerUser.isVerified) {
+      return res.status(403).json({
+        error: 'Account Verification Required',
+        message: 'House Providers must complete document verification (National ID & House Deed) and receive Admin account approval before posting property listings.',
+        requiresVerification: true,
+      });
     }
 
-    const providerUser = await prisma.user.findUnique({ where: { id: userId } });
-    if (!providerUser) return res.status(404).json({ error: 'Provider profile not found' });
+    // 2. Active Subscription Check
+    const isSubscribed = await subscriptionService.isOwnerSubscribed(userId);
+    if (!isSubscribed) {
+      return res.status(402).json({
+        error: 'Active Owner Subscription Required',
+        message: 'House Providers must hold an active subscription plan (Basic, Professional, or Business) before posting property listings.',
+        requiresSubscription: true,
+      });
+    }
+
+    if (providerUser.role === 'seeker') {
+      providerUser = await prisma.user.update({
+        where: { id: userId },
+        data: { role: 'provider' },
+      });
+    }
+
+    const parseResult = createPropertySchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        details: parseResult.error.flatten().fieldErrors,
+      });
+    }
 
     const {
       title,
@@ -210,26 +258,14 @@ router.post('/', authenticateToken, async (req: AuthRequest, res) => {
       addressDetails,
       images,
       amenities,
-    } = req.body;
+    } = parseResult.data;
 
-    const isSubscribed = await subscriptionService.isOwnerSubscribed(userId);
-    if (!isSubscribed) {
-      return res.status(402).json({
-        error: 'Active Owner Subscription Required',
-        message: 'House Providers must hold an active subscription plan (Basic, Professional, or Business) before posting property listings.',
-        requiresSubscription: true,
-      });
-    }
-
-    if (!title || !description || !propertyType || !price || !city || !area || !neighborhood) {
-      return res.status(400).json({ error: 'Missing required property information' });
-    }
-
+    // Auto-approve property listing for verified & subscribed provider
     const newProperty = await prisma.property.create({
       data: {
         providerId: userId,
         providerName: providerUser.name,
-        providerPhone: providerUser.phone,
+        providerPhone: providerUser.phone || '+251 90 000 0000',
         providerAvatar: providerUser.avatarUrl,
         providerIsVerified: providerUser.isVerified,
         title,
@@ -401,6 +437,50 @@ router.patch('/:id/availability', authenticateToken, async (req: AuthRequest, re
     return res.json(formatProperty(updated));
   } catch (error) {
     return res.status(500).json({ error: 'Failed to update availability' });
+  }
+});
+
+// PATCH /api/v1/properties/:id/status (Admin / Agent verify & approve property)
+router.patch('/:id/status', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const { listingStatus, adminNotes } = req.body;
+    const userRole = req.user?.role;
+
+    if (userRole !== 'admin' && userRole !== 'agent') {
+      return res.status(403).json({ error: 'Only Admins and Field Agents can review and approve property listings' });
+    }
+
+    const property = await prisma.property.findUnique({ where: { id } });
+    if (!property) return res.status(404).json({ error: 'Property not found' });
+
+    const newStatus = listingStatus === 'active' ? 'active' : 'rejected';
+    const isVerified = newStatus === 'active';
+
+    const updated = await prisma.property.update({
+      where: { id },
+      data: {
+        listingStatus: newStatus,
+        isVerified,
+        availability: isVerified,
+      },
+    });
+
+    // Notify House Owner
+    await prisma.notification.create({
+      data: {
+        userId: property.providerId,
+        title: isVerified ? '🎉 Property Listing Approved!' : '✕ Property Listing Review Update',
+        message: isVerified
+          ? `Your property listing "${property.title}" has been verified by ${userRole.toUpperCase()} and is now live for house seekers!`
+          : `Your property listing "${property.title}" was reviewed. ${adminNotes || 'Please update property details and resubmit.'}`,
+        type: 'PROPERTY',
+      },
+    });
+
+    return res.json(formatProperty(updated));
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to update property status' });
   }
 });
 

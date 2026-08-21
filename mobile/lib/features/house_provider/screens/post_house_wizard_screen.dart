@@ -12,6 +12,7 @@ import '../../../shared/widgets/custom_text_field.dart';
 import '../../../shared/widgets/ethiopia_map_preview.dart';
 import '../../house_seeker/providers/property_provider.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../verification/screens/document_verification_screen.dart';
 import 'subscription_plans_screen.dart';
 
 class PostHouseWizardScreen extends StatefulWidget {
@@ -115,7 +116,8 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
       listingStatus: PropertyListingStatus.active,
     );
 
-    final success = await context.read<PropertyProvider>().createProperty(newProperty);
+    final propProvider = context.read<PropertyProvider>();
+    final success = await propProvider.createProperty(newProperty);
 
     if (mounted) {
       setState(() {
@@ -124,25 +126,41 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
       if (success) {
         _showSuccessDialog();
       } else {
-        _showSubscriptionRequiredDialog();
+        final err = propProvider.errorMessage ?? '';
+        if (err.contains('Verification') || err.contains('403') || err.contains('Permission denied')) {
+          _showVerificationRequiredDialog();
+        } else if (err.contains('Subscription') || err.contains('402') || err.contains('402')) {
+          _showSubscriptionRequiredDialog();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(err.isNotEmpty ? err : 'Failed to publish property listing'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
 
-  void _showSubscriptionRequiredDialog() {
+  void _showVerificationRequiredDialog() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Column(
           children: [
-            Icon(Icons.card_membership_rounded, color: Colors.amber, size: 54),
-            SizedBox(height: 10),
-            Text('Subscription Plan Required', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18), textAlign: TextAlign.center),
+            Icon(Icons.shield_rounded, color: AppColors.secondary, size: 54),
+            SizedBox(height: 12),
+            Text(
+              'Owner Verification Required',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
           ],
         ),
         content: const Text(
-          'House Providers must hold an active subscription plan (Basic, Professional, or Business) before posting property listings for Rent or Sale on Ethiopian Property Platform.',
+          'House Providers must complete document verification (National ID & House Deed) and receive Admin account approval before publishing property listings.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
@@ -153,11 +171,55 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(ctx).pop();
-              Navigator.of(context).push(
+              await Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const DocumentVerificationScreen(isProvider: true)),
+              );
+            },
+            child: const Text('Verify Account Now', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSubscriptionRequiredDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Column(
+          children: [
+            Icon(Icons.workspace_premium_rounded, color: AppColors.secondary, size: 54),
+            SizedBox(height: 12),
+            Text(
+              'Active Subscription Required',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+          ],
+        ),
+        content: const Text(
+          'House Providers must hold an active listing subscription plan (Basic, Professional, or Business) to publish property listings.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const SubscriptionPlansScreen()),
               );
+              if (mounted) {
+                _submitListing();
+              }
             },
             child: const Text('View Plans', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
@@ -174,17 +236,17 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Column(
           children: [
-            Icon(Icons.check_circle_rounded, color: AppColors.success, size: 60),
+            Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 60),
             SizedBox(height: 12),
             Text(
-              'Listing Published!',
+              'Property Published Successfully!',
               textAlign: TextAlign.center,
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
             ),
           ],
         ),
         content: const Text(
-          'Your property has been submitted and verified. It is now live for house seekers across Ethiopia!',
+          'Your property listing has been published and is now live for house seekers across Ethiopia!',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
         ),
