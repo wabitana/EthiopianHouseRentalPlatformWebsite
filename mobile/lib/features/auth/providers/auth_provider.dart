@@ -13,7 +13,7 @@ class AuthProvider extends ChangeNotifier {
   String? _errorMessage;
 
   AuthProvider({AuthRepository? authRepository})
-      : _authRepository = authRepository ?? MockAuthRepository() {
+      : _authRepository = authRepository ?? AuthRepositoryImpl() {
     _init();
   }
 

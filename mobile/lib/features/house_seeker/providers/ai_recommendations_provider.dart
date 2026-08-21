@@ -3,7 +3,7 @@ import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/services/user_behavior_tracker.dart';
 import '../../../shared/models/property_model.dart';
-import '../../../data/mock_data.dart';
+
 
 class AiRecommendationItem {
   final PropertyModel property;
@@ -80,17 +80,8 @@ class AiRecommendationsProvider extends ChangeNotifier {
   }
 
   void _generateFallbackRecommendations(Map<String, dynamic> profile) {
-    final subcities = List<String>.from(profile['viewedSubcities'] ?? []);
-    final topSubcity = subcities.isNotEmpty ? subcities.first : 'Bole';
-
-    _summaryInsight = 'Based on your recent views in $topSubcity & search patterns';
-    _recommendations = MockData.mockProperties.take(4).map((p) {
-      return AiRecommendationItem(
-        property: p,
-        matchScore: 94 + (p.title.length % 5),
-        matchReasons: ['Matches your location interest in $topSubcity', 'Verified landlord listing'],
-      );
-    }).toList();
+    _summaryInsight = 'Based on your recent search activity';
+    _recommendations = [];
   }
 
   Future<Map<String, dynamic>> calculatePropertyMatchScore(String propertyId) async {

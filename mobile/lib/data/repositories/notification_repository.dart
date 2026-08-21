@@ -18,7 +18,7 @@ class ApiNotificationRepository implements NotificationRepository {
         return res.map((item) => NotificationModel.fromJson(item as Map<String, dynamic>)).toList();
       }
     } catch (_) {}
-    return MockNotificationRepository().getNotifications(userId);
+    return [];
   }
 
   @override

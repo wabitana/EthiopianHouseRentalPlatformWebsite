@@ -23,7 +23,7 @@ class PropertyProvider extends ChangeNotifier {
   String _sortBy = 'Recommended';
 
   PropertyProvider({PropertyRepository? propertyRepository})
-      : _propertyRepository = propertyRepository ?? MockPropertyRepository() {
+      : _propertyRepository = propertyRepository ?? PropertyRepositoryImpl() {
     fetchProperties();
   }
 

@@ -111,8 +111,8 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
       images: _selectedImages,
       amenities: _selectedAmenities,
       availability: true,
-      isVerified: true,
-      listingStatus: PropertyListingStatus.active,
+      isVerified: false,
+      listingStatus: PropertyListingStatus.pending,
     );
 
     final success = await context.read<PropertyProvider>().createProperty(newProperty);
@@ -136,13 +136,17 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Column(
           children: [
-            Icon(Icons.card_membership_rounded, color: Colors.amber, size: 54),
-            SizedBox(height: 10),
-            Text('Subscription Plan Required', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18), textAlign: TextAlign.center),
+            Icon(Icons.workspace_premium_rounded, color: AppColors.secondary, size: 54),
+            SizedBox(height: 12),
+            Text(
+              'Active Subscription Required',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
           ],
         ),
         content: const Text(
-          'House Providers must hold an active subscription plan (Basic, Professional, or Business) before posting property listings for Rent or Sale on Ethiopian Property Platform.',
+          'House Providers must hold an active listing subscription plan (Basic, Professional, or Business) to publish property listings.',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
@@ -177,17 +181,17 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Column(
           children: [
-            Icon(Icons.check_circle_rounded, color: AppColors.success, size: 60),
+            Icon(Icons.hourglass_top_rounded, color: AppColors.secondary, size: 60),
             SizedBox(height: 12),
             Text(
-              'Listing Published!',
+              'Submitted for Admin Review!',
               textAlign: TextAlign.center,
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
             ),
           ],
         ),
         content: const Text(
-          'Your property has been submitted and verified. It is now live for house seekers across Ethiopia!',
+          'Your property listing has been submitted and is currently under review by Admin / Field Agent. Once approved, it will become live for house seekers across Ethiopia!',
           textAlign: TextAlign.center,
           style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
         ),

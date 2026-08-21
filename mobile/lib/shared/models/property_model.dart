@@ -9,9 +9,9 @@ extension PropertyListingStatusExtension on PropertyListingStatus {
   String get displayName {
     switch (this) {
       case PropertyListingStatus.active:
-        return 'Active';
+        return 'Active & Verified';
       case PropertyListingStatus.pending:
-        return 'Pending Review';
+        return 'Under Review ⏳';
       case PropertyListingStatus.rented:
         return 'Rented';
       case PropertyListingStatus.rejected:
@@ -32,7 +32,7 @@ extension PropertyListingStatusExtension on PropertyListingStatus {
       case 'rejected':
         return PropertyListingStatus.rejected;
       default:
-        return PropertyListingStatus.active;
+        return PropertyListingStatus.pending;
     }
   }
 }

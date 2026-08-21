@@ -85,6 +85,8 @@ class EthiopiaLocations {
   static List<String> get regions => regionsAndCities.keys.toList();
 
   static List<String> getCitiesForRegion(String region) {
-    return regionsAndCities[region] ?? ['Central Area'];
+    final list = List<String>.from(regionsAndCities[region] ?? ['Central Area']);
+    list.add('+ Other / Custom City Keyword');
+    return list;
   }
 }

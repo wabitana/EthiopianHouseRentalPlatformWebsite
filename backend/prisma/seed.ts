@@ -98,10 +98,49 @@ async function main() {
       name: 'Business',
       priceETB: 2500,
       durationDays: 30,
-      maxListings: 100,
-      features: JSON.stringify(['Unlimited Listings', 'Top Sponsor Placement', 'Dedicated Account Manager']),
     },
   });
+
+  // 4. Create Demo Inquiries
+  const sampleProp = await prisma.property.findFirst();
+  const sampleSeeker = await prisma.user.findFirst({ where: { role: 'seeker' } });
+  const sampleProvider = await prisma.user.findFirst({ where: { role: 'provider' } });
+
+  if (sampleProp && sampleSeeker) {
+    await prisma.inquiry.upsert({
+      where: { id: 'inq_seed_1' },
+      update: {},
+      create: {
+        id: 'inq_seed_1',
+        propertyId: sampleProp.id,
+        propertyTitle: sampleProp.title,
+        seekerId: sampleSeeker.id,
+        seekerName: sampleSeeker.name,
+        seekerPhone: sampleSeeker.phone,
+        providerId: sampleProvider?.id || sampleSeeker.id,
+        message: 'Selam! I submitted an inquiry for viewing this property.',
+        messages: JSON.stringify([
+          {
+            id: 'msg_seed_1',
+            senderId: sampleSeeker.id,
+            senderName: sampleSeeker.name,
+            senderRole: 'seeker',
+            text: 'Selam! I submitted an inquiry for viewing this property.',
+            createdAt: new Date(Date.now() - 3600000).toISOString(),
+          },
+          {
+            id: 'msg_seed_2',
+            senderId: sampleProvider?.id || 'admin_user',
+            senderName: sampleProvider?.name || 'Ethiopian Property Platform Admin',
+            senderRole: 'admin',
+            text: 'Tenayistillin! Our inspection team has received your inquiry.',
+            createdAt: new Date().toISOString(),
+          }
+        ]),
+        status: 'responded',
+      },
+    });
+  }
 }
 
 main()
