@@ -210,6 +210,16 @@ router.post('/', authenticateToken, async (req: AuthRequest, res) => {
     let providerUser = await prisma.user.findUnique({ where: { id: userId } });
     if (!providerUser) return res.status(404).json({ error: 'Provider profile not found' });
 
+    // 1. Account Level Verification Check (National ID & House Deed)
+    if (!providerUser.isVerified) {
+      return res.status(403).json({
+        error: 'Account Verification Required',
+        message: 'House Providers must complete document verification (National ID & House Deed) and receive Admin account approval before posting property listings.',
+        requiresVerification: true,
+      });
+    }
+
+    // 2. Active Subscription Check
     const isSubscribed = await subscriptionService.isOwnerSubscribed(userId);
     if (!isSubscribed) {
       return res.status(402).json({
@@ -250,11 +260,12 @@ router.post('/', authenticateToken, async (req: AuthRequest, res) => {
       amenities,
     } = parseResult.data;
 
+    // Auto-approve property listing for verified & subscribed provider
     const newProperty = await prisma.property.create({
       data: {
         providerId: userId,
         providerName: providerUser.name,
-        providerPhone: providerUser.phone,
+        providerPhone: providerUser.phone || '+251 90 000 0000',
         providerAvatar: providerUser.avatarUrl,
         providerIsVerified: providerUser.isVerified,
         title,
@@ -271,8 +282,8 @@ router.post('/', authenticateToken, async (req: AuthRequest, res) => {
         images: JSON.stringify(images || []),
         amenities: JSON.stringify(amenities || []),
         availability: true,
-        isVerified: false,
-        listingStatus: 'pending',
+        isVerified: true,
+        listingStatus: 'active',
       },
     });
 

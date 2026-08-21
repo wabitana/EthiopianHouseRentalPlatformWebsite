@@ -129,9 +129,9 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
         'phone': phone,
         'password': password,
         'role': role.code,
-        if (region != null) 'region': region,
-        if (city != null) 'city': city,
-        if (address != null) 'address': address,
+        'region': ?region,
+        'city': ?city,
+        'address': ?address,
       },
       requireAuth: false,
     );

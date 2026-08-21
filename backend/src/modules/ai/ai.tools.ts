@@ -1,4 +1,4 @@
-import { prisma } from '../../prisma';
+import { prisma, withDbRetry } from '../../prisma';
 
 export interface ToolContext {
   userId?: string;
@@ -597,22 +597,30 @@ const formatPropertyRecord = (p: any) => ({
 
 // Tool Handlers Execution Router
 export async function executeAiTool(name: string, args: any, ctx: ToolContext): Promise<any> {
-  switch (name) {
-    case 'search_properties': {
-      const where: any = { listingStatus: 'active' };
-      if (args.city && args.city !== 'All') where.city = { contains: args.city, mode: 'insensitive' };
-      if (args.area && args.area !== 'All') where.area = { contains: args.area, mode: 'insensitive' };
-      if (args.neighborhood) where.neighborhood = { contains: args.neighborhood, mode: 'insensitive' };
-      if (args.propertyType && args.propertyType !== 'All') where.propertyType = { equals: args.propertyType, mode: 'insensitive' };
-      if (args.minPrice) where.price = { ...where.price, gte: Number(args.minPrice) };
-      if (args.maxPrice) where.price = { ...where.price, lte: Number(args.maxPrice) };
-      if (args.bedrooms) where.rooms = { gte: Number(args.bedrooms) };
-      if (args.bathrooms) where.bathrooms = { gte: Number(args.bathrooms) };
-      if (args.availability !== undefined) where.availability = args.availability;
+  return await withDbRetry(async () => {
+    switch (name) {
+      case 'search_properties': {
+        const where: any = { listingStatus: 'active' };
+        if (args.city && args.city !== 'All') where.city = { contains: args.city, mode: 'insensitive' };
+        if (args.area && args.area !== 'All') where.area = { contains: args.area, mode: 'insensitive' };
+        if (args.neighborhood) where.neighborhood = { contains: args.neighborhood, mode: 'insensitive' };
+        if (args.propertyType && args.propertyType !== 'All') where.propertyType = { equals: args.propertyType, mode: 'insensitive' };
+        if (args.minPrice) where.price = { ...where.price, gte: Number(args.minPrice) };
+        if (args.maxPrice) where.price = { ...where.price, lte: Number(args.maxPrice) };
+        if (args.bedrooms) where.rooms = { gte: Number(args.bedrooms) };
+        if (args.bathrooms) where.bathrooms = { gte: Number(args.bathrooms) };
+        if (args.availability !== undefined) where.availability = args.availability;
 
-      const results = await prisma.property.findMany({ where, take: 10, orderBy: { createdAt: 'desc' } });
-      return { count: results.length, properties: results.map(formatPropertyRecord) };
-    }
+        let results = await prisma.property.findMany({ where, take: 10, orderBy: { createdAt: 'desc' } });
+        if (results.length === 0) {
+          results = await prisma.property.findMany({
+            where: { listingStatus: 'active' },
+            take: 5,
+            orderBy: { createdAt: 'desc' },
+          });
+        }
+        return { count: results.length, properties: results.map(formatPropertyRecord) };
+      }
 
     case 'get_property_details': {
       const p = await prisma.property.findUnique({ where: { id: args.propertyId } });
@@ -1286,4 +1294,5 @@ export async function executeAiTool(name: string, args: any, ctx: ToolContext): 
     default:
       return { error: `Tool ${name} is not implemented on backend.` };
   }
+  });
 }

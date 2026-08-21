@@ -109,7 +109,7 @@ class UserModel {
       id: json['id'] as String,
       name: json['name'] as String,
       email: json['email'] as String,
-      phone: json['phone'] as String,
+      phone: (json['phone'] as String?) ?? '',
       role: UserRoleExtension.fromCode(json['role'] as String),
       avatarUrl: json['avatarUrl'] as String?,
       isVerified: json['isVerified'] as bool? ?? false,

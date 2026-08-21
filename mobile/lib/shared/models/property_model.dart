@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 enum PropertyListingStatus {
   active,
   pending,
@@ -198,39 +200,54 @@ class PropertyModel {
   }
 
   factory PropertyModel.fromJson(Map<String, dynamic> json) {
+    List<String> parseList(dynamic raw) {
+      if (raw is List) {
+        return raw.map((item) => item.toString()).toList();
+      }
+      if (raw is String && raw.trim().isNotEmpty) {
+        try {
+          final decoded = jsonDecode(raw);
+          if (decoded is List) {
+            return decoded.map((item) => item.toString()).toList();
+          }
+        } catch (_) {}
+      }
+      return [];
+    }
+
     return PropertyModel(
-      id: json['id'] as String,
-      providerId: json['providerId'] as String,
-      providerName: json['providerName'] as String,
-      providerPhone: json['providerPhone'] as String,
+      id: json['id'] as String? ?? '',
+      providerId: json['providerId'] as String? ?? '',
+      providerName: json['providerName'] as String? ?? 'House Provider',
+      providerPhone: (json['providerPhone'] as String?) ?? '',
       providerAvatar: json['providerAvatar'] as String?,
       providerIsVerified: json['providerIsVerified'] as bool? ?? true,
-      title: json['title'] as String,
-      description: json['description'] as String,
-      propertyType: json['propertyType'] as String,
-      price: (json['price'] as num).toDouble(),
+      title: json['title'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      propertyType: json['propertyType'] as String? ?? 'Apartment',
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
       rentalPeriod: json['rentalPeriod'] as String? ?? 'Monthly',
-      rooms: json['rooms'] as int,
-      bathrooms: json['bathrooms'] as int,
-      city: json['city'] as String,
-      area: json['area'] as String,
-      neighborhood: json['neighborhood'] as String,
+      rooms: (json['rooms'] as num?)?.toInt() ?? 1,
+      bathrooms: (json['bathrooms'] as num?)?.toInt() ?? 1,
+      city: json['city'] as String? ?? 'Addis Ababa',
+      area: json['area'] as String? ?? '',
+      neighborhood: json['neighborhood'] as String? ?? '',
       addressDetails: json['addressDetails'] as String?,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
-      images: List<String>.from(json['images'] as List),
-      amenities: List<String>.from(json['amenities'] as List),
+      images: parseList(json['images']),
+      amenities: parseList(json['amenities']),
       availability: json['availability'] as bool? ?? true,
       isVerified: json['isVerified'] as bool? ?? true,
       listingStatus: PropertyListingStatusExtension.fromCode(
           json['listingStatus'] as String? ?? 'active'),
-      viewsCount: json['viewsCount'] as int? ?? 0,
-      inquiriesCount: json['inquiriesCount'] as int? ?? 0,
+      viewsCount: (json['viewsCount'] as num?)?.toInt() ?? 0,
+      inquiriesCount: (json['inquiriesCount'] as num?)?.toInt() ?? 0,
       createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'] as String)
+          ? DateTime.tryParse(json['createdAt'] as String) ?? DateTime.now()
           : DateTime.now(),
       updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'] as String)
+          ? DateTime.tryParse(json['updatedAt'] as String) ?? DateTime.now()
           : DateTime.now(),
     );
   }

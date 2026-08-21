@@ -55,7 +55,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final success = await authProvider.register(
         name: _nameController.text.trim(),
         email: _emailController.text.trim(),
-        phone: _phoneController.text.trim().isNotEmpty ? _phoneController.text.trim() : '+251 90 000 0000',
+        phone: _phoneController.text.trim(),
         password: _passwordController.text,
         role: _selectedRole,
         region: _selectedRegion,
