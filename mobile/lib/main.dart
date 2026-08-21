@@ -17,8 +17,11 @@ import 'core/services/currency_service.dart';
 
 import 'core/services/tutoring_provider.dart';
 
-void main() {
+import 'core/config/app_config.dart';
+
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AppConfig.init();
   runApp(const EthiopianHouseRentalApp());
 }
 

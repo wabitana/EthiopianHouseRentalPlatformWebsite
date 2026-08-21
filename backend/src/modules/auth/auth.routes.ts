@@ -70,8 +70,118 @@ const generateTokens = async (user: any) => {
     });
   } catch (_) {}
 
-  return { token, refreshToken };
+  return { accessToken: token, token, refreshToken };
 };
+
+const googleAuthSchema = z.object({
+  email: z.string().email('Invalid email address'),
+  name: z.string().min(1, 'Name is required'),
+  role: z.string().optional(),
+  avatarUrl: z.string().optional(),
+  googleId: z.string().optional(),
+  idToken: z.string().optional(),
+  phone: z.string().optional(),
+  region: z.string().optional(),
+  city: z.string().optional(),
+  address: z.string().optional(),
+});
+
+// POST /api/v1/auth/google (OAuth Sign-In / Register for House Seekers & Providers)
+router.post('/google', async (req, res) => {
+  try {
+    const parseResult = googleAuthSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        error: 'Validation Error',
+        details: parseResult.error.flatten().fieldErrors,
+      });
+    }
+
+    const { email, name, role, avatarUrl, phone, region, city, address } = parseResult.data;
+    const reqRole = (role || 'seeker').toLowerCase();
+    const normalizedRole = (reqRole === 'provider' || reqRole === 'house_provider' || reqRole === 'house provider')
+        ? 'provider'
+        : (reqRole === 'admin' ? 'admin' : (reqRole === 'agent' ? 'agent' : 'seeker'));
+
+    // 1. Search for existing user by email
+    let user = await withDbRetry(() =>
+      prisma.user.findFirst({
+        where: { email: { equals: email.trim(), mode: 'insensitive' } },
+      })
+    );
+
+    if (user) {
+      // User exists -> Update role if logging in as provider & auto-verify email
+      const updates: any = { isEmailVerified: true };
+      if (normalizedRole === 'provider' && user.role === 'seeker') {
+        updates.role = 'provider';
+      }
+      if (avatarUrl && !user.avatarUrl) {
+        updates.avatarUrl = avatarUrl;
+      }
+      if (region) updates.region = region;
+      if (city) updates.city = city;
+      if (address) updates.address = address;
+      if (phone && !user.phone) updates.phone = phone;
+
+      const userId = user.id;
+      user = await withDbRetry(() =>
+        prisma.user.update({
+          where: { id: userId },
+          data: updates,
+        })
+      );
+    } else {
+      // User does not exist -> Register new OAuth user (Seeker or Provider)
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+      const passwordHash = await bcrypt.hash(randomPassword, 10);
+
+      user = await withDbRetry(() =>
+        prisma.user.create({
+          data: {
+            name: name.trim(),
+            email: email.trim(),
+            passwordHash,
+            phone: phone || null,
+            role: normalizedRole,
+            isVerified: normalizedRole === 'seeker' ? true : false,
+            isEmailVerified: true,
+            avatarUrl: avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
+            region: region || 'Addis Ababa',
+            city: city || 'Addis Ababa',
+            address: address || null,
+          },
+        })
+      );
+    }
+
+    // 2. Issue JWT Access & Refresh Tokens
+    const { accessToken, refreshToken } = await generateTokens(user);
+
+    return res.status(200).json({
+      message: 'Google OAuth authentication successful',
+      token: accessToken,
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        avatarUrl: user.avatarUrl,
+        isVerified: user.isVerified,
+        isEmailVerified: user.isEmailVerified,
+        city: user.city,
+        region: user.region,
+        address: user.address,
+      },
+    });
+  } catch (error: any) {
+    console.error('Google OAuth Backend Error:', error);
+    return res.status(500).json({ error: error.message || 'Google OAuth authentication failed' });
+  }
+});
 
 // POST /api/v1/auth/register
 router.post('/register', async (req, res) => {

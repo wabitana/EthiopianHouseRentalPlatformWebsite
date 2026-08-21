@@ -5,7 +5,16 @@ import '../../shared/models/user_model.dart';
 abstract class AuthRepository {
   Future<UserModel?> getCurrentUser();
   Future<UserModel> login(String emailOrPhone, String password, UserRole role);
-  Future<UserModel> loginWithGoogle(UserRole role, {String? email, String? name, String? avatarUrl});
+  Future<UserModel> loginWithGoogle(
+    UserRole role, {
+    String? email,
+    String? name,
+    String? avatarUrl,
+    String? region,
+    String? city,
+    String? address,
+    String? phone,
+  });
   Future<UserModel> register({
     required String name,
     required String email,
@@ -37,8 +46,26 @@ class AuthRepositoryImpl implements AuthRepository {
       _remoteDataSource.loginUser(emailOrPhone, password, role);
 
   @override
-  Future<UserModel> loginWithGoogle(UserRole role, {String? email, String? name, String? avatarUrl}) =>
-      _remoteDataSource.loginWithGoogle(role, email: email, name: name, avatarUrl: avatarUrl);
+  Future<UserModel> loginWithGoogle(
+    UserRole role, {
+    String? email,
+    String? name,
+    String? avatarUrl,
+    String? region,
+    String? city,
+    String? address,
+    String? phone,
+  }) =>
+      _remoteDataSource.loginWithGoogle(
+        role,
+        email: email,
+        name: name,
+        avatarUrl: avatarUrl,
+        region: region,
+        city: city,
+        address: address,
+        phone: phone,
+      );
 
   @override
   Future<UserModel> register({

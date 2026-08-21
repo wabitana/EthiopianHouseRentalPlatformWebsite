@@ -9,7 +9,10 @@ import '../providers/auth_provider.dart';
 import 'login_screen.dart';
 import 'email_verification_screen.dart';
 import '../../../shared/widgets/main_layout_wrapper.dart';
-import '../../../shared/widgets/google_account_picker_dialog.dart';
+import '../../../shared/widgets/google_location_dialog.dart';
+import '../../../core/config/app_config.dart';
+import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -76,27 +79,64 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  void _onGoogleRegister() {
-    showDialog(
-      context: context,
-      builder: (ctx) => GoogleAccountPickerDialog(
-        onAccountSelected: (account) async {
-          final authProvider = context.read<AuthProvider>();
-          final success = await authProvider.loginWithGoogle(
-            _selectedRole,
-            email: account.email,
-            name: account.name,
-            avatarUrl: account.avatarUrl,
-          );
-          if (success && mounted) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const MainLayoutWrapper()),
-              (route) => false,
+  Future<void> _onGoogleRegister() async {
+    try {
+      final googleSignIn = GoogleSignIn(
+        clientId: kIsWeb && AppConfig.googleWebClientId.isNotEmpty ? AppConfig.googleWebClientId : null,
+        scopes: ['email', 'profile'],
+      );
+
+      final GoogleSignInAccount? account = await googleSignIn.signIn();
+      if (account == null) return; // User cancelled
+
+      if (!mounted) return;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => GoogleLocationDialog(
+          googleName: account.displayName ?? 'Google User',
+          googleEmail: account.email,
+          googlePhoto: account.photoUrl,
+          onSubmit: (locResult) async {
+            final authProvider = context.read<AuthProvider>();
+            final success = await authProvider.loginWithGoogle(
+              _selectedRole,
+              email: account.email,
+              name: account.displayName ?? 'Google User',
+              avatarUrl: account.photoUrl,
+              region: locResult.region,
+              city: locResult.city,
+              address: locResult.address,
+              phone: locResult.phone,
             );
-          }
-        },
-      ),
-    );
+
+            if (success && mounted) {
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const MainLayoutWrapper()),
+                (route) => false,
+              );
+            } else if (mounted && authProvider.errorMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(authProvider.errorMessage!),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          },
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Google Sign-In error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   @override

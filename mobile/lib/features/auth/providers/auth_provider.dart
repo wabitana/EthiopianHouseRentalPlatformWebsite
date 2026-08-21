@@ -91,13 +91,26 @@ class AuthProvider extends ChangeNotifier {
     String? email,
     String? name,
     String? avatarUrl,
+    String? region,
+    String? city,
+    String? address,
+    String? phone,
   }) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
 
     try {
-      final user = await _authRepository.loginWithGoogle(role, email: email, name: name, avatarUrl: avatarUrl);
+      final user = await _authRepository.loginWithGoogle(
+        role,
+        email: email,
+        name: name,
+        avatarUrl: avatarUrl,
+        region: region,
+        city: city,
+        address: address,
+        phone: phone,
+      );
 
       if (user.role != role) {
         _currentUser = null;

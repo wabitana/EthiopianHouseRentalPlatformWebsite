@@ -8,7 +8,6 @@ import '../providers/auth_provider.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import '../../../shared/widgets/main_layout_wrapper.dart';
-import '../../../shared/widgets/google_account_picker_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -43,27 +42,23 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _onGoogleLogin() {
-    showDialog(
-      context: context,
-      builder: (ctx) => GoogleAccountPickerDialog(
-        onAccountSelected: (account) async {
-          final authProvider = context.read<AuthProvider>();
-          final success = await authProvider.loginWithGoogle(
-            _selectedRole,
-            email: account.email,
-            name: account.name,
-            avatarUrl: account.avatarUrl,
-          );
-          if (success && mounted) {
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(builder: (_) => const MainLayoutWrapper()),
-              (route) => false,
-            );
-          }
-        },
-      ),
-    );
+  Future<void> _onGoogleLogin() async {
+    final authProvider = context.read<AuthProvider>();
+    final success = await authProvider.loginWithGoogle(_selectedRole);
+
+    if (success && mounted) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MainLayoutWrapper()),
+        (route) => false,
+      );
+    } else if (mounted && authProvider.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.errorMessage!),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
