@@ -1,0 +1,77 @@
+services:
+  # ==========================================
+  # 🐘 PostgreSQL Database Service
+  # ==========================================
+  db:
+    image: postgres:16-alpine
+    container_name: ethiopian_house_rental_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: ethiopian_house_rental
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d ethiopian_house_rental" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # ⚙️ Node.js Express REST API Backend
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ethiopian_house_rental_backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgresql://postgres:postgrespassword@db:5432/ethiopian_house_rental?sslmode=disable
+      JWT_SECRET: ethiopian_house_rental_super_secret_jwt_key_2026
+      NODE_ENV: production
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_WEBAPP_URL: ${TELEGRAM_WEBAPP_URL:-http://localhost:3001}
+      TELEGRAM_CHANNEL_ID: ${TELEGRAM_CHANNEL_ID:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - backend_uploads:/app/uploads
+
+  # ==========================================
+  # 🌐 Next.js Web Platform & Admin Dashboard
+  # ==========================================
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3000/api/v1
+        BACKEND_INTERNAL_URL: http://backend:3000/api/v1
+    container_name: ethiopian_house_rental_web
+    restart: always
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      NEXT_PUBLIC_API_URL: http://localhost:3000/api/v1
+      BACKEND_INTERNAL_URL: http://backend:3000/api/v1
+      DATABASE_URL: postgresql://postgres:postgrespassword@db:5432/ethiopian_house_rental?sslmode=disable
+      JWT_SECRET: ethiopian_house_rental_super_secret_jwt_key_2026
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  backend_uploads:
+
+networks:
+  default:
+    name: ethiopian_rental_network

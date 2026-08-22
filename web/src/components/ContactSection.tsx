@@ -95,6 +95,7 @@ export default function ContactSection() {
             <div className="space-y-8">
               <InfoRow icon={<Mail />} title="Email" text="rentals@delala.com" />
               <InfoRow icon={<Phone />} title="Phone" text="+251 987 888 333" />
+              <InfoRow icon={<Send />} title="Telegram Bot" text="@EthioHouseRentalBot" />
               <InfoRow icon={<MapPin />} title="Location" text="Addis Ababa, Ethiopia" />
               <InfoRow icon={<Clock />} title="Hours" text="Mon - Fri, 9AM - 6PM PST" />
             </div>

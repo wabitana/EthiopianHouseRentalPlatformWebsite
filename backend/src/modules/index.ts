@@ -15,4 +15,6 @@ export { default as saleRoutes } from './sales/sale.routes';
 export { default as cmsRoutes } from './cms/cms.routes';
 export { default as vendorServicesRoutes } from './vendor-services/vendor-services.routes';
 export { default as agentRoutes } from './agent/agent.routes';
+export { default as telegramRoutes } from './telegram/telegram.routes';
 export * from './email/email.service';
+export * from './telegram/telegram.service';
