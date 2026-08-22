@@ -73,6 +73,7 @@ model User {
   role          String   @default("seeker") // seeker, provider, admin, agent
 
   avatarUrl     String?
+  telegramChatId String?  @unique
 
   isVerified                 Boolean @default(false)
 

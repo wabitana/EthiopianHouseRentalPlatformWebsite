@@ -17,6 +17,7 @@ import {
   Home,
   LogIn,
   UserPlus,
+  Send,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -81,6 +82,16 @@ export function Navbar({ user, cartCount = 0, cmsNavbar = {} }: NavbarProps) {
         </nav>
 
         <div className="flex items-center gap-2">
+          <a
+            href="https://t.me/EthioHouseRentalBot"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden sm:flex items-center gap-1.5 rounded-full bg-sky-50 px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-100 transition-colors border border-sky-200/60"
+            title="Chat with our Telegram Bot"
+          >
+            <Send className="h-3.5 w-3.5 text-sky-600" />
+            <span>Telegram Bot</span>
+          </a>
           {user && user.role === "CUSTOMER" && (
             <>
               <NotificationBell />
