@@ -19,23 +19,73 @@ import {
   ChevronRight,
   Filter,
 } from "lucide-react";
-import { mockAnalyticsData, mockProperties, mockVerifications } from "@/lib/portal-mock-data";
+import { mockAnalyticsData, mockProperties, mockVerifications, PropertyItem } from "@/lib/portal-mock-data";
 import { apiFetch } from "@/lib/api";
+import { AdminLocationMap } from "@/components/portal/admin-location-map";
+
+const mapBackendProperty = (p: any): PropertyItem => {
+  let imagesArr = [];
+  try {
+    imagesArr = typeof p.images === 'string' ? JSON.parse(p.images) : p.images || [];
+  } catch (e) {}
+  let amenitiesArr = [];
+  try {
+    amenitiesArr = typeof p.amenities === 'string' ? JSON.parse(p.amenities) : p.amenities || [];
+  } catch (e) {}
+
+  return {
+    id: p.id,
+    title: p.title || 'Ethiopian Property Listing',
+    images: imagesArr.length > 0 ? imagesArr : ['https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600'],
+    providerId: p.providerId || '',
+    providerName: p.providerName || p.provider?.name || 'Landlord',
+    providerPhone: p.providerPhone || p.provider?.phone || '',
+    providerAvatar: p.providerAvatar || p.provider?.avatarUrl || 'https://api.dicebear.com/7.x/adventurer/svg?seed=provider',
+    location: `${p.city || 'Addis Ababa'}, ${p.area || 'Bole'}`.replace(/^,\s*/, '').replace(/,\s*$/, ''),
+    woreda: p.woreda || '',
+    propertyType: (p.propertyType === 'Apartment' || p.propertyType === 'Villa' || p.propertyType === 'Condo' || p.propertyType === 'Studio' || p.propertyType === 'Commercial' || p.propertyType === 'Land') ? p.propertyType : 'Apartment',
+    price: p.price || 25000,
+    period: p.rentalPeriod === 'Yearly' ? 'year' : 'month',
+    status: p.listingStatus === 'active' ? 'Published' : p.listingStatus === 'pending' ? 'Pending' : p.listingStatus === 'rejected' ? 'Rejected' : 'Rented',
+    verificationStatus: p.isVerified ? 'Verified' : 'Pending',
+    datePosted: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Recent',
+    bedrooms: p.rooms || 0,
+    bathrooms: p.bathrooms || 0,
+    areaSqM: p.area || 100,
+    description: p.description || '',
+    amenities: amenitiesArr,
+    documents: [],
+    listingHistory: [],
+    reportsCount: p.reportsCount || 0,
+  };
+};
 
 export default function AdminDashboardPage() {
   const [timeFilter, setTimeFilter] = useState<"7d" | "30d" | "6m" | "1y">("6m");
   const [pendingQueue, setPendingQueue] = useState<any[]>([]);
+  const [properties, setProperties] = useState<PropertyItem[]>(mockProperties);
   const [data, setData] = useState(mockAnalyticsData);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const kpis = await apiFetch("/admin/analytics/kpis");
-        setData((prev) => ({
-          ...prev,
-          ...kpis,
-        }));
+        const [kpis, allProps] = await Promise.all([
+          apiFetch("/admin/analytics/kpis").catch(() => null),
+          apiFetch("/admin/properties/all").catch(() => null),
+        ]);
+
+        if (kpis) {
+          setData((prev) => ({
+            ...prev,
+            ...kpis,
+          }));
+        }
+
+        if (Array.isArray(allProps) && allProps.length > 0) {
+          const mapped = allProps.map(mapBackendProperty);
+          setProperties(mapped);
+        }
       } catch (err) {
         console.error("Failed to load admin dashboard stats:", err);
       }
@@ -95,6 +145,7 @@ export default function AdminDashboardPage() {
     }
     loadData();
   }, []);
+
 
   // KPI card array configuration
   const kpiCards = [
@@ -320,50 +371,12 @@ export default function AdminDashboardPage() {
 
       {/* Analytics Row 2: Location Breakdown & Property Status Distribution */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Most Active Locations in Addis Ababa & Ethiopian Regions */}
-        <div className="lg:col-span-2 p-6 rounded-2xl bg-slate-800/90 border border-slate-700/80 shadow-xl space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-emerald-400" />
-                Most Active Locations (Sub-Cities & Regions)
-              </h3>
-              <p className="text-xs text-slate-400">Listing distribution across Addis Ababa & regional hubs</p>
-            </div>
-            <Link
-              href="/portal/admin/properties"
-              className="text-xs font-semibold text-emerald-400 hover:underline"
-            >
-              View Property Map
-            </Link>
-          </div>
-
-          <div className="space-y-3 pt-2">
-            {data.locationBreakdown && data.locationBreakdown.length > 0 ? (
-              data.locationBreakdown.map((loc, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs font-medium">
-                    <span className="text-white font-semibold">{loc.location}</span>
-                    <span className="text-slate-400">
-                      <strong className="text-emerald-400">{loc.count.toLocaleString()}</strong> listings ({loc.percentage}%)
-                    </span>
-                  </div>
-                  <div className="h-2.5 w-full bg-slate-900 rounded-full overflow-hidden p-0.5 border border-slate-700/50">
-                    <div
-                      style={{ width: `${loc.percentage}%` }}
-                      className="h-full bg-gradient-to-r from-emerald-500 to-teal-400 rounded-full transition-all"
-                    />
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="p-6 text-center text-slate-400">
-                <MapPin className="h-7 w-7 text-slate-500 mx-auto mb-2" />
-                <p className="font-semibold text-slate-300 text-xs">No Active Property Locations in Database</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">Listings published by providers or added by admins will display regional distributions here live.</p>
-              </div>
-            )}
-          </div>
+        {/* Most Active Locations in Addis Ababa & Ethiopian Regions - Interactive Property Map */}
+        <div className="lg:col-span-2">
+          <AdminLocationMap
+            locationBreakdown={data.locationBreakdown || []}
+            properties={properties}
+          />
         </div>
 
         {/* Property Status Distribution */}

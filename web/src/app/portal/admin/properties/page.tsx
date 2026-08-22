@@ -22,9 +22,12 @@ import {
   FileText,
   AlertTriangle,
   X,
+  Layers,
+  Compass,
 } from "lucide-react";
 import { mockProperties, PropertyItem } from "@/lib/portal-mock-data";
 import { apiFetch } from "@/lib/api";
+import { PortalPropertyMap } from "@/components/portal/portal-property-map";
 
 const mapBackendProperty = (p: any): PropertyItem => {
   let imagesArr = [];
@@ -73,6 +76,7 @@ export default function AdminPropertiesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [typeFilter, setTypeFilter] = useState<string>("All");
+  const [viewMode, setViewMode] = useState<"table" | "map">("table");
 
   const [selectedProperty, setSelectedProperty] = useState<PropertyItem | null>(null);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
@@ -170,161 +174,211 @@ export default function AdminPropertiesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-800 p-6 rounded-2xl border border-slate-700/80 shadow-xl">
         <div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2.5">
-            <Building2 className="h-6 w-6 text-emerald-400" /> Property Management
+            <Building2 className="h-6 w-6 text-emerald-400" /> Property Management & Territory Map
           </h1>
           <p className="text-xs text-slate-300 mt-1">
-            Complete management center for reviewing, approving, publishing, suspending, and moderating real estate listings.
+            Complete management center for reviewing, approving, and exploring house listings across Addis Ababa & Ethiopia.
           </p>
         </div>
-      </div>
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-800/90 p-4 rounded-2xl border border-slate-700">
-        <div className="relative w-full md:w-80">
-          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search title, sub-city, landlord..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-medium">Status:</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="All">All Statuses</option>
-              <option value="Published">Published</option>
-              <option value="Pending">Pending</option>
-              <option value="Draft">Draft</option>
-              <option value="Rejected">Rejected</option>
-              <option value="Suspended">Suspended</option>
-              <option value="Rented">Rented</option>
-              <option value="Expired">Expired</option>
-            </select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 font-medium">Type:</span>
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="All">All Types</option>
-              <option value="Apartment">Apartment</option>
-              <option value="Villa">Villa</option>
-              <option value="Condo">Condo</option>
-              <option value="Studio">Studio</option>
-              <option value="Commercial">Commercial</option>
-              <option value="Land">Land</option>
-            </select>
-          </div>
+        {/* View Switcher Toggle */}
+        <div className="flex items-center gap-1 bg-slate-900/90 p-1 rounded-xl border border-slate-700 shrink-0">
+          <button
+            onClick={() => setViewMode("table")}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              viewMode === "table"
+                ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <Layers className="h-3.5 w-3.5" />
+            Table View
+          </button>
+          <button
+            onClick={() => setViewMode("map")}
+            className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+              viewMode === "map"
+                ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
+                : "text-slate-400 hover:text-white"
+            }`}
+          >
+            <Compass className="h-3.5 w-3.5" />
+            Interactive Map View
+          </button>
         </div>
       </div>
 
-      {/* Property Table */}
-      <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl shadow-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-900/90 text-slate-400 uppercase font-semibold border-b border-slate-700">
-              <tr>
-                <th className="p-4">Property</th>
-                <th className="p-4">Provider</th>
-                <th className="p-4">Location</th>
-                <th className="p-4">Type</th>
-                <th className="p-4">Price (ETB)</th>
-                <th className="p-4">Listing Status</th>
-                <th className="p-4">Verification</th>
-                <th className="p-4">Posted</th>
-                <th className="p-4 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-700/60 text-slate-300">
-              {filteredProperties.length > 0 ? (
-                filteredProperties.map((prop) => (
-                  <tr key={prop.id} className="hover:bg-slate-750/50 transition-colors">
-                    <td className="p-4 font-semibold text-white flex items-center gap-3">
-                      <img
-                        src={prop.images[0]}
-                        alt={prop.title}
-                        className="h-10 w-14 rounded-xl object-cover ring-1 ring-slate-700"
-                      />
-                      <div className="max-w-xs">
-                        <p className="font-bold text-white text-xs line-clamp-1">{prop.title}</p>
-                        <p className="text-[10px] text-slate-400">{prop.id}</p>
-                      </div>
-                    </td>
-                    <td className="p-4 font-medium text-slate-200">{prop.providerName}</td>
-                    <td className="p-4 text-slate-400">{prop.location}</td>
-                    <td className="p-4">
-                      <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-700 font-semibold text-[10px]">
-                        {prop.propertyType}
-                      </span>
-                    </td>
-                    <td className="p-4 font-mono font-bold text-emerald-400">
-                      ETB {prop.price.toLocaleString()}
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                          prop.status === "Published"
-                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                            : prop.status === "Pending"
-                            ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                            : prop.status === "Suspended" || prop.status === "Rejected"
-                            ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
-                            : "bg-slate-700 text-slate-300"
-                        }`}
-                      >
-                        {prop.status}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          prop.verificationStatus === "Verified"
-                            ? "bg-emerald-500/20 text-emerald-400"
-                            : "bg-amber-500/20 text-amber-400"
-                        }`}
-                      >
-                        {prop.verificationStatus}
-                      </span>
-                    </td>
-                    <td className="p-4 text-slate-400">{prop.datePosted}</td>
-                    <td className="p-4">
-                      <div className="flex items-center justify-center gap-1.5">
-                        <button
-                          onClick={() => handleOpenPropertyDetails(prop)}
-                          className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs transition-colors flex items-center gap-1"
-                        >
-                          <Eye className="h-3.5 w-3.5" /> Details
-                        </button>
-                      </div>
-                    </td>
+      {/* Content Area: Table View or Interactive Map View */}
+      {viewMode === "map" ? (
+        <PortalPropertyMap properties={properties} />
+      ) : (
+        <>
+          {/* Filter and Search Bar */}
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-800/90 p-4 rounded-2xl border border-slate-700">
+            <div className="relative w-full md:w-80">
+              <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search title, sub-city, landlord..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-10 pr-4 py-2 text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400 font-medium">Status:</span>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="All">All Statuses</option>
+                  <option value="Published">Published</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Draft">Draft</option>
+                  <option value="Rejected">Rejected</option>
+                  <option value="Suspended">Suspended</option>
+                  <option value="Rented">Rented</option>
+                  <option value="Expired">Expired</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400 font-medium">Type:</span>
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="All">All Types</option>
+                  <option value="Apartment">Apartment</option>
+                  <option value="Villa">Villa</option>
+                  <option value="Condo">Condo</option>
+                  <option value="Studio">Studio</option>
+                  <option value="Commercial">Commercial</option>
+                  <option value="Land">Land</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Property Table */}
+          <div className="bg-slate-800/90 border border-slate-700/80 rounded-2xl shadow-xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-900/90 text-slate-400 uppercase font-semibold border-b border-slate-700">
+                  <tr>
+                    <th className="p-4">Property</th>
+                    <th className="p-4">Provider</th>
+                    <th className="p-4">Location</th>
+                    <th className="p-4">Type</th>
+                    <th className="p-4">Price (ETB)</th>
+                    <th className="p-4">Listing Status</th>
+                    <th className="p-4">Verification</th>
+                    <th className="p-4">Posted</th>
+                    <th className="p-4 text-center">Actions</th>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={9} className="p-8 text-center text-slate-400">
-                    <div className="flex flex-col items-center justify-center gap-2">
-                      <Building2 className="h-7 w-7 text-slate-500" />
-                      <p className="font-semibold text-slate-300">No Properties Found</p>
-                      <p className="text-xs text-slate-500">Properties submitted from mobile or web users will appear here live.</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                </thead>
+                <tbody className="divide-y divide-slate-700/60 text-slate-300">
+                  {filteredProperties.length > 0 ? (
+                    filteredProperties.map((prop) => (
+                      <tr key={prop.id} className="hover:bg-slate-750/50 transition-colors">
+                        <td className="p-4 font-semibold text-white flex items-center gap-3">
+                          <img
+                            src={prop.images[0]}
+                            alt={prop.title}
+                            className="h-10 w-14 rounded-xl object-cover ring-1 ring-slate-700"
+                          />
+                          <div className="max-w-xs">
+                            <p className="font-bold text-white text-xs line-clamp-1">{prop.title}</p>
+                            <p className="text-[10px] text-slate-400">{prop.id}</p>
+                          </div>
+                        </td>
+                        <td className="p-4 font-medium text-slate-200">{prop.providerName}</td>
+                        <td className="p-4 text-slate-400">{prop.location}</td>
+                        <td className="p-4">
+                          <span className="px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-700 font-semibold text-[10px]">
+                            {prop.propertyType}
+                          </span>
+                        </td>
+                        <td className="p-4 font-mono font-bold text-emerald-400">
+                          ETB {prop.price.toLocaleString()}
+                        </td>
+                        <td className="p-4">
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                              prop.status === "Published"
+                                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                                : prop.status === "Pending"
+                                ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                                : prop.status === "Suspended" || prop.status === "Rejected"
+                                ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                                : "bg-slate-700 text-slate-300"
+                            }`}
+                          >
+                            {prop.status}
+                          </span>
+                        </td>
+                        <td className="p-4">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 w-fit ${
+                              prop.verificationStatus === "Verified"
+                                ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                                : "bg-slate-700 text-slate-300"
+                            }`}
+                          >
+                            <ShieldCheck className="h-3 w-3" />
+                            {prop.verificationStatus}
+                          </span>
+                        </td>
+                        <td className="p-4 text-slate-400">{prop.datePosted}</td>
+                        <td className="p-4 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => handleOpenPropertyDetails(prop)}
+                              className="p-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors title='Review and Details'"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            {prop.status !== "Published" && (
+                              <button
+                                onClick={() => handleUpdateStatus(prop.id, "Published")}
+                                className="p-1.5 bg-emerald-600/30 hover:bg-emerald-600 text-emerald-300 hover:text-white rounded-lg transition-colors title='Approve and Publish'"
+                              >
+                                <CheckCircle2 className="h-4 w-4" />
+                              </button>
+                            )}
+                            {prop.status !== "Suspended" && (
+                              <button
+                                onClick={() => handleUpdateStatus(prop.id, "Suspended")}
+                                className="p-1.5 bg-amber-600/30 hover:bg-amber-600 text-amber-300 hover:text-white rounded-lg transition-colors title='Suspend Listing'"
+                              >
+                                <Ban className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={9} className="p-8 text-center text-slate-400">
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <Building2 className="h-8 w-8 text-slate-500" />
+                          <p className="font-semibold text-slate-300">No Properties Found</p>
+                          <p className="text-xs text-slate-500">No properties matched your current filter criteria.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Property Details Drawer Modal */}
       {selectedProperty && (
