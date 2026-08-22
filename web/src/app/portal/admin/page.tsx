@@ -18,6 +18,8 @@ import {
   ArrowUpRight,
   ChevronRight,
   Filter,
+  Download,
+  RefreshCw,
 } from "lucide-react";
 import { mockAnalyticsData, mockProperties, mockVerifications, PropertyItem } from "@/lib/portal-mock-data";
 import { apiFetch } from "@/lib/api";
@@ -66,88 +68,131 @@ export default function AdminDashboardPage() {
   const [properties, setProperties] = useState<PropertyItem[]>(mockProperties);
   const [data, setData] = useState(mockAnalyticsData);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string>("");
+
+  async function loadData() {
+    try {
+      const [kpis, allProps] = await Promise.all([
+        apiFetch("/admin/analytics/kpis").catch(() => null),
+        apiFetch("/admin/properties/all").catch(() => null),
+      ]);
+
+      if (kpis) {
+        setData((prev) => ({
+          ...prev,
+          ...kpis,
+        }));
+      }
+
+      if (Array.isArray(allProps) && allProps.length > 0) {
+        const mapped = allProps.map(mapBackendProperty);
+        setProperties(mapped);
+      }
+    } catch (err) {
+      console.error("Failed to load admin dashboard stats:", err);
+    }
+
+    try {
+      const [vData, pProps] = await Promise.all([
+        apiFetch("/verification/admin/pending").catch(() => ({ propertyDocs: [] })),
+        apiFetch("/admin/properties/pending").catch(() => []),
+      ]);
+
+      const resolveImageUrl = (url?: string) => {
+        if (!url) return 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600';
+        if (url.startsWith('http://') || url.startsWith('https://')) return url;
+        return `http://localhost:3000${url.startsWith('/') ? '' : '/'}${url}`;
+      };
+
+      const propItems = (vData?.propertyDocs || []).map((d: any) => {
+        let imagesArr = [];
+        try {
+          imagesArr = typeof d.property?.images === 'string' ? JSON.parse(d.property.images) : d.property?.images || [];
+        } catch (e) {}
+        return {
+          id: d.id,
+          propertyTitle: d.property?.title || "Property Document Review",
+          propertyImage: resolveImageUrl(imagesArr[0]),
+          providerName: d.property?.providerName || 'Landlord',
+          location: d.property ? `${d.property.city}, ${d.property.area}` : 'Addis Ababa',
+          submittedDate: new Date(d.createdAt).toLocaleDateString(),
+          aiPreCheckScore: Math.round(d.aiRiskScore || 90),
+        };
+      });
+
+      const pendingPropItems = (pProps || []).map((p: any) => {
+        let imagesArr = [];
+        try {
+          imagesArr = typeof p.images === 'string' ? JSON.parse(p.images) : p.images || [];
+        } catch (e) {}
+        return {
+          id: p.id,
+          propertyTitle: p.title || "Pending Property Listing",
+          propertyImage: resolveImageUrl(imagesArr[0]),
+          providerName: p.providerName || 'Landlord',
+          location: `${p.city || ''}, ${p.area || ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '') || 'Addis Ababa',
+          submittedDate: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Recent',
+          aiPreCheckScore: 88,
+        };
+      });
+
+      const combined = [...propItems, ...pendingPropItems];
+      const uniqueQueue = Array.from(new Map(combined.map(item => [item.id, item])).values());
+      setPendingQueue(uniqueQueue);
+      setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+    } catch (err) {
+      console.error("Failed to load verification queue:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    async function loadData() {
-      try {
-        const [kpis, allProps] = await Promise.all([
-          apiFetch("/admin/analytics/kpis").catch(() => null),
-          apiFetch("/admin/properties/all").catch(() => null),
-        ]);
-
-        if (kpis) {
-          setData((prev) => ({
-            ...prev,
-            ...kpis,
-          }));
-        }
-
-        if (Array.isArray(allProps) && allProps.length > 0) {
-          const mapped = allProps.map(mapBackendProperty);
-          setProperties(mapped);
-        }
-      } catch (err) {
-        console.error("Failed to load admin dashboard stats:", err);
-      }
-
-      try {
-        const [vData, pProps] = await Promise.all([
-          apiFetch("/verification/admin/pending").catch(() => ({ propertyDocs: [] })),
-          apiFetch("/admin/properties/pending").catch(() => []),
-        ]);
-
-        const resolveImageUrl = (url?: string) => {
-          if (!url) return 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=600';
-          if (url.startsWith('http://') || url.startsWith('https://')) return url;
-          return `http://localhost:3000${url.startsWith('/') ? '' : '/'}${url}`;
-        };
-
-        const propItems = (vData?.propertyDocs || []).map((d: any) => {
-          let imagesArr = [];
-          try {
-            imagesArr = typeof d.property?.images === 'string' ? JSON.parse(d.property.images) : d.property?.images || [];
-          } catch (e) {}
-          return {
-            id: d.id,
-            propertyTitle: d.property?.title || "Property Document Review",
-            propertyImage: resolveImageUrl(imagesArr[0]),
-            providerName: d.property?.providerName || 'Landlord',
-            location: d.property ? `${d.property.city}, ${d.property.area}` : 'Addis Ababa',
-            submittedDate: new Date(d.createdAt).toLocaleDateString(),
-            aiPreCheckScore: Math.round(d.aiRiskScore || 90),
-          };
-        });
-
-        const pendingPropItems = (pProps || []).map((p: any) => {
-          let imagesArr = [];
-          try {
-            imagesArr = typeof p.images === 'string' ? JSON.parse(p.images) : p.images || [];
-          } catch (e) {}
-          return {
-            id: p.id,
-            propertyTitle: p.title || "Pending Property Listing",
-            propertyImage: resolveImageUrl(imagesArr[0]),
-            providerName: p.providerName || 'Landlord',
-            location: `${p.city || ''}, ${p.area || ''}`.replace(/^,\s*/, '').replace(/,\s*$/, '') || 'Addis Ababa',
-            submittedDate: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : 'Recent',
-            aiPreCheckScore: 88,
-          };
-        });
-
-        const combined = [...propItems, ...pendingPropItems];
-        const uniqueQueue = Array.from(new Map(combined.map(item => [item.id, item])).values());
-        setPendingQueue(uniqueQueue);
-      } catch (err) {
-        console.error("Failed to load verification queue:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
     loadData();
   }, []);
 
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await loadData();
+    setLastUpdated(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    setIsRefreshing(false);
+  };
 
-  // KPI card array configuration
+  const handleExportReport = () => {
+    const dateStr = new Date().toISOString().split("T")[0];
+    let csv = "ETHIOPIAN HOUSE RENTAL PLATFORM - ADMIN SUMMARY REPORT\r\n";
+    csv += `Generated Date,${new Date().toLocaleString()}\r\n\r\n`;
+
+    csv += "--- KPI OVERVIEW METRICS ---\r\n";
+    csv += "Metric,Value,Subtitle\r\n";
+    kpiCards.forEach((kpi) => {
+      csv += `"${kpi.title}","${kpi.value}","${kpi.subtitle || ''}"\r\n`;
+    });
+
+    csv += "\r\n--- MOST ACTIVE LOCATIONS (ETHIOPIA) ---\r\n";
+    csv += "Location,Listings Count,Percentage Share\r\n";
+    (data.locationBreakdown || []).forEach((loc: any) => {
+      csv += `"${loc.location}",${loc.count},${loc.percentage}%\r\n`;
+    });
+
+    csv += "\r\n--- PENDING VERIFICATION QUEUE ---\r\n";
+    csv += "Property Title,Provider,Location,Submitted Date,AI Match Score\r\n";
+    pendingQueue.forEach((item) => {
+      csv += `"${item.propertyTitle}","${item.providerName}","${item.location}","${item.submittedDate}",${item.aiPreCheckScore}/100\r\n`;
+    });
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `ethiopian_delala_admin_report_${dateStr}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const kpiCards = [
     {
       title: "Total Users",
@@ -158,46 +203,46 @@ export default function AdminDashboardPage() {
       trend: "+12.4% this month",
     },
     {
-      title: "Total Properties",
-      value: data.totalProperties.toLocaleString(),
-      subtitle: `${data.activeProperties.toLocaleString()} Active • ${data.pendingProperties.toLocaleString()} Pending`,
+      title: "Verified Properties",
+      value: data.verifiedProperties.toLocaleString(),
+      subtitle: `${data.totalProperties.toLocaleString()} Total Listings in Directory`,
       icon: Building2,
       color: "from-blue-500/20 to-blue-600/10 border-blue-500/30 text-blue-400",
-      trend: "+8.2% new listings",
+      trend: "94% approval rate",
+    },
+    {
+      title: "Active Field Agents",
+      value: data.activeAgents.toLocaleString(),
+      subtitle: `${data.totalAgents.toLocaleString()} Registered Territory Agents`,
+      icon: UserCheck,
+      color: "from-teal-500/20 to-teal-600/10 border-teal-500/30 text-teal-400",
+      trend: "Addis Ababa & Regional Hubs",
     },
     {
       title: "Pending Verifications",
-      value: data.pendingVerifications.toString(),
-      subtitle: `${data.verifiedProperties.toLocaleString()} Total Verified`,
-      icon: ShieldCheck,
+      value: data.pendingVerifications.toLocaleString(),
+      subtitle: "Identity documents & property listings",
+      icon: Clock,
       color: "from-amber-500/20 to-amber-600/10 border-amber-500/30 text-amber-400",
+      urgent: data.pendingVerifications > 0,
       trend: "Requires Agent Action",
-      urgent: true,
     },
     {
-      title: "Active Agents",
-      value: `${data.activeAgents} / ${data.totalAgents}`,
-      subtitle: "Operating across 10 Sub-Cities",
-      icon: UserCheck,
-      color: "from-purple-500/20 to-purple-600/10 border-purple-500/30 text-purple-400",
-      trend: "98% Avg Efficiency",
-    },
-    {
-      title: "Platform Revenue",
-      value: `ETB ${(data.revenueETB / 1000000).toFixed(2)}M`,
-      subtitle: "Gross Transaction Commission",
+      title: "Gross Platform Revenue",
+      value: `ETB ${((data as any).totalRevenueETB || data.revenueETB || 0).toLocaleString()}`,
+      subtitle: "Listing fees & subscriptions (Chapa / CBE / Telebirr)",
       icon: DollarSign,
-      color: "from-teal-500/20 to-teal-600/10 border-teal-500/30 text-teal-400",
-      trend: "+15.8% vs last quarter",
+      color: "from-emerald-500/20 to-emerald-600/10 border-emerald-500/30 text-emerald-400",
+      trend: "+18.2% vs last period",
     },
     {
-      title: "Pending Reports",
-      value: data.pendingReports.toString(),
-      subtitle: "User & Fraud Complaints",
+      title: "Pending Reports & Complaints",
+      value: data.pendingReports.toLocaleString(),
+      subtitle: "Awaiting moderator review & resolution",
       icon: AlertTriangle,
       color: "from-rose-500/20 to-rose-600/10 border-rose-500/30 text-rose-400",
-      trend: "High Priority Review",
       urgent: true,
+      trend: "High Priority Review",
     },
   ];
 
@@ -212,24 +257,36 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-800 to-slate-850 p-6 rounded-2xl border border-slate-700/80 shadow-xl">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-gradient-to-r from-slate-800 via-slate-800 to-slate-850 p-6 rounded-2xl border border-slate-700/80 shadow-xl">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight flex items-center gap-3">
-            Admin Overview & Analytics
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Admin Overview & Analytics
+            </h1>
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              Live DB
+            </span>
+          </div>
           <p className="text-xs sm:text-sm text-slate-300 mt-1">
             Real-time status of Ethiopian House Rental platform registrations, property verifications, and agent performance.
           </p>
+          {lastUpdated && (
+            <p className="text-[11px] text-slate-400 mt-1">
+              Last synced: <span className="text-emerald-400 font-mono font-bold">{lastUpdated}</span>
+            </p>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/80 p-1 rounded-xl text-xs">
-            <Filter className="h-3.5 w-3.5 text-slate-400 ml-2" />
+        {/* Header Action Tools */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-1 bg-slate-900/90 border border-slate-700/80 p-1 rounded-xl text-xs">
+            <Filter className="h-3.5 w-3.5 text-slate-400 ml-1.5" />
             {(["7d", "30d", "6m", "1y"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTimeFilter(t)}
-                className={`px-3 py-1.5 rounded-lg font-semibold uppercase text-[11px] transition-all ${
+                className={`px-2.5 py-1 rounded-lg font-semibold uppercase text-[11px] transition-all ${
                   timeFilter === t
                     ? "bg-emerald-600 text-white shadow-sm"
                     : "text-slate-400 hover:text-white"
@@ -239,6 +296,25 @@ export default function AdminDashboardPage() {
               </button>
             ))}
           </div>
+
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="px-3 py-2 bg-slate-800 hover:bg-slate-750 text-slate-200 hover:text-white border border-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+            title="Refresh Real-time KPIs"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 text-emerald-400 ${isRefreshing ? "animate-spin" : ""}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
+
+          <button
+            onClick={handleExportReport}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-lg shadow-emerald-600/30"
+            title="Download CSV Report Summary"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span>Export CSV</span>
+          </button>
         </div>
       </div>
 
