@@ -142,7 +142,7 @@ router.post('/google', async (req, res) => {
             name: name.trim(),
             email: email.trim(),
             passwordHash,
-            phone: phone || null,
+            phone: phone || `+251 9${Math.floor(10000000 + Math.random() * 90000000)}`,
             role: normalizedRole,
             isVerified: normalizedRole === 'seeker' ? true : false,
             isEmailVerified: true,

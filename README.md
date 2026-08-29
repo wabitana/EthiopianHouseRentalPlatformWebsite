@@ -147,7 +147,33 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 | **Notifications** | `PATCH` | `/api/v1/notifications/:id/read` | Bearer | Mark notification as read |
 | **Admin** | `GET` | `/api/v1/admin/properties/pending` | Admin | Review pending property submissions |
 | **Admin** | `PATCH` | `/api/v1/admin/properties/:id/approve` | Admin | Approve property and publish to marketplace |
+| **Telegram** | `GET` | `/api/v1/telegram/status` | Public | Get Telegram Bot online status & username |
+| **Telegram** | `POST` | `/api/v1/telegram/link-code` | Bearer | Generate 6-digit OTP code to pair account |
+| **Telegram** | `POST` | `/api/v1/telegram/notify` | Internal | Dispatch Telegram push alert to linked user |
 | **Upload** | `POST` | `/api/v1/upload` | Bearer | Upload multi-part property images |
+
+---
+
+## 🤖 Telegram Bot Integration (`@EthioHouseRentalBot`)
+
+The platform includes a dedicated Telegram bot for searching homes, receiving push notifications, and linking user accounts.
+
+### 📱 Available Bot Commands:
+- `/start` - Welcome message & interactive main menu (Amharic 🇪🇹 & English 🇬🇧).
+- `/houses` - Browse active house listings with photos, ETB price, and web action links.
+- `/search <location>` - Search properties by neighborhood or city (e.g. `/search Bole`).
+- `/link <code>` - Pair Telegram ID with website user profile using a 6-digit OTP.
+- `/post` - Instructions for landlords and agents to submit house listings.
+- `/help` - Platform customer support contacts.
+
+### ⚙️ How to Enable Telegram Bot:
+1. Talk to Telegram's `@BotFather` and create a new bot token.
+2. Add your token to `backend/.env`:
+   ```env
+   TELEGRAM_BOT_TOKEN="8603749948:AAGTt0zaH3nrZAvSo5bZAQPat4jVDEVQV2s"
+   TELEGRAM_BOT_USERNAME="EthioHouseRentalBot"
+   ```
+3. Start the backend server (`npm run dev`). The bot will automatically start polling for updates!
 
 ---
 
