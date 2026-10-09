@@ -20,6 +20,7 @@ Ethiopian-House-Rental/
 ├── backend/            # Main Node.js REST API Server (Express + Prisma + Neon PostgreSQL)
 ├── mobile/             # Flutter Cross-Platform Mobile Application (iOS & Android)
 └── web/                # Next.js 15 Web Platform & Admin Dashboard
+
 ```
 
 ### 🏛️ Unified System Flow
