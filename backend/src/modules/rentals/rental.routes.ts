@@ -50,7 +50,7 @@ router.patch('/:id/status', authenticateToken, async (req: AuthRequest, res) => 
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     if (!status) return res.status(400).json({ error: 'Status is required' });
 
-    const updated = await rentalService.updateRentalStatus(id, userId, status);
+    const updated = await rentalService.updateRentalStatus(id, userId, status, req.user?.role);
     return res.json(updated);
   } catch (error: any) {
     return res.status(400).json({ error: error.message || 'Failed to update rental status' });
