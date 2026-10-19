@@ -13,7 +13,8 @@
     "prisma:push": "prisma db push",
     "seed": "ts-node prisma/seed.ts",
     "prisma:seed": "prisma db seed",
-    "migrate:cloudinary": "ts-node src/scripts/migrate-local-images-to-cloudinary.ts"
+    "migrate:cloudinary": "ts-node src/scripts/migrate-local-images-to-cloudinary.ts",
+    "test": "ts-node --transpile-only tests/audit-verification.test.ts"
   },
   "dependencies": {
     "@langchain/core": "^1.2.8",
