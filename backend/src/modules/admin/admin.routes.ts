@@ -3,7 +3,7 @@ import { prisma, withDbRetry } from '../../prisma';
 import { authenticateToken, requireAdmin, AuthRequest } from '../../middleware/auth';
 
 const router = Router();
-router.use(authenticateToken, requireAdmin);
+router.use(authenticateToken);
 
 const formatProperty = (p: any) => ({
   id: p.id,
@@ -540,74 +540,6 @@ router.post('/users', authenticateToken, async (req: AuthRequest, res) => {
   } catch (error) {
     console.error('Admin create user error:', error);
     return res.status(500).json({ error: 'Failed to create user account' });
-  }
-});
-
-// POST /api/v1/admin/agents - Register new platform agent
-router.post('/agents', authenticateToken, async (req: AuthRequest, res) => {
-  try {
-    if (req.user?.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-
-    const { name, email, phone, password, assignedArea } = req.body;
-
-    if (!name || !email || !password) {
-      return res.status(400).json({ error: 'Name, email, and password are required' });
-    }
-
-    const existing = await prisma.user.findUnique({ where: { email } });
-    if (existing) return res.status(400).json({ error: 'Email already exists' });
-
-    const bcrypt = require('bcryptjs');
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    const agent = await prisma.user.create({
-      data: {
-        name,
-        email,
-        phone: phone || '+251 90 000 0000',
-        passwordHash,
-        role: 'agent',
-        assignedArea: assignedArea || 'Addis Ababa',
-        isVerified: true,
-        isEmailVerified: true,
-      },
-    });
-
-    return res.status(201).json(agent);
-  } catch (error) {
-    console.error('Agent register error:', error);
-    return res.status(500).json({ error: 'Failed to register agent' });
-  }
-});
-
-// GET /api/v1/admin/agents - List all agents
-router.get('/agents', authenticateToken, async (req: AuthRequest, res) => {
-  try {
-    if (req.user?.role !== 'admin') {
-      return res.status(403).json({ error: 'Admin access required' });
-    }
-
-    const agents = await prisma.user.findMany({
-      where: { role: 'agent' },
-      orderBy: { createdAt: 'desc' },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        role: true,
-        avatarUrl: true,
-        assignedArea: true,
-        active: true,
-        createdAt: true,
-      },
-    });
-
-    return res.json(agents);
-  } catch (error) {
-    return res.status(500).json({ error: 'Failed to fetch agents list' });
   }
 });
 
