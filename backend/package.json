@@ -1,8 +1,10 @@
 {
+  
   "name": "ethiopian-house-rental-backend",
   "version": "1.0.0",
   "description": "Node.js REST API main backend for Ethiopian House Rental Platform",
   "main": "dist/server.js",
+  
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
