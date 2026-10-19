@@ -20,6 +20,8 @@ import {
   saleRoutes,
   cmsRoutes,
   vendorServicesRoutes,
+  cartRoutes,
+  ordersRoutes,
   agentRoutes,
   telegramRoutes,
 } from './modules';
@@ -48,7 +50,7 @@ app.use(cors({
     ) {
       callback(null, true);
     } else {
-      callback(new Error('CORS not allowed for this origin'));
+      callback(null, false);
     }
   },
   credentials: true, // Required for cross-origin cookies
@@ -65,6 +67,7 @@ app.use('/uploads', express.static(uploadsPath));
 // REST API v1 Modular Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', authRoutes);
+app.use('/api/v1/profile', authRoutes);
 app.use('/api/v1/properties', propertyRoutes);
 app.use('/api/v1/provider', providerRoutes);
 app.use('/api/v1/favorites', favoritesRoutes);
@@ -82,6 +85,8 @@ app.use('/api/v1/sales', saleRoutes);
 app.use('/api/v1/cms', cmsRoutes);
 app.use('/api/v1/services', vendorServicesRoutes);
 app.use('/api/v1/addresses', vendorServicesRoutes);
+app.use('/api/v1/cart', cartRoutes);
+app.use('/api/v1/orders', ordersRoutes);
 app.use('/api/v1/agent', agentRoutes);
 app.use('/api/v1/telegram', telegramRoutes);
 
@@ -90,6 +95,9 @@ app.use('/api/cms', cmsRoutes);
 app.use('/api/services', vendorServicesRoutes);
 app.use('/api/addresses', vendorServicesRoutes);
 app.use('/api/bookings', vendorServicesRoutes);
+app.use('/api/profile', authRoutes);
+app.use('/api/cart', cartRoutes);
+app.use('/api/orders', ordersRoutes);
 app.use('/api/chat', aiRoutes);
 
 // Health check endpoint
