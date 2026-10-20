@@ -1,7 +1,3 @@
-// ==========================================
-// ETHIOPIAN HOUSE RENTAL & DELALA PLATFORM SCHEMA
-// Normalized Phase 1 Production Architecture
-// ==========================================
 
 generator client {
   provider        = "prisma-client-js"
