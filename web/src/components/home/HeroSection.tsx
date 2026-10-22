@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import { Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import HeroAnimationWrapper from "@/components/HeroAnimationWrapper";
+import HeroAnimationWrapper from "@/components/home/HeroAnimationWrapper";
 
 interface HeroConfig {
   backgroundType?: string;
