@@ -14,9 +14,9 @@ import {
 } from "lucide-react";
 
 // Shared / existing components
-import Testimonials from "@/components/Testimonials";
-import Chatbot from "@/components/Chatbot";
-import EcosystemsStack from "@/components/EcosystemsStack";
+import Testimonials from "@/components/home/Testimonials";
+import Chatbot from "@/components/home/Chatbot";
+import EcosystemsStack from "@/components/home/EcosystemsStack";
 import ContactSection from "@/components/ContactSection";
 
 // Extracted home section components
