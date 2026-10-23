@@ -34,7 +34,7 @@ const DEFAULT_MEMBERS: TeamMember[] = [
     name: "Dawit Kebede",
     role: "Head of Product Infrastructure",
     dept: "Product Management",
-    bio: "Translates high-level vendor marketplace visions into intuitive, user-centric system interfaces.",
+    bio: "Translates high-level property rental and sales platform visions into intuitive, user-centric system interfaces.",
   },
   {
     name: "Selam Kebede",
