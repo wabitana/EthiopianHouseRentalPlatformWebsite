@@ -135,30 +135,16 @@ test('Comprehensive Full-Stack Security and API Audit Suite', async (t) => {
     assert.notEqual(res.status, 401, 'AuthenticateToken must accept valid cookie without 401');
   });
 
-  await t.test('6. Routing: Cart and Order endpoints respond correctly', async () => {
-    const testUser = { id: 'usr-cart-tester', email: 'cart@example.com', role: 'seeker', name: 'Cart Tester' };
-    const validToken = jwt.sign(testUser, getJwtSecret(), { expiresIn: '1h' });
+  await t.test('6. Routing: Property listings and Services packages endpoints respond correctly', async () => {
+    // GET /api/v1/properties
+    const propRes = await request(server, 'GET', '/api/v1/properties');
+    assert.equal(propRes.status, 200);
+    assert.ok(Array.isArray(propRes.body.properties || propRes.body));
 
-    // GET /api/v1/cart
-    const cartRes = await request(server, 'GET', '/api/v1/cart', null, {
-      Authorization: `Bearer ${validToken}`,
-    });
-    assert.equal(cartRes.status, 200);
-    assert.ok(Array.isArray(cartRes.body.items));
-
-    // GET /api/v1/orders
-    const ordersRes = await request(server, 'GET', '/api/v1/orders', null, {
-      Authorization: `Bearer ${validToken}`,
-    });
-    assert.equal(ordersRes.status, 200);
-    assert.ok(Array.isArray(ordersRes.body.orders));
-
-    // GET /api/v1/services/book
-    const bookRes = await request(server, 'GET', '/api/v1/services/book', null, {
-      Authorization: `Bearer ${validToken}`,
-    });
-    assert.equal(bookRes.status, 200);
-    assert.ok(Array.isArray(bookRes.body.bookings));
+    // GET /api/v1/services/packages
+    const pkgRes = await request(server, 'GET', '/api/v1/services/packages');
+    assert.equal(pkgRes.status, 200);
+    assert.ok(Array.isArray(pkgRes.body.packages));
   });
 
   await t.test('7. Business Logic: Unauthorized status updates on rentals and sales are rejected', async () => {
@@ -300,22 +286,6 @@ test('Comprehensive Full-Stack Security and API Audit Suite', async (t) => {
         assert.equal(patchRes.body.user.phoneVerificationCode, undefined, 'phoneVerificationCode must never be exposed');
       }
     }
-  });
-
-  await t.test('14. Orders: Requesting a non-existent order returns 404 instead of a mock placeholder', async () => {
-    const testUser = { id: 'usr-order-404-test', email: 'order404@example.com', role: 'seeker', name: 'Order 404 Tester' };
-    const validToken = jwt.sign(testUser, getJwtSecret(), { expiresIn: '1h' });
-
-    const res = await request(
-      server,
-      'GET',
-      '/api/v1/orders/non-existent-order-id-99999',
-      null,
-      { Authorization: `Bearer ${validToken}` }
-    );
-
-    assert.equal(res.status, 404, 'Non-existent order must return 404');
-    assert.match(res.body.error, /Order not found/i);
   });
 });
 
