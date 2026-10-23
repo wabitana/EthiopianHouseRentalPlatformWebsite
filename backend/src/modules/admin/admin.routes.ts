@@ -88,7 +88,7 @@ router.patch('/properties/:id/approve', authenticateToken, async (req: AuthReque
       data: {
         userId: property.providerId,
         title: 'Listing Approved! 🎉',
-        message: `Your property listing "${property.title}" has been approved and published to the marketplace.`,
+        message: `Your property listing "${property.title}" has been approved and published to the property listings.`,
         type: 'PROPERTY',
       },
     });
