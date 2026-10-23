@@ -85,13 +85,14 @@ export default function MeetTheTeamSection({ members }: MeetTheTeamSectionProps)
   const teamMembers = members || DEFAULT_MEMBERS;
 
   return (
-    <section className="w-full bg-white py-20 md:py-28 relative overflow-hidden rounded-[40px] md:rounded-[60px] border border-slate-100 shadow-2xl my-16">
-      {/* Ambient Background */}
-      <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-emerald-100 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-purple-50 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-50 pointer-events-none" />
+    <div className="my-16 max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 xl:px-16">
+      <section className="w-full bg-white py-16 md:py-24 relative overflow-hidden rounded-[32px] md:rounded-[48px] border border-slate-100 shadow-2xl">
+        {/* Ambient Background */}
+        <div className="absolute top-0 right-1/4 w-[400px] h-[400px] bg-emerald-100 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-purple-50 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#f1f5f9_1px,transparent_1px),linear-gradient(to_bottom,#f1f5f9_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-50 pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="px-6 sm:px-10 lg:px-12 relative z-10">
 
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4 mb-16 md:mb-24">
@@ -138,5 +139,6 @@ export default function MeetTheTeamSection({ members }: MeetTheTeamSectionProps)
         </div>
       </div>
     </section>
-  );
+  </div>
+);
 }
