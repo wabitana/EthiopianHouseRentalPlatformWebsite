@@ -25,7 +25,7 @@ export default function LandlordSellerCtaSection() {
       <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-500/5 rounded-full blur-[140px] pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-500/5 rounded-full blur-[140px] pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+      <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 xl:px-16 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           {/* LEFT CONTENT (6 Columns) */}
           <div className="lg:col-span-6 space-y-6">
