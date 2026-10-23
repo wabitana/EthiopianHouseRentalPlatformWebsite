@@ -11,8 +11,9 @@ export default function Testimonials({ testimonials = [] }: { testimonials?: any
 
   return (
     <section className="py-20 bg-white">
-      {/* Container with enhanced shadow and blue-tinted filter */}
-      <div className="max-w-7xl mx-auto px-6 py-16 border border-slate-100 rounded-[3rem] shadow-[0_30px_60px_-12px_rgba(0,0,0,0.25)] bg-blue-50/30">
+      <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 xl:px-16">
+        {/* Container with enhanced shadow and blue-tinted filter */}
+        <div className="w-full px-6 sm:px-10 py-16 border border-slate-100 rounded-[3rem] shadow-[0_30px_60px_-12px_rgba(0,0,0,0.25)] bg-blue-50/30">
         
         {/* Header */}
         <div className="text-center mb-16">
@@ -58,6 +59,7 @@ export default function Testimonials({ testimonials = [] }: { testimonials?: any
           ))}
           </motion.div>
         </div>
+      </div>
       </div>
     </section>
   );
