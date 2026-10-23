@@ -37,13 +37,14 @@ const STEP_ICONS = [Store, Wrench, CreditCard, Truck];
 
 export default function HowItWorksSection({ config: howItWorks }: HowItWorksSectionProps) {
   return (
-    <section className="w-full bg-white py-20 md:py-28 relative overflow-hidden rounded-[40px] md:rounded-[60px] border border-slate-100 shadow-sm my-16">
-      {/* Subtle background texture */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#f8fafc_1px,transparent_1px),linear-gradient(to_bottom,#f8fafc_1px,transparent_1px)] bg-[size:3rem_3rem] opacity-40 pointer-events-none" />
-      <div className="absolute -top-32 -left-32 w-80 h-80 bg-blue-100 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-emerald-100 rounded-full blur-[100px] pointer-events-none" />
+    <div className="my-16 max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 xl:px-16">
+      <section className="w-full bg-white py-16 md:py-24 relative overflow-hidden rounded-[32px] md:rounded-[48px] border border-slate-100 shadow-sm">
+        {/* Subtle background texture */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#f8fafc_1px,transparent_1px),linear-gradient(to_bottom,#f8fafc_1px,transparent_1px)] bg-[size:3rem_3rem] opacity-40 pointer-events-none" />
+        <div className="absolute -top-32 -left-32 w-80 h-80 bg-blue-100 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute -bottom-32 -right-32 w-80 h-80 bg-emerald-100 rounded-full blur-[100px] pointer-events-none" />
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 relative z-10">
+        <div className="px-6 sm:px-10 lg:px-12 relative z-10">
         {/* Header */}
         <div className="text-center mb-16 md:mb-20">
           <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 border border-blue-200 px-4 py-1.5 text-xs font-semibold text-blue-700 tracking-wide uppercase mb-4">
@@ -102,5 +103,6 @@ export default function HowItWorksSection({ config: howItWorks }: HowItWorksSect
         </div>
       </div>
     </section>
-  );
+  </div>
+);
 }
