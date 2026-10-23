@@ -15,7 +15,7 @@ interface PartnerCompaniesSectionProps {
 export default function PartnerCompaniesSection({ partners }: PartnerCompaniesSectionProps) {
   return (
     <section className="py-16 overflow-hidden bg-white">
-      <div className="max-w-7xl mx-auto px-4 mb-10 text-center">
+      <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 xl:px-16 mb-10 text-center">
         <h2 className="text-3xl font-black text-slate-900">Partner Companies</h2>
         <p className="text-slate-600 mt-2">Institutional partners supporting our ecosystem.</p>
       </div>
