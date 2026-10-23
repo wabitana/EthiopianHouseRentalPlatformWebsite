@@ -190,8 +190,8 @@ The platform includes a dedicated Telegram bot for searching homes, receiving pu
 ## Group Members
 ## Name   ===============                ID
 
-### 1. shanbel kibre CTC-416-26
-### 2. wabi  Tena CTC-338-26
+### 1. Shanbel kibre CTC-416-26
+### 2. Wabi  Tena CTC-338-26
 ### 3. Serawit Shimels CTC-271-26
 ### 4. Tomas   Godefa CTC-2336-26
 
