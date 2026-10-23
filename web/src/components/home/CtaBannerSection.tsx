@@ -18,7 +18,7 @@ interface CtaBannerSectionProps {
 
 export default function CtaBannerSection({ config: cta }: CtaBannerSectionProps) {
   return (
-    <div className="mt-28 mx-auto max-w-5xl px-4 sm:px-6 relative z-20">
+    <div className="mt-28 mx-auto max-w-5xl px-6 sm:px-10 lg:px-14 xl:px-16 relative z-20">
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900/40 via-emerald-950/50 to-slate-950 border border-emerald-500/20 p-8 md:p-16 text-center shadow-2xl backdrop-blur-sm">
         <div className="absolute -left-20 -top-20 w-72 h-72 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
         <div className="absolute -right-20 -bottom-20 w-72 h-72 rounded-full bg-teal-500/10 blur-3xl pointer-events-none" />
