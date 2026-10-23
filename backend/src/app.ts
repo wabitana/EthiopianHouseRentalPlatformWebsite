@@ -20,8 +20,6 @@ import {
   saleRoutes,
   cmsRoutes,
   vendorServicesRoutes,
-  cartRoutes,
-  ordersRoutes,
   agentRoutes,
   telegramRoutes,
 } from './modules';
@@ -85,8 +83,6 @@ app.use('/api/v1/sales', saleRoutes);
 app.use('/api/v1/cms', cmsRoutes);
 app.use('/api/v1/services', vendorServicesRoutes);
 app.use('/api/v1/addresses', vendorServicesRoutes);
-app.use('/api/v1/cart', cartRoutes);
-app.use('/api/v1/orders', ordersRoutes);
 app.use('/api/v1/agent', agentRoutes);
 app.use('/api/v1/telegram', telegramRoutes);
 
@@ -94,10 +90,7 @@ app.use('/api/v1/telegram', telegramRoutes);
 app.use('/api/cms', cmsRoutes);
 app.use('/api/services', vendorServicesRoutes);
 app.use('/api/addresses', vendorServicesRoutes);
-app.use('/api/bookings', vendorServicesRoutes);
 app.use('/api/profile', authRoutes);
-app.use('/api/cart', cartRoutes);
-app.use('/api/orders', ordersRoutes);
 app.use('/api/chat', aiRoutes);
 
 // Health check endpoint
