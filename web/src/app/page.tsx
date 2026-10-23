@@ -120,7 +120,7 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="bg-slate-50">
+    <div className="bg-slate-50 overflow-x-hidden">
       <HeroSection config={hero} />
       <FeaturesSection features={features} />
       <PropertySearchSection
