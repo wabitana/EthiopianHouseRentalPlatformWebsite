@@ -19,7 +19,7 @@ interface PlatformHighlightsSectionProps {
 export default function PlatformHighlightsSection({ highlights }: PlatformHighlightsSectionProps) {
   return (
     <section className="bg-white py-16">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      <div className="mx-auto max-w-7xl px-6 sm:px-10 lg:px-14 xl:px-16">
         <div className="mb-10 flex items-end justify-between">
           <div>
             <h2 className="text-2xl font-bold text-slate-900">
