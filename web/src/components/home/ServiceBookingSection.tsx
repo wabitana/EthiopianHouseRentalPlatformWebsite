@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export default function ServiceBookingSection() {
   return (
-    <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+    <section className="mx-auto max-w-7xl px-6 sm:px-10 lg:px-14 xl:px-16 py-16">
       <div className="rounded-3xl bg-slate-900 p-8 text-white sm:p-12">
         <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
           <div>
