@@ -4,6 +4,14 @@ generator client {
   previewFeatures = ["driverAdapters"]
 }
 
+generator erd {
+  provider        = "prisma-erd-generator"
+  output          = "./ERD.svg"
+  theme           = "neutral"
+  puppeteerConfig = "./package.json"
+}
+
+
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
@@ -57,7 +65,7 @@ enum AgreementStatus {
 
 // ==========================================
 // 1. USER & IDENTITY ENTITIES
-// ==========================================
+// ========================================== 
 
 model User {
   id            String   @id @default(uuid())
@@ -69,7 +77,6 @@ model User {
   role          String   @default("seeker") // seeker, provider, admin, agent
 
   avatarUrl     String?
-  telegramChatId String?  @unique
 
   isVerified                 Boolean @default(false)
 
