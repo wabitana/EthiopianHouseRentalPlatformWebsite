@@ -17,7 +17,7 @@ interface FeaturesSectionProps {
 export default function FeaturesSection({ features }: FeaturesSectionProps) {
   return (
     <section className="relative z-20 -mt-23 rounded-t-[80px] bg-white pt-24 pb-16">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+      <div className="mx-auto max-w-7xl px-6 sm:px-10 lg:px-14 xl:px-16">
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {features.map((f) => (
             <Card key={f.title} className="card-hover overflow-hidden">
