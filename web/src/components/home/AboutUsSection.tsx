@@ -69,10 +69,11 @@ export default function AboutUsSection({ config: about }: AboutUsSectionProps) {
   ];
 
   return (
-    <section
-      ref={aboutSectionRef}
-      className="mt-28 max-w-[95vw] mx-auto bg-slate-50/90 text-black border border-slate-200/80 rounded-[32px] overflow-hidden shadow-sm grid grid-cols-1 lg:grid-cols-12 items-stretch"
-    >
+    <div className="mt-28 max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 xl:px-16">
+      <section
+        ref={aboutSectionRef}
+        className="w-full bg-slate-50/90 text-black border border-slate-200/80 rounded-[32px] overflow-hidden shadow-sm grid grid-cols-1 lg:grid-cols-12 items-stretch"
+      >
       <style dangerouslySetInnerHTML={{ __html: SCROLL_ANIMATION_CSS }} />
 
       {/* LEFT COLUMN: Clean Text Structure */}
@@ -172,5 +173,6 @@ export default function AboutUsSection({ config: about }: AboutUsSectionProps) {
         </div>
       </div>
     </section>
+  </div>
   );
 }
