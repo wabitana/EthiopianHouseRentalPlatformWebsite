@@ -27,7 +27,7 @@ interface HeroSectionProps {
 export default function HeroSection({ config: hero }: HeroSectionProps) {
   return (
     <section
-      className={`relative overflow-hidden px-4 pt-24 pb-52 text-white sm:px-6 lg:pt-32 lg:pb-64 ${(!hero.backgroundType || hero.backgroundType === 'animation') ? 'gradient-hero' : ''}`}
+      className={`relative overflow-hidden px-6 pt-24 pb-52 text-white sm:px-10 lg:px-14 xl:px-16 lg:pt-32 lg:pb-64 ${(!hero.backgroundType || hero.backgroundType === 'animation') ? 'gradient-hero' : ''}`}
       style={hero.backgroundType === 'color' ? { backgroundColor: hero.backgroundColor || '#059669' } : {}}
     >
       {(!hero.backgroundType || hero.backgroundType === 'animation') && <HeroAnimationWrapper />}
