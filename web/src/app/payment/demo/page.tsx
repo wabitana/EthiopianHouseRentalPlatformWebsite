@@ -15,7 +15,7 @@ function DemoPayment() {
     if (txRef) {
       await fetch(`/api/payments/chapa/callback?tx_ref=${txRef}`);
     }
-    router.push("/orders?payment=success");
+    router.push("/browse-houses?payment=success");
   }
 
   return (
