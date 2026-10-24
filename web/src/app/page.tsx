@@ -16,7 +16,6 @@ import {
 // Shared / existing components
 import Testimonials from "@/components/home/Testimonials";
 import Chatbot from "@/components/home/Chatbot";
-import EcosystemsStack from "@/components/home/EcosystemsStack";
 import ContactSection from "@/components/ContactSection";
 
 // Extracted home section components
@@ -24,17 +23,13 @@ import HeroSection from "@/components/home/HeroSection";
 import FeaturesSection from "@/components/home/FeaturesSection";
 import PropertySearchSection from "@/components/home/PropertySearchSection";
 import PlatformHighlightsSection from "@/components/home/PlatformHighlightsSection";
-import Virtual3DTourSection from "@/components/home/Virtual3DTourSection";
-import LandlordSellerCtaSection from "@/components/home/LandlordSellerCtaSection";
 import NeighborhoodGuideSection from "@/components/home/NeighborhoodGuideSection";
 import RentCalculatorSection from "@/components/home/RentCalculatorSection";
 import EcosystemPortalSection from "@/components/home/EcosystemPortalSection";
 import SecurityGuaranteeSection from "@/components/home/SecurityGuaranteeSection";
 import ScrollHorizontalSection from "@/components/home/ScrollHorizontalSection";
 import StatsCounterSection from "@/components/home/StatsCounterSection";
-import CtaBannerSection from "@/components/home/CtaBannerSection";
 import AboutUsSection from "@/components/home/AboutUsSection";
-import ServiceBookingSection from "@/components/home/ServiceBookingSection";
 import HowItWorksSection from "@/components/home/HowItWorksSection";
 import AppDownloadSection from "@/components/home/AppDownloadSection";
 import VendorCtaSection from "@/components/home/VendorCtaSection";
@@ -105,7 +100,6 @@ export default function HomePage() {
   ];
   const counterData = counterDataRaw.map((c, i) => ({ ...c, icon: [Calendar, Wrench, Users, Briefcase][i % 4] }));
 
-  const cta = cmsConfig?.cms_cta || {};
   const about = cmsConfig?.cms_about || {};
   const howItWorks = cmsConfig?.cms_how_it_works || {};
   const appSection = cmsConfig?.cms_app_section || {};
@@ -123,6 +117,11 @@ export default function HomePage() {
     <div className="bg-slate-50 overflow-x-hidden">
       <HeroSection config={hero} />
       <FeaturesSection features={features} />
+      <PlatformHighlightsSection highlights={platformHighlights} />
+      <NeighborhoodGuideSection />
+      <RentCalculatorSection />
+      <EcosystemPortalSection />
+      <ScrollHorizontalSection />
       <PropertySearchSection
         heroLocation={heroLocation}
         setHeroLocation={setHeroLocation}
@@ -132,19 +131,9 @@ export default function HomePage() {
         setHeroRooms={setHeroRooms}
         onSearch={handleHeroSearch}
       />
-      <PlatformHighlightsSection highlights={platformHighlights} />
-      <EcosystemsStack />
-      <LandlordSellerCtaSection />
-      <Virtual3DTourSection />
-      <NeighborhoodGuideSection />
-      <RentCalculatorSection />
-      <EcosystemPortalSection />
-      <ScrollHorizontalSection />
       <SecurityGuaranteeSection />
       <StatsCounterSection counters={counterData} />
-      <CtaBannerSection config={cta} />
       <AboutUsSection config={about} />
-      <ServiceBookingSection />
       <HowItWorksSection config={howItWorks} />
       <AppDownloadSection config={appSection} />
       <VendorCtaSection config={vendorCta} />
@@ -156,3 +145,7 @@ export default function HomePage() {
     </div>
   );
 }
+
+
+
+
