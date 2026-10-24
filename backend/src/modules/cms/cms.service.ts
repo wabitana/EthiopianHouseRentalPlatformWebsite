@@ -1,12 +1,17 @@
-import { prisma } from '../../prisma';
+import { prisma, withDbRetry } from '../../prisma';
 import { defaultCmsConfig, ALL_CMS_KEYS } from './cms.defaults';
 
 export class CmsService {
   async getCmsConfig() {
     try {
-      const configs = await prisma.platformConfig.findMany({
-        where: { key: { in: ALL_CMS_KEYS } },
-      });
+      const configs = await withDbRetry(
+        () =>
+          prisma.platformConfig.findMany({
+            where: { key: { in: ALL_CMS_KEYS } },
+          }),
+        2,
+        800
+      );
 
       const configMap = configs.reduce((acc, curr) => {
         try {
