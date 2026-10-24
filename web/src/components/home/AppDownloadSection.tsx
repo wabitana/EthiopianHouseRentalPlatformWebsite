@@ -38,10 +38,6 @@ export default function AppDownloadSection({ config: appSection }: AppDownloadSe
             {/* LEFT COLUMN: TEXTS & DOWNLOAD CALL TO ACTIONS */}
             <div className="w-full lg:col-span-6 space-y-8 text-center lg:text-left">
               <div className="space-y-4">
-                <div className="inline-flex items-center gap-2 rounded-full bg-lime-50 border border-lime-200 px-4 py-1.5 text-xs font-semibold text-lime-700 tracking-wide uppercase mx-auto lg:mx-0">
-                  <Smartphone className="h-3.5 w-3.5 text-lime-600" />
-                  {appSection.badge || "Now Available on iOS & Android"}
-                </div>
                 <h2 className="text-3xl md:text-5xl font-black tracking-tight text-slate-900 leading-tight">
                   {appSection.title || "Delala Home Rentals App"} <br />
                   <span className="bg-gradient-to-r from-amber-500 via-lime-500 to-emerald-500 bg-clip-text text-transparent">
