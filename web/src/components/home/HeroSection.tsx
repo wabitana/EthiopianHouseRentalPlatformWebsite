@@ -46,11 +46,6 @@ export default function HeroSection({ config: hero }: HeroSectionProps) {
 
       <div className="relative z-10 mx-auto max-w-7xl">
         <div className="max-w-3xl">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-sm backdrop-blur">
-            <Sparkles className="h-4 w-4" />
-            {hero.badge || "Ethiopia's Premier Home Rental Platform"}
-          </div>
-
           <h1 className="text-4xl font-bold leading-tight sm:text-5xl lg:text-6xl">
             {hero.title || "Find & Rent Your Next Dream Home in Ethiopia"}
           </h1>
