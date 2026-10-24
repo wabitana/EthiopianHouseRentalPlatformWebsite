@@ -13,9 +13,12 @@ import 'post_house_wizard_screen.dart';
 import 'my_listings_screen.dart';
 import 'provider_inquiries_screen.dart';
 import 'provider_analytics_screen.dart';
+import 'provider_maintenance_screen.dart';
+import '../../tenants/providers/maintenance_provider.dart';
 import '../../../shared/models/user_model.dart';
 import '../../../shared/widgets/app_navigation_drawer.dart';
 import '../../../shared/widgets/app_tutoring_overlay.dart';
+import '../../../core/services/currency_service.dart';
 
 class ProviderDashboardScreen extends StatefulWidget {
   const ProviderDashboardScreen({super.key});
@@ -30,15 +33,18 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       AppTutorialService.checkAndShowTutorial(context, 'provider');
+      context.read<MaintenanceProvider>().fetchProviderTickets();
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    context.watch<CurrencyProvider>();
     final authProvider = context.watch<AuthProvider>();
     final user = authProvider.currentUser;
     final propertyProvider = context.watch<PropertyProvider>();
     final inquiryProvider = context.watch<InquiryProvider>();
+    final maintenanceProvider = context.watch<MaintenanceProvider>();
 
     final myProperties = propertyProvider.providerProperties;
     final totalListings = myProperties.length;
@@ -46,6 +52,7 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
     final pendingListings = myProperties.where((p) => p.listingStatus == PropertyListingStatus.pending).length;
     final rentedListings = myProperties.where((p) => p.listingStatus == PropertyListingStatus.rented).length;
     final newInquiries = inquiryProvider.newProviderInquiriesCount;
+    final pendingRepairs = maintenanceProvider.pendingProviderTicketsCount;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -62,6 +69,18 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Tenant Repairs',
+            icon: Badge(
+              isLabelVisible: pendingRepairs > 0,
+              label: Text('$pendingRepairs'),
+              backgroundColor: Colors.orange,
+              child: const Icon(Icons.build_outlined, color: Colors.white, size: 22),
+            ),
+            onPressed: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const ProviderMaintenanceScreen()));
+            },
+          ),
           IconButton(
             tooltip: 'Listing Analytics',
             icon: const Icon(Icons.analytics_outlined, color: Colors.white, size: 22),
@@ -149,7 +168,89 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
                   Expanded(child: _StatCard('New Inquiries', '$newInquiries', Icons.mail_outline_rounded, AppColors.secondary)),
                 ],
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 14),
+
+              // Tenant Repairs Alert Banner
+              GestureDetector(
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ProviderMaintenanceScreen()),
+                  );
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: pendingRepairs > 0
+                          ? [Colors.orange.shade50, Colors.white]
+                          : [AppColors.primary.withValues(alpha: 0.08), Colors.white],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: pendingRepairs > 0 ? Colors.orange.shade300 : AppColors.border,
+                      width: pendingRepairs > 0 ? 1.5 : 1,
+                    ),
+                    boxShadow: AppColors.cardShadow,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: pendingRepairs > 0 ? Colors.orange.shade100 : AppColors.primaryContainer,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          Icons.handyman_rounded,
+                          color: pendingRepairs > 0 ? Colors.orange.shade800 : AppColors.primary,
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  'Tenant Repair Requests',
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                                ),
+                                if (pendingRepairs > 0) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.shade700,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '$pendingRepairs PENDING',
+                                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              pendingRepairs > 0
+                                  ? '$pendingRepairs repair issue(s) reported by your tenants require review.'
+                                  : 'No urgent repairs. Tap to view maintenance log.',
+                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.textMuted),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
 
               // CTA Post New House Button
               CustomButton(

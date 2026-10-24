@@ -19,6 +19,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
   bool _isSent = false;
   bool _isLoading = false;
+  bool _obscureNewPassword = true;
   String? _errorMsg;
 
   void _onSendReset() async {
@@ -141,14 +142,35 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                       label: 'New Password',
                       hint: 'Minimum 6 characters',
                       controller: _newPasswordController,
-                      obscureText: true,
+                      obscureText: _obscureNewPassword,
                       prefixIcon: Icons.lock_outline,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureNewPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          color: AppColors.textMuted,
+                          size: 20,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscureNewPassword = !_obscureNewPassword;
+                          });
+                        },
+                      ),
                     ),
                     const SizedBox(height: 24),
                     CustomButton(
                       text: 'Reset Password & Save',
                       isLoading: _isLoading,
+                      trailingIcon: Icons.arrow_forward_rounded,
                       onPressed: _onConfirmReset,
+                    ),
+                    const SizedBox(height: 14),
+                    Center(
+                      child: TextButton.icon(
+                        icon: const Icon(Icons.refresh_rounded, size: 18),
+                        label: const Text('Resend Code to Email'),
+                        onPressed: _isLoading ? null : _onSendReset,
+                      ),
                     ),
                   ],
                 )

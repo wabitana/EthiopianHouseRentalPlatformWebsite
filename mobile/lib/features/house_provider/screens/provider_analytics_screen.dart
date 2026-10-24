@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/constants/api_endpoints.dart';
 import '../../../core/network/api_client.dart';
+import '../../house_seeker/screens/property_detail_screen.dart';
 
 class ProviderAnalyticsScreen extends StatefulWidget {
   const ProviderAnalyticsScreen({super.key});
@@ -60,6 +61,7 @@ class _ProviderAnalyticsScreenState extends State<ProviderAnalyticsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Refresh Analytics',
             onPressed: _fetchAnalytics,
           ),
         ],
@@ -69,6 +71,7 @@ class _ProviderAnalyticsScreenState extends State<ProviderAnalyticsScreen> {
           : RefreshIndicator(
               onRefresh: _fetchAnalytics,
               child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -141,16 +144,31 @@ class _ProviderAnalyticsScreenState extends State<ProviderAnalyticsScreen> {
                           border: Border.all(color: AppColors.border),
                         ),
                         child: const Center(
-                          child: Text('No property listings found yet. Post your first house to view real analytics!', style: TextStyle(color: AppColors.textSecondary), textAlign: TextAlign.center),
+                          child: Text(
+                            'No property listings found yet. Post your first house to view real analytics!',
+                            style: TextStyle(color: AppColors.textSecondary),
+                            textAlign: TextAlign.center,
+                          ),
                         ),
                       )
                     else
                       ..._topProperties.map((p) {
+                        final id = p['id'] as String? ?? '';
                         final title = p['title'] as String? ?? 'Listing';
                         final views = '${p['viewsCount'] ?? 0} Views';
                         final inquiries = '${p['inquiriesCount'] ?? 0} Inquiries';
                         final price = p['price'] as String? ?? '';
-                        return _buildPropertyPerformanceTile(title, views, inquiries, price);
+                        final phoneClicks = (p['phoneClicks'] as num?)?.toInt();
+                        final mapClicks = (p['mapClicks'] as num?)?.toInt();
+                        return _buildPropertyPerformanceTile(
+                          id: id,
+                          title: title,
+                          views: views,
+                          inquiries: inquiries,
+                          price: price,
+                          phoneClicks: phoneClicks,
+                          mapClicks: mapClicks,
+                        );
                       }),
                   ],
                 ),
@@ -187,7 +205,7 @@ class _ProviderAnalyticsScreenState extends State<ProviderAnalyticsScreen> {
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         AnimatedContainer(
-          duration: const Duration(milliseconds: 400),
+          duration: const Duration(milliseconds: 500),
           width: 24,
           height: 110 * heightFactor,
           decoration: BoxDecoration(
@@ -201,36 +219,88 @@ class _ProviderAnalyticsScreenState extends State<ProviderAnalyticsScreen> {
     );
   }
 
-  Widget _buildPropertyPerformanceTile(String title, String views, String inquiries, String price) {
+  Widget _buildPropertyPerformanceTile({
+    required String id,
+    required String title,
+    required String views,
+    required String inquiries,
+    required String price,
+    int? phoneClicks,
+    int? mapClicks,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: id.isNotEmpty
+              ? () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => PropertyDetailScreen(propertyId: id),
+                    ),
+                  );
+                }
+              : null,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(views, style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
-                    const SizedBox(width: 10),
-                    Text(inquiries, style: const TextStyle(fontSize: 11, color: AppColors.secondary, fontWeight: FontWeight.w600)),
-                  ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text(views, style: const TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.w600)),
+                          const SizedBox(width: 10),
+                          Text(inquiries, style: const TextStyle(fontSize: 11, color: AppColors.secondary, fontWeight: FontWeight.w600)),
+                          if (phoneClicks != null && phoneClicks > 0) ...[
+                            const SizedBox(width: 8),
+                            Icon(Icons.phone, size: 10, color: Colors.grey.shade600),
+                            const SizedBox(width: 2),
+                            Text('$phoneClicks', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+                          ],
+                          if (mapClicks != null && mapClicks > 0) ...[
+                            const SizedBox(width: 6),
+                            Icon(Icons.directions, size: 10, color: Colors.grey.shade600),
+                            const SizedBox(width: 2),
+                            Text('$mapClicks', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
+                const SizedBox(width: 8),
+                Text(price, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primary)),
               ],
             ),
           ),
-          Text(price, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.primary)),
-        ],
+        ),
       ),
     );
   }

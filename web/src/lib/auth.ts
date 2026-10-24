@@ -9,7 +9,9 @@ const getSecretKey = () =>
   );
 
 const BACKEND_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
+  (typeof window === "undefined" && process.env.BACKEND_INTERNAL_URL)
+    ? process.env.BACKEND_INTERNAL_URL
+    : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1");
 
 export interface SessionUser {
   id: string;

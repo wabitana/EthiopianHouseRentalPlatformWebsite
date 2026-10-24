@@ -6,6 +6,7 @@ import '../../core/utils/ethiopian_coordinates.dart';
 import '../models/property_model.dart';
 import '../widgets/property_card.dart';
 import '../../features/house_seeker/screens/property_detail_screen.dart';
+import '../../core/utils/formatters.dart';
 
 /// Small Inline Map Preview Widget rendered directly inside the chat message bubble
 class AiPropertyMapView extends StatefulWidget {
@@ -124,7 +125,7 @@ class _AiPropertyMapViewState extends State<AiPropertyMapView> {
                 const Icon(Icons.home_work_rounded, size: 12, color: Colors.white),
                 const SizedBox(width: 3),
                 Text(
-                  '${p.price.toInt()} ETB',
+                  Formatters.formatCurrency(p.price),
                   style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
                 ),
               ],
@@ -295,7 +296,7 @@ class _AiPropertyMapViewState extends State<AiPropertyMapView> {
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                             ),
                             Text(
-                              '📍 ${_selectedProperty!.area} • ${_selectedProperty!.price.toInt()} ETB',
+                              '📍 ${_selectedProperty!.area} • ${Formatters.formatCurrency(_selectedProperty!.price)}',
                               style: const TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold),
                             ),
                           ],
@@ -446,7 +447,7 @@ class _AiPropertyMapScreenState extends State<AiPropertyMapScreen> {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  '${p.price.toInt()} ETB',
+                  Formatters.formatCurrency(p.price),
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,

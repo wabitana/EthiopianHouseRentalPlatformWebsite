@@ -363,7 +363,7 @@ class PropertyCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      Formatters.formatCurrency(property.price),
+                      context.watch<CurrencyProvider>().formatPrice(property.price),
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary),
                     ),
                     const SizedBox(height: 4),

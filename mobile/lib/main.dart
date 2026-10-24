@@ -11,6 +11,7 @@ import 'features/house_seeker/providers/inquiry_provider.dart';
 import 'features/notifications/providers/notification_provider.dart';
 import 'features/ai_assistant/providers/ai_assistant_provider.dart';
 import 'features/house_seeker/providers/ai_recommendations_provider.dart';
+import 'features/tenants/providers/maintenance_provider.dart';
 import 'features/auth/screens/splash_screen.dart';
 
 import 'core/services/currency_service.dart';
@@ -39,6 +40,7 @@ class EthiopianHouseRentalApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PropertyProvider()),
         ChangeNotifierProvider(create: (_) => FavoritesProvider()),
         ChangeNotifierProvider(create: (_) => InquiryProvider()),
+        ChangeNotifierProvider(create: (_) => MaintenanceProvider()),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => AiAssistantProvider()),
         ChangeNotifierProvider(create: (_) => AiRecommendationsProvider()),

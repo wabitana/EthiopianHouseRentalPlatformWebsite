@@ -31,6 +31,22 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
   });
 };
 
+export const optionalAuthenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+
+  if (!token) {
+    return next();
+  }
+
+  jwt.verify(token, getJwtSecret(), (err, user) => {
+    if (!err && user) {
+      req.user = user as AuthRequest['user'];
+    }
+    next();
+  });
+};
+
 export const requireRole = (...allowedRoles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {

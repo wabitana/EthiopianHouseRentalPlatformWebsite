@@ -33,6 +33,8 @@ class AppColors {
 
   static const Color rejected = Color(0xFFDC2626);
   static const Color rejectedBackground = Color(0xFFFEE2E2);
+  static const Color error = Color(0xFFDC2626);
+  static const Color errorBackground = Color(0xFFFEE2E2);
 
   static const Color rented = Color(0xFF4F46E5);
   static const Color rentedBackground = Color(0xFFE0E7FF);

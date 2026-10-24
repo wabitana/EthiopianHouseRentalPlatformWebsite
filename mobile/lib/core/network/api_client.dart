@@ -67,6 +67,17 @@ class ApiClient {
     }
   }
 
+  static String _swapHost(String url) {
+    if (url.contains('localhost')) {
+      return url.replaceFirst('localhost', '10.0.2.2');
+    } else if (url.contains('127.0.0.1')) {
+      return url.replaceFirst('127.0.0.1', '10.0.2.2');
+    } else if (url.contains('10.0.2.2')) {
+      return url.replaceFirst('10.0.2.2', 'localhost');
+    }
+    return url;
+  }
+
   static Future<dynamic> get(String url, {bool requireAuth = true}) async {
     try {
       final headers = await _getHeaders(requireAuth: requireAuth);
@@ -75,6 +86,16 @@ class ApiClient {
           .timeout(_timeout);
       return _handleResponse(response);
     } on SocketException {
+      final fallbackUrl = _swapHost(url);
+      if (fallbackUrl != url) {
+        try {
+          final headers = await _getHeaders(requireAuth: requireAuth);
+          final response = await http
+              .get(Uri.parse(fallbackUrl), headers: headers)
+              .timeout(_timeout);
+          return _handleResponse(response);
+        } catch (_) {}
+      }
       throw ApiException('Unable to connect to server. Please check internet connection.');
     } on ApiException {
       rethrow;
@@ -99,6 +120,58 @@ class ApiClient {
           .timeout(_timeout);
       return _handleResponse(response);
     } on SocketException {
+      final fallbackUrl = _swapHost(url);
+      if (fallbackUrl != url) {
+        try {
+          final headers = await _getHeaders(requireAuth: requireAuth);
+          final response = await http
+              .post(
+                Uri.parse(fallbackUrl),
+                headers: headers,
+                body: body != null ? jsonEncode(body) : null,
+              )
+              .timeout(_timeout);
+          return _handleResponse(response);
+        } catch (_) {}
+      }
+      throw ApiException('Unable to connect to server. Please check internet connection.');
+    } on ApiException {
+      rethrow;
+    } catch (e) {
+      throw ApiException('Network request failed: ${e.toString()}');
+    }
+  }
+
+  static Future<dynamic> put(
+    String url, {
+    Map<String, dynamic>? body,
+    bool requireAuth = true,
+  }) async {
+    try {
+      final headers = await _getHeaders(requireAuth: requireAuth);
+      final response = await http
+          .put(
+            Uri.parse(url),
+            headers: headers,
+            body: body != null ? jsonEncode(body) : null,
+          )
+          .timeout(_timeout);
+      return _handleResponse(response);
+    } on SocketException {
+      final fallbackUrl = _swapHost(url);
+      if (fallbackUrl != url) {
+        try {
+          final headers = await _getHeaders(requireAuth: requireAuth);
+          final response = await http
+              .put(
+                Uri.parse(fallbackUrl),
+                headers: headers,
+                body: body != null ? jsonEncode(body) : null,
+              )
+              .timeout(_timeout);
+          return _handleResponse(response);
+        } catch (_) {}
+      }
       throw ApiException('Unable to connect to server. Please check internet connection.');
     } on ApiException {
       rethrow;
@@ -123,6 +196,20 @@ class ApiClient {
           .timeout(_timeout);
       return _handleResponse(response);
     } on SocketException {
+      final fallbackUrl = _swapHost(url);
+      if (fallbackUrl != url) {
+        try {
+          final headers = await _getHeaders(requireAuth: requireAuth);
+          final response = await http
+              .patch(
+                Uri.parse(fallbackUrl),
+                headers: headers,
+                body: body != null ? jsonEncode(body) : null,
+              )
+              .timeout(_timeout);
+          return _handleResponse(response);
+        } catch (_) {}
+      }
       throw ApiException('Unable to connect to server. Please check internet connection.');
     } on ApiException {
       rethrow;
@@ -139,6 +226,16 @@ class ApiClient {
           .timeout(_timeout);
       return _handleResponse(response);
     } on SocketException {
+      final fallbackUrl = _swapHost(url);
+      if (fallbackUrl != url) {
+        try {
+          final headers = await _getHeaders(requireAuth: requireAuth);
+          final response = await http
+              .delete(Uri.parse(fallbackUrl), headers: headers)
+              .timeout(_timeout);
+          return _handleResponse(response);
+        } catch (_) {}
+      }
       throw ApiException('Unable to connect to server. Please check internet connection.');
     } on ApiException {
       rethrow;

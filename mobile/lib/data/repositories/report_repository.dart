@@ -9,16 +9,17 @@ abstract class ReportRepository {
 class ApiReportRepository implements ReportRepository {
   @override
   Future<void> submitReport(ReportModel report) async {
-    try {
-      await ApiClient.post(
-        ApiEndpoints.reports,
-        body: {
-          'propertyId': report.propertyId,
-          'reason': report.reason,
-          'details': report.details,
-        },
-      );
-    } catch (_) {}
+    final response = await ApiClient.post(
+      ApiEndpoints.reports,
+      body: {
+        'propertyId': report.propertyId,
+        'reason': report.reason,
+        'details': report.details,
+      },
+    );
+    if (response is Map<String, dynamic> && response['error'] != null) {
+      throw Exception(response['error']);
+    }
   }
 }
 

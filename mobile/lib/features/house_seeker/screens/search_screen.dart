@@ -17,6 +17,8 @@ import '../providers/ai_recommendations_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../../core/services/user_behavior_tracker.dart';
 import 'property_detail_screen.dart';
+import '../../../data/repositories/saved_search_repository.dart';
+import '../../notifications/providers/notification_provider.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -644,7 +646,65 @@ class SearchFilterBottomSheet extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 12),
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.primary),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: const Icon(Icons.notifications_active_outlined, color: AppColors.primary, size: 18),
+              label: const Text(
+                'Save Current Filters as Search Alert',
+                style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              onPressed: () async {
+                final repo = SavedSearchRepositoryImpl();
+                final typeStr = provider.selectedPropertyType != 'All' ? provider.selectedPropertyType : 'Houses';
+                final locStr = provider.selectedArea != 'All' ? provider.selectedArea : provider.selectedCity;
+                final alertTitle = '$typeStr in $locStr';
+
+                try {
+                  final created = await repo.createSavedSearch(
+                    title: alertTitle,
+                    city: provider.selectedCity,
+                    area: provider.selectedArea,
+                    propertyType: provider.selectedPropertyType,
+                    minPrice: provider.minPrice,
+                    maxPrice: provider.maxPrice,
+                    minRooms: provider.minRooms,
+                    isNotify: true,
+                  );
+
+                  if (context.mounted) {
+                    final auth = context.read<AuthProvider>();
+                    if (auth.currentUser != null) {
+                      context.read<NotificationProvider>().fetchNotifications(auth.currentUser!.id);
+                    }
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('🔔 Alert Saved! Found ${created.matchesCount} matching houses in database.'),
+                        backgroundColor: AppColors.primary,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Could not save alert: ${e.toString()}'),
+                        backgroundColor: AppColors.error,
+                      ),
+                    );
+                  }
+                }
+              },
+            ),
+          ),
+
           Row(
             children: [
               Expanded(
