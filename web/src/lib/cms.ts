@@ -80,8 +80,8 @@ export const defaultCmsConfig = {
       '24/7 direct landlord & maintenance chat',
       '360° Panorama virtual room tours',
     ],
-    playStoreLink: '#play-store',
-    appStoreLink: '#app-store',
+    playStoreLink: 'https://github.com/wabitana/EthiopianHouseRentalPlatformWebsite/releases/latest/download/app-release.apk',
+    appStoreLink: '/launch-app',
   },
   cms_vendor_cta: {
     badge: 'Landlord & Property Provider Portal',

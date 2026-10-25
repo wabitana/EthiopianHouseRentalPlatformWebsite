@@ -6,7 +6,8 @@
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "sync:apk": "powershell -ExecutionPolicy Bypass -File ../copy_apk.ps1"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
