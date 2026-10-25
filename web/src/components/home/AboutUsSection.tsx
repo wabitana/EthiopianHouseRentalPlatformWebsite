@@ -82,7 +82,6 @@ export default function AboutUsSection({ config: about }: AboutUsSectionProps) {
           className={`space-y-2 scroll-item ${isAboutVisible ? "animate-scroll-active" : ""}`}
           style={{ animationDelay: "100ms" }}
         >
-          <span className="text-xs font-bold uppercase tracking-widest text-slate-500 block">{about.badge || "About Delala Rentals"}</span>
           <h2 className="text-3xl md:text-5xl font-black tracking-tight text-black">
             {about.title || "Your comfort, security & peace of mind is our mission!"}
           </h2>

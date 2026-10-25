@@ -32,9 +32,6 @@ export default function PropertySearchSection({
 
       <div className="mx-auto max-w-7xl px-6 sm:px-10 lg:px-14 xl:px-16 relative z-10">
         <div className="text-center max-w-2xl mx-auto mb-8 space-y-3">
-          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-1 text-xs font-bold text-emerald-400 uppercase tracking-widest">
-            <Sparkles className="h-3.5 w-3.5" /> Fast Rental Lookup
-          </div>
           <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
             Where Would You Like to Live Next?
           </h2>

@@ -96,9 +96,6 @@ export default function MeetTheTeamSection({ members }: MeetTheTeamSectionProps)
 
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto space-y-4 mb-16 md:mb-24">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-100 px-4 py-1.5 text-xs font-semibold text-emerald-600 tracking-wide uppercase">
-            Innovators & Builders
-          </div>
           <h2 className="text-3xl md:text-5xl font-black tracking-tight text-slate-900 leading-tight">
             Meet the Minds Behind <br />
             <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-purple-600 bg-clip-text text-transparent">

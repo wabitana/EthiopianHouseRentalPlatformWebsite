@@ -6,7 +6,6 @@ import {
   Bed,
   Bath,
   Maximize2,
-  Sparkles,
   ArrowRight,
   ChevronLeft,
   ChevronRight,
@@ -172,8 +171,8 @@ export default function ScrollHorizontalSection() {
             setHouses(data.map(mapBackendToFeaturedHouse));
           }
         }
-      } catch (err) {
-        console.warn("Could not fetch DB properties for home horizontal scroll, falling back to defaults:", err);
+      } catch {
+        // Fallback to verified curated listings
       }
     }
     loadDbProperties();
@@ -210,17 +209,13 @@ export default function ScrollHorizontalSection() {
 
   return (
     <section className="relative py-14 sm:py-18 bg-white border-t border-slate-200 overflow-hidden">
-      {/* Background Subtle Ambient Glow */}
+
       <div className="absolute top-0 right-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-[140px] pointer-events-none" />
 
       <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 xl:px-16">
-        {/* Section Header with Controls */}
+
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3.5 py-1 text-xs font-bold text-emerald-700 uppercase tracking-widest mb-3">
-              <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
-              Featured Property Showcase
-            </div>
             <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
               Curated Ethiopian{" "}
               <span className="bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 bg-clip-text text-transparent">
@@ -232,7 +227,7 @@ export default function ScrollHorizontalSection() {
             </p>
           </div>
 
-          {/* Navigation Controls */}
+
           <div className="flex items-center gap-3 self-start md:self-end">
             <a
               href="/browse-houses"
@@ -266,42 +261,6 @@ export default function ScrollHorizontalSection() {
         className="flex gap-6 overflow-x-auto no-scrollbar scroll-smooth px-6 sm:px-10 lg:px-14 xl:px-16 py-2 snap-x snap-mandatory"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
-        {/* Intro Highlight Banner Card */}
-        <div className="w-[300px] sm:w-[340px] shrink-0 snap-start bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 text-white rounded-3xl p-7 space-y-6 shadow-xl flex flex-col justify-between h-[460px] border border-slate-800">
-          <div className="space-y-4">
-            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/20 border border-emerald-400/30 px-3 py-1 text-[11px] font-bold text-emerald-300 uppercase tracking-wider">
-              <Sparkles className="h-3.5 w-3.5" /> Prime Properties
-            </div>
-            <h3 className="text-2xl sm:text-3xl font-black text-white leading-tight">
-              Direct Landlord <br />
-              <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-                Zero Hidden Fees
-              </span>
-            </h3>
-            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
-              Every home is physically inspected and backed by legal bilingual rental agreements and escrow deposit security.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl space-y-2">
-              <div className="flex items-center justify-between text-xs text-slate-300 font-semibold">
-                <span>Verified Listings</span>
-                <span className="text-emerald-400 font-mono">100% Legal ETB</span>
-              </div>
-              <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-emerald-400 h-full w-full animate-pulse" />
-              </div>
-            </div>
-
-            <a href="/browse-houses" className="block">
-              <Button className="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold py-2.5 text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
-                Explore All Houses <ArrowRight className="h-4 w-4" />
-              </Button>
-            </a>
-          </div>
-        </div>
-
         {/* Property Cards */}
         {houses.map((house) => (
           <div

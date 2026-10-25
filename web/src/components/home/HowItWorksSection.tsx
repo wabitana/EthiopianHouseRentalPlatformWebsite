@@ -47,10 +47,6 @@ export default function HowItWorksSection({ config: howItWorks }: HowItWorksSect
         <div className="px-6 sm:px-10 lg:px-12 relative z-10">
         {/* Header */}
         <div className="text-center mb-16 md:mb-20">
-          <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 border border-blue-200 px-4 py-1.5 text-xs font-semibold text-blue-700 tracking-wide uppercase mb-4">
-            <Sparkles className="h-3.5 w-3.5" />
-            {howItWorks.badge || "Simple Rental Process"}
-          </div>
           <h2 className="text-3xl md:text-5xl font-black tracking-tight text-slate-900 leading-tight">
             {howItWorks.title || "How Delala Home Rentals Works"}
           </h2>
