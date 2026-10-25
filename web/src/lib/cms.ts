@@ -32,9 +32,9 @@ export const defaultCmsConfig = {
   ],
   cms_counters: [
     { value: 2026, label: 'Platform Infrastructure Launch' },
-    { value: 4500, label: 'Verified Properties Listed' },
-    { value: 18500, label: 'Satisfied Tenants & Buyers' },
-    { value: 12000, label: 'Completed Inquiries & Requests' },
+    { value: 6, label: 'Verified Properties Listed' },
+    { value: 6, label: 'Satisfied Tenants & Buyers' },
+    { value: 8, label: 'Completed Inquiries & Requests' },
   ],
   cms_cta: {
     title: 'Ready to Find Your Ideal Property in Ethiopia?',
