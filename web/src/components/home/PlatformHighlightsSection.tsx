@@ -3,22 +3,20 @@
 import React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 
-interface Highlight {
-  id: string;
-  category: string;
-  name: string;
+export interface FeatureItem {
+  title: string;
   desc: string;
   image?: string;
   icon: React.ComponentType<any>;
 }
 
 interface PlatformHighlightsSectionProps {
-  highlights: Highlight[];
+  features: FeatureItem[];
 }
 
-export default function PlatformHighlightsSection({ highlights }: PlatformHighlightsSectionProps) {
+export default function PlatformHighlightsSection({ features }: PlatformHighlightsSectionProps) {
   return (
-    <section className="bg-white py-16">
+    <section className="relative z-20 -mt-20 sm:-mt-24 rounded-t-[50px] sm:rounded-t-[80px] bg-white pt-20 sm:pt-24 pb-16">
       <div className="mx-auto max-w-7xl px-6 sm:px-10 lg:px-14 xl:px-16">
         <div className="mb-10 flex items-end justify-between">
           <div>
@@ -32,37 +30,31 @@ export default function PlatformHighlightsSection({ highlights }: PlatformHighli
         </div>
 
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {highlights.map((highlight) => (
-            <div
-              key={highlight.id}
-              className="cursor-default"
+          {features.map((f) => (
+            <Card
+              key={f.title}
+              className="card-hover overflow-hidden border border-slate-200/80 rounded-2xl bg-white shadow-sm flex flex-col justify-between"
             >
-              <Card className="card-hover overflow-hidden h-full flex flex-col">
-                {highlight.image ? (
-                  <div className="h-40 w-full bg-slate-50">
-                    <img src={highlight.image} alt={highlight.name} className="w-full h-full object-cover" />
+              <CardContent className="p-6">
+                {f.image ? (
+                  <div className="mb-4 h-14 w-14">
+                    <img src={f.image} alt={f.title} className="h-full w-full object-contain" />
                   </div>
                 ) : (
-                  <div className="flex h-40 items-center justify-center bg-gradient-to-br from-emerald-50 to-slate-100">
-                    <highlight.icon className="h-12 w-12 text-emerald-300" />
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                    <f.icon className="h-6 w-6" />
                   </div>
                 )}
 
-                <CardContent className="p-4 flex-1">
-                  <p className="text-xs font-medium text-emerald-600 uppercase tracking-wider">
-                    {highlight.category}
-                  </p>
+                <h3 className="font-bold text-slate-900 text-base sm:text-lg">
+                  {f.title}
+                </h3>
 
-                  <h3 className="mt-2 font-bold text-slate-900 text-lg">
-                    {highlight.name}
-                  </h3>
-
-                  <p className="mt-2 text-sm text-slate-600">
-                    {highlight.desc}
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
+                <p className="mt-2 text-sm text-slate-600 leading-relaxed">
+                  {f.desc}
+                </p>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>
