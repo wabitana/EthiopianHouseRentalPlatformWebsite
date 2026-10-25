@@ -2,11 +2,75 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Users, Building2, ShieldCheck, CheckCircle2, ArrowRight, Zap, FileText, Wallet } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Users, Building2, ShieldCheck, ArrowRight, Zap, FileText, Wallet } from "lucide-react";
+
+interface PersonaFeature {
+  title: string;
+  desc: string;
+  icon: React.ComponentType<{ className?: string }>;
+  iconColor: string;
+  linkText: string;
+  linkHref: string;
+}
+
+const PERSONA_DATA: Record<"tenants" | "landlords", PersonaFeature[]> = {
+  tenants: [
+    {
+      title: "Verified Property Listings",
+      desc: "Every house is physically inspected and verified to prevent fake listings or duplicate broker scams.",
+      icon: ShieldCheck,
+      iconColor: "bg-emerald-50 text-emerald-600",
+      linkText: "Explore Homes",
+      linkHref: "/browse-houses",
+    },
+    {
+      title: "Amharic & English Digital Leases",
+      desc: "Sign legally binding rental contracts directly from your mobile device with clear deposit terms.",
+      icon: FileText,
+      iconColor: "bg-blue-50 text-blue-600",
+      linkText: "Explore Homes",
+      linkHref: "/browse-houses",
+    },
+    {
+      title: "Chapa Rent & Escrow Payments",
+      desc: "Pay monthly rent securely via Telebirr, CBE Birr, or cards with Chapa automatic payment receipts.",
+      icon: Wallet,
+      iconColor: "bg-indigo-50 text-indigo-600",
+      linkText: "Explore Homes",
+      linkHref: "/browse-houses",
+    },
+  ],
+  landlords: [
+    {
+      title: "Automatic Chapa Rent Collection",
+      desc: "Receive tenant monthly rent directly into your bank account with automatic monthly reminders.",
+      icon: Wallet,
+      iconColor: "bg-emerald-50 text-emerald-600",
+      linkText: "List Your Property",
+      linkHref: "/register?role=vendor",
+    },
+    {
+      title: "Tenant Background Screening",
+      desc: "Verify tenant national IDs, employment proof, and rental history before approving lease agreements.",
+      icon: ShieldCheck,
+      iconColor: "bg-blue-50 text-blue-600",
+      linkText: "List Your Property",
+      linkHref: "/register?role=vendor",
+    },
+    {
+      title: "On-Demand Maintenance Dashboard",
+      desc: "Manage maintenance requests, deep cleaning, and tenant onboarding with certified technicians.",
+      icon: Zap,
+      iconColor: "bg-purple-50 text-purple-600",
+      linkText: "List Your Property",
+      linkHref: "/register?role=vendor",
+    },
+  ],
+};
 
 export default function EcosystemPortalSection() {
   const [activePersona, setActivePersona] = useState<"tenants" | "landlords">("tenants");
+  const currentFeatures = PERSONA_DATA[activePersona];
 
   return (
     <section className="bg-white py-24 text-slate-900 border-t border-slate-200">
@@ -23,24 +87,26 @@ export default function EcosystemPortalSection() {
           </p>
         </div>
 
-        {/* Persona Switcher Buttons */}
+        {/* Persona Switcher Buttons with Consistent Active Styling */}
         <div className="flex justify-center mb-12">
           <div className="bg-slate-100 p-1.5 rounded-2xl border border-slate-200 flex gap-2 max-w-md w-full shadow-inner">
             <button
+              type="button"
               onClick={() => setActivePersona("tenants")}
               className={`flex-1 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 activePersona === "tenants"
-                  ? "bg-slate-900 text-white shadow-lg"
+                  ? "bg-emerald-600 text-white shadow-md"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
               <Users className="h-4 w-4" /> For Tenants
             </button>
             <button
+              type="button"
               onClick={() => setActivePersona("landlords")}
               className={`flex-1 py-3 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                 activePersona === "landlords"
-                  ? "bg-emerald-600 text-white shadow-lg"
+                  ? "bg-emerald-600 text-white shadow-md"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
@@ -49,91 +115,37 @@ export default function EcosystemPortalSection() {
           </div>
         </div>
 
-        {/* Dynamic Display Area */}
+        {/* Dynamic Display Area - Single Reusable Card Layout */}
         <AnimatePresence mode="wait">
-          {activePersona === "tenants" ? (
-            <motion.div
-              key="tenants"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={{ duration: 0.3 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-6"
-            >
-              {[
-                {
-                  title: "Verified Property Listings",
-                  desc: "Every house is physically inspected and verified to prevent fake listings or duplicate broker scams.",
-                  icon: ShieldCheck,
-                  color: "bg-emerald-50 text-emerald-600",
-                },
-                {
-                  title: "Amharic & English Digital Leases",
-                  desc: "Sign legally binding rental contracts directly from your mobile device with clear deposit terms.",
-                  icon: FileText,
-                  color: "bg-blue-50 text-blue-600",
-                },
-                {
-                  title: "Chapa Rent & Escrow Payments",
-                  desc: "Pay monthly rent securely via Telebirr, CBE Birr, or cards with Chapa automatic payment receipts.",
-                  icon: Wallet,
-                  color: "bg-indigo-50 text-indigo-600",
-                },
-              ].map((item, idx) => (
-                <div key={idx} className="bg-slate-50 border border-slate-200 rounded-3xl p-6 sm:p-8 space-y-4 hover:shadow-xl transition-all">
-                  <div className={`w-12 h-12 rounded-2xl ${item.color} flex items-center justify-center font-bold`}>
+          <motion.div
+            key={activePersona}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25 }}
+            className="grid grid-cols-1 md:grid-cols-3 gap-6"
+          >
+            {currentFeatures.map((item, idx) => (
+              <div
+                key={idx}
+                className="bg-white border border-slate-200/80 rounded-3xl p-6 sm:p-8 space-y-4 hover:shadow-xl transition-all flex flex-col justify-between"
+              >
+                <div className="space-y-4">
+                  <div className={`w-12 h-12 rounded-2xl ${item.iconColor} flex items-center justify-center font-bold`}>
                     <item.icon className="h-6 w-6" />
                   </div>
                   <h3 className="text-xl font-bold text-slate-900">{item.title}</h3>
                   <p className="text-slate-600 text-xs sm:text-sm leading-relaxed">{item.desc}</p>
-                  <a href="/browse-houses" className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-900 hover:underline pt-2">
-                    Explore Homes <ArrowRight className="h-3.5 w-3.5" />
-                  </a>
                 </div>
-              ))}
-            </motion.div>
-          ) : (
-            <motion.div
-              key="landlords"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-6"
-            >
-              {[
-                {
-                  title: "Automatic Chapa Rent Collection",
-                  desc: "Receive tenant monthly rent directly into your bank account with automatic monthly reminders.",
-                  icon: Wallet,
-                  color: "bg-emerald-50 text-emerald-600",
-                },
-                {
-                  title: "Tenant Background Screening",
-                  desc: "Verify tenant national IDs, employment proof, and rental history before approving lease agreements.",
-                  icon: ShieldCheck,
-                  color: "bg-blue-50 text-blue-600",
-                },
-                {
-                  title: "On-Demand Maintenance Dashboard",
-                  desc: "Manage maintenance requests, deep cleaning, and tenant onboarding with certified technicians.",
-                  icon: Zap,
-                  color: "bg-purple-50 text-purple-600",
-                },
-              ].map((item, idx) => (
-                <div key={idx} className="bg-slate-900 text-white border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-4 hover:shadow-2xl transition-all">
-                  <div className={`w-12 h-12 rounded-2xl ${item.color} flex items-center justify-center font-bold`}>
-                    <item.icon className="h-6 w-6" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white">{item.title}</h3>
-                  <p className="text-slate-400 text-xs sm:text-sm leading-relaxed">{item.desc}</p>
-                  <a href="/register?role=vendor" className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 hover:underline pt-2">
-                    List Your Property <ArrowRight className="h-3.5 w-3.5" />
-                  </a>
-                </div>
-              ))}
-            </motion.div>
-          )}
+                <a
+                  href={item.linkHref}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 hover:text-emerald-800 hover:underline pt-2 w-fit transition-colors"
+                >
+                  {item.linkText} <ArrowRight className="h-3.5 w-3.5" />
+                </a>
+              </div>
+            ))}
+          </motion.div>
         </AnimatePresence>
       </div>
     </section>
