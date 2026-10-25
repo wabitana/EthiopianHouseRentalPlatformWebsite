@@ -135,15 +135,16 @@ router.patch('/properties/:id/suspend', authenticateToken, async (req: AuthReque
     }
 
     const { id } = req.params;
+    // 'rejected' with availability=false represents a suspended listing (schema: pending|active|rented|sold|rejected)
     const property = await prisma.property.update({
       where: { id },
-      data: { listingStatus: 'suspended', availability: false },
+      data: { listingStatus: 'rejected', availability: false },
     });
 
     await prisma.notification.create({
       data: {
         userId: property.providerId,
-        title: 'Listing Suspended ⚠️',
+        title: 'Listing Suspended',
         message: `Your property listing "${property.title}" has been suspended by administration.`,
         type: 'PROPERTY',
       },

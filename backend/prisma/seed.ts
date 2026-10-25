@@ -25,12 +25,13 @@ interface SeedPlanData {
 const SEED_USERS: SeedUserData[] = [
   {
     name: 'Ethiopian Platform Administrator',
-    email: 'admin@ethiopianhouserental.et',
+    email: 'shambel5110@gmail.com',
     phone: '+251 94 634 0709',
     password: 'AdminPassword123!',
     role: 'admin',
     city: 'Addis Ababa',
   },
+  
   {
     name: 'Dawit Wolde',
     email: 'dawit.agent@delala.et',

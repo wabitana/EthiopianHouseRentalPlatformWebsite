@@ -68,6 +68,15 @@ export default function AgentPortalLayout({
     }
 
     loadLayoutData();
+
+    const handleProfileUpdate = () => {
+      loadLayoutData();
+    };
+
+    window.addEventListener("profileUpdated", handleProfileUpdate);
+    return () => {
+      window.removeEventListener("profileUpdated", handleProfileUpdate);
+    };
   }, []);
 
   const agentNavItems = [

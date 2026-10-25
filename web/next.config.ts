@@ -9,11 +9,10 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
-    const rawBackendUrl =
+    const backendUrl =
       process.env.BACKEND_INTERNAL_URL ||
       process.env.NEXT_PUBLIC_API_URL ||
       "http://localhost:3000/api/v1";
-    const backendUrl = rawBackendUrl.replace(/\/+$/, "");
     return [
       {
         source: "/api/:path*",

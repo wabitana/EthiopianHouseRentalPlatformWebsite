@@ -92,29 +92,6 @@ router.patch('/:id/read', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
-// DELETE /api/v1/notifications/:id
-router.delete('/:id', authenticateToken, async (req: AuthRequest, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.user?.id;
-    const role = req.user?.role?.toLowerCase();
-
-    if (role === 'admin') {
-      await prisma.notification.delete({
-        where: { id },
-      });
-    } else {
-      await prisma.notification.deleteMany({
-        where: { id, userId },
-      });
-    }
-
-    return res.json({ success: true, message: 'Notification deleted successfully' });
-  } catch (error) {
-    return res.status(500).json({ error: 'Failed to delete notification' });
-  }
-});
-
 // DELETE /api/v1/notifications/clear-all
 router.delete('/clear-all', authenticateToken, async (req: AuthRequest, res) => {
   try {
@@ -132,6 +109,29 @@ router.delete('/clear-all', authenticateToken, async (req: AuthRequest, res) => 
     return res.json({ success: true, message: 'All notifications deleted' });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to clear notifications' });
+  }
+});
+
+// DELETE /api/v1/notifications/:id
+router.delete('/:id', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id;
+    const role = req.user?.role?.toLowerCase();
+
+    if (role === 'admin') {
+      await prisma.notification.deleteMany({
+        where: { id },
+      });
+    } else {
+      await prisma.notification.deleteMany({
+        where: { id, userId },
+      });
+    }
+
+    return res.json({ success: true, message: 'Notification deleted successfully' });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to delete notification' });
   }
 });
 

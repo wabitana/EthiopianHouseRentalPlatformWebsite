@@ -10,21 +10,18 @@ dotenv.config();
 const connectionString = process.env.DATABASE_URL || '';
 const isNeon = connectionString.includes('neon.tech');
 
-// Prioritize IPv4 over IPv6 across all Node.js net/DNS requests
 try {
   dns.setDefaultResultOrder('ipv4first');
 } catch {
   // Ignore on older Node runtimes
 }
 
-// Custom WebSocket class enforcing IPv4 and resilient handshake timeout
 class ResilientWebSocket extends ws {
   constructor(address: any, protocols?: any, options?: any) {
-    const opts = Object.assign({}, options, {
-      family: 4, // Prevent stalling on unreachable IPv6 addresses
+    super(address, protocols, Object.assign({}, options, {
+      family: 4,
       handshakeTimeout: 30000,
-    });
-    super(address, protocols, opts);
+    }));
   }
 }
 
@@ -39,30 +36,16 @@ if (isNeon) {
     max: 10,
   });
 
-  // Handle background websocket connection drops gracefully
-  pool.on('error', (err: any) => {
-    console.warn('Neon WebSocket pool notice:', err?.message || err);
-  });
+  pool.on('error', () => {});
 
   const adapter = new PrismaNeon(pool);
-  prismaClientInstance = new PrismaClient({
-    adapter,
-    log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
-  });
+  prismaClientInstance = new PrismaClient({ adapter });
 } else {
-  prismaClientInstance = new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
-  });
+  prismaClientInstance = new PrismaClient();
 }
 
 export const prisma = prismaClientInstance;
 
-export async function connectDatabase() {
-  try {
-    await prisma.$connect();
-    const target = isNeon ? 'Neon WebSockets (Port 443)' : 'PostgreSQL Database';
-    console.log(`✅ PostgreSQL Database connected successfully via ${target}`);
-  } catch (error) {
-    console.error('Database connection failed:', error);
-  }
+export async function connectDatabase(): Promise<void> {
+  await prisma.$connect();
 }
