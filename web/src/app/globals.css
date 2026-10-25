@@ -40,3 +40,84 @@ body {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+@keyframes heroMorphBlob {
+  0% {
+    border-radius: 64% 36% 52% 48% / 42% 58% 42% 58%;
+    transform: translate(0px, 0px) rotate(0deg) scale(1);
+  }
+  25% {
+    border-radius: 48% 52% 62% 38% / 54% 46% 54% 46%;
+    transform: translate(-25px, 18px) rotate(3deg) scale(1.03);
+  }
+  50% {
+    border-radius: 38% 62% 45% 55% / 48% 52% 48% 52%;
+    transform: translate(18px, -22px) rotate(-3deg) scale(0.97);
+  }
+  75% {
+    border-radius: 55% 45% 35% 65% / 60% 40% 60% 40%;
+    transform: translate(-15px, -14px) rotate(2deg) scale(1.02);
+  }
+  100% {
+    border-radius: 64% 36% 52% 48% / 42% 58% 42% 58%;
+    transform: translate(0px, 0px) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes heroSpecularPulse {
+  0% {
+    transform: translate(-50%, -50%) scale(0.9);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translate(-46%, -54%) scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0.9);
+    opacity: 0.8;
+  }
+}
+
+@keyframes heroFloatingWave {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+@keyframes heroRippleWave {
+  0% {
+    transform: rotate(0deg) scale(0.96);
+    opacity: 0.35;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.04);
+    opacity: 0.55;
+  }
+  100% {
+    transform: rotate(360deg) scale(0.96);
+    opacity: 0.35;
+  }
+}
+
+.animate-hero-morph {
+  animation: heroMorphBlob 7s ease-in-out infinite alternate, heroFloatingWave 5s ease-in-out infinite alternate;
+  will-change: transform, border-radius;
+}
+
+.animate-hero-specular {
+  animation: heroSpecularPulse 3s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+.animate-hero-ripple {
+  animation: heroRippleWave 8s linear infinite;
+  will-change: transform, opacity;
+}
+

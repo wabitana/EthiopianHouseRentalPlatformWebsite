@@ -48,7 +48,9 @@ export default function HeroSection({ config: hero }: HeroSectionProps) {
 
       <div className="relative z-10 mx-auto max-w-7xl">
         <div className="max-w-3xl space-y-6 text-left">
-          
+          <div className="inline-flex items-center rounded-full bg-white/10 backdrop-blur-md border border-white/20 px-4 py-1.5 text-xs font-bold text-white shadow-sm">
+            <span>{hero.badge || "Ethiopia's Premier Home Rental Platform"}</span>
+          </div>
 
           <h1 className="text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl tracking-tight text-white">
             {hero.title || "Find & Rent Your Next Dream Home in Ethiopia"}

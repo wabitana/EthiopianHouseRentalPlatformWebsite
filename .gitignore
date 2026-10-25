@@ -33,3 +33,4 @@ uploads/
 .idea/
 *.iml
 *.log
+*.apk

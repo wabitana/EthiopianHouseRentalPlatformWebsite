@@ -6,11 +6,20 @@ class ApiEndpoints {
   // Custom API_BASE_URL from .env or compile-time flag takes precedence.
   // Android Emulator: 10.0.2.2:3000
   // Windows Desktop / iOS / Web: localhost:3000
+  static const String defaultProductionUrl = 'https://ethiopian-house-rental-backend.onrender.com';
+
   static String get baseUrl {
     final customUrl = AppConfig.apiBaseUrl;
     if (customUrl.isNotEmpty) {
+      if (kReleaseMode && (customUrl.contains('localhost') || customUrl.contains('127.0.0.1') || customUrl.contains('10.0.2.2'))) {
+        return '$defaultProductionUrl/api/v1';
+      }
       final cleanUrl = customUrl.endsWith('/') ? customUrl.substring(0, customUrl.length - 1) : customUrl;
       return cleanUrl.endsWith('/api/v1') ? cleanUrl : '$cleanUrl/api/v1';
+    }
+
+    if (kReleaseMode) {
+      return '$defaultProductionUrl/api/v1';
     }
 
     if (kIsWeb) {
@@ -25,8 +34,15 @@ class ApiEndpoints {
   static String get mediaBaseUrl {
     final customUrl = AppConfig.apiBaseUrl;
     if (customUrl.isNotEmpty) {
+      if (kReleaseMode && (customUrl.contains('localhost') || customUrl.contains('127.0.0.1') || customUrl.contains('10.0.2.2'))) {
+        return defaultProductionUrl;
+      }
       final cleanUrl = customUrl.endsWith('/') ? customUrl.substring(0, customUrl.length - 1) : customUrl;
       return cleanUrl.replaceFirst('/api/v1', '');
+    }
+
+    if (kReleaseMode) {
+      return defaultProductionUrl;
     }
 
     if (kIsWeb) {

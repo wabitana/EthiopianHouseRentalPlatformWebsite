@@ -37,6 +37,14 @@ class Formatters {
       trimmed = trimmed.replaceAll('/api/v1/uploads/', '/uploads/');
     }
 
+    // Rewrite any hardcoded localhost, 127.0.0.1, or 10.0.2.2 URLs to the active mediaBaseUrl
+    final localhostRegex = RegExp(r'^https?:\/\/(localhost|127\.0\.0\.1|10\.0\.2\.2)(:\d+)?(\/.*)?$');
+    final match = localhostRegex.firstMatch(trimmed);
+    if (match != null) {
+      final pathPart = match.group(3) ?? '';
+      return '${ApiEndpoints.mediaBaseUrl}$pathPart';
+    }
+
     if (trimmed.startsWith('http://') ||
         trimmed.startsWith('https://') ||
         trimmed.startsWith('blob:') ||

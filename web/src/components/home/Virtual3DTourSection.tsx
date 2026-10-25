@@ -162,14 +162,30 @@ class WebGLErrorBoundary extends React.Component<
 
 function isWebGLSupported(): boolean {
   if (typeof window === "undefined") return false;
+  const originalError = console.error;
+  const originalWarn = console.warn;
   try {
+    console.error = () => {};
+    console.warn = () => {};
     const canvas = document.createElement("canvas");
-    return !!(
-      window.WebGLRenderingContext &&
-      (canvas.getContext("webgl", { failIfMajorPerformanceCaveat: false }) ||
-        canvas.getContext("experimental-webgl"))
-    );
+    let failed = false;
+    canvas.addEventListener("webglcontextcreationerror", (e) => {
+      failed = true;
+      e.preventDefault();
+      e.stopPropagation();
+    });
+    const gl =
+      canvas.getContext("webgl2", { failIfMajorPerformanceCaveat: false }) ||
+      canvas.getContext("webgl", { failIfMajorPerformanceCaveat: false });
+    console.error = originalError;
+    console.warn = originalWarn;
+    if (!gl || failed) return false;
+    const ext = (gl as WebGLRenderingContext).getExtension("WEBGL_lose_context");
+    if (ext) ext.loseContext();
+    return true;
   } catch {
+    console.error = originalError;
+    console.warn = originalWarn;
     return false;
   }
 }

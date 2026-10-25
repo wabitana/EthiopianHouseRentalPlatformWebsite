@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Smartphone, Download } from "lucide-react";
 
+const APK_URL = process.env.NEXT_PUBLIC_APK_DOWNLOAD_URL || "https://github.com/wabitana/EthiopianHouseRentalPlatformWebsite/releases/latest/download/app-release.apk";
+
 export default function LaunchAppPage() {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
@@ -21,14 +23,30 @@ export default function LaunchAppPage() {
         </p>
 
         <div className="space-y-4">
-          <Button className="w-full bg-slate-900 hover:bg-slate-800 text-white flex items-center justify-center gap-2" size="lg">
+          <a
+            href={APK_URL}
+            download="ethiopian-house-rental.apk"
+            className="w-full block"
+          >
+            <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 py-6" size="lg">
+              <Download className="w-5 h-5" />
+              <div className="text-left">
+                <div className="font-bold">Download for Android</div>
+                <div className="text-[11px] font-normal text-emerald-100">Direct APK Install • 79.1 MB</div>
+              </div>
+            </Button>
+          </a>
+
+          <Button
+            onClick={() => alert("The iOS App Store version is currently in final review. On iPhone, you can use our responsive Web App directly in Safari by bookmarking it to your Home Screen!")}
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white flex items-center justify-center gap-2 py-6"
+            size="lg"
+          >
             <Download className="w-5 h-5" />
-            Download for iOS
-          </Button>
-          
-          <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center gap-2" size="lg">
-            <Download className="w-5 h-5" />
-            Download for Android
+            <div className="text-left">
+              <div className="font-bold">Download for iOS</div>
+              <div className="text-[11px] font-normal text-slate-400">Coming soon to Apple App Store</div>
+            </div>
           </Button>
         </div>
 
