@@ -5,6 +5,8 @@ import { PrismaNeon } from '@prisma/adapter-neon';
 import { PrismaClient } from '@prisma/client';
 import ws from 'ws';
 
+dotenv.config();
+
 const connectionString = process.env.DATABASE_URL || '';
 const isNeon = connectionString.includes('neon.tech');
 
@@ -26,31 +28,41 @@ class ResilientWebSocket extends ws {
   }
 }
 
-neonConfig.webSocketConstructor = ResilientWebSocket;
+let prismaClientInstance: PrismaClient;
 
-const connectionString = process.env.DATABASE_URL;
-const pool = new Pool({
-  connectionString,
-  connectionTimeoutMillis: 30000,
-  idleTimeoutMillis: 60000,
-  max: 10,
-});
+if (isNeon) {
+  neonConfig.webSocketConstructor = ResilientWebSocket;
+  const pool = new Pool({
+    connectionString,
+    connectionTimeoutMillis: 30000,
+    idleTimeoutMillis: 60000,
+    max: 10,
+  });
 
-// Handle background websocket connection drops gracefully
-pool.on('error', (err: any) => {
-  console.warn('Neon WebSocket pool notice:', err?.message || err);
-});
+  // Handle background websocket connection drops gracefully
+  pool.on('error', (err: any) => {
+    console.warn('Neon WebSocket pool notice:', err?.message || err);
+  });
 
-const adapter = new PrismaNeon(pool);
+  const adapter = new PrismaNeon(pool);
+  prismaClientInstance = new PrismaClient({
+    adapter,
+    log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+  });
+} else {
+  prismaClientInstance = new PrismaClient({
+    log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
+  });
+}
 
 export const prisma = prismaClientInstance;
 
 export async function connectDatabase() {
   try {
     await prisma.$connect();
-    console.log('ostgreSQL Database connected successfully via Neon WebSockets (Port 443)');
+    const target = isNeon ? 'Neon WebSockets (Port 443)' : 'PostgreSQL Database';
+    console.log(`✅ PostgreSQL Database connected successfully via ${target}`);
   } catch (error) {
     console.error('Database connection failed:', error);
   }
 }
-
