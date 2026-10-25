@@ -31,8 +31,8 @@ export default function AdminNotificationsPage() {
         time: n.createdAt ? new Date(n.createdAt).toLocaleString() : "Recently",
       }));
       setNotifs(mapped);
-    } catch (err) {
-      console.error("Failed to load notifications:", err);
+    } catch {
+      
     } finally {
       setLoading(false);
     }
@@ -50,8 +50,7 @@ export default function AdminNotificationsPage() {
     try {
       await apiFetch("/notifications/read-all", { method: "PATCH" });
       setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
-    } catch (err) {
-      console.error("Failed to mark all as read:", err);
+    } catch {
     }
   };
 
@@ -64,8 +63,7 @@ export default function AdminNotificationsPage() {
       setNotifs((prev) =>
         prev.map((n) => (n.id === id ? { ...n, read: !currentRead } : n))
       );
-    } catch (err) {
-      console.error("Failed to update notification read status:", err);
+    } catch {
     }
   };
 
@@ -74,8 +72,7 @@ export default function AdminNotificationsPage() {
     try {
       await apiFetch(`/notifications/${id}`, { method: "DELETE" });
       setNotifs((prev) => prev.filter((n) => n.id !== id));
-    } catch (err) {
-      console.error("Failed to delete notification:", err);
+    } catch {
     }
   };
 
@@ -84,8 +81,7 @@ export default function AdminNotificationsPage() {
     try {
       await apiFetch("/notifications/clear-all", { method: "DELETE" });
       setNotifs([]);
-    } catch (err) {
-      console.error("Failed to clear all notifications:", err);
+    } catch {
     }
   };
 

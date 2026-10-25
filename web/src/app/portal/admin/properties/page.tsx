@@ -73,19 +73,26 @@ export default function AdminPropertiesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("All");
   const [typeFilter, setTypeFilter] = useState<string>("All");
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
   const [selectedProperty, setSelectedProperty] = useState<PropertyItem | null>(null);
   const [activePhotoIdx, setActivePhotoIdx] = useState(0);
   const [uploadedDocs, setUploadedDocs] = useState<{ propertyDocs: any[]; identityDoc: any | null }>({ propertyDocs: [], identityDoc: null });
   const [loadingDocs, setLoadingDocs] = useState(false);
 
+  const showToast = (msg: string, ok: boolean) => {
+    setToast({ msg, ok });
+    setTimeout(() => setToast(null), 3500);
+  };
+
   async function loadProperties() {
     try {
       setLoading(true);
       const data = await apiFetch("/admin/properties/all");
       setProperties(data.map(mapBackendProperty));
-    } catch (err) {
-      console.error("Failed to load properties:", err);
+    } catch {
+      showToast("Failed to load properties", false);
     } finally {
       setLoading(false);
     }
@@ -102,8 +109,7 @@ export default function AdminPropertiesPage() {
     try {
       const docsData = await apiFetch(`/admin/properties/${prop.id}/documents`);
       setUploadedDocs(docsData || { propertyDocs: [], identityDoc: null });
-    } catch (err) {
-      console.error("Failed to load property verification documents:", err);
+    } catch {
       setUploadedDocs({ propertyDocs: [], identityDoc: null });
     } finally {
       setLoadingDocs(false);
@@ -111,6 +117,7 @@ export default function AdminPropertiesPage() {
   };
 
   const handleUpdateStatus = async (propertyId: string, newStatus: PropertyItem["status"]) => {
+    setActionLoading(newStatus);
     try {
       const endpoint =
         newStatus === 'Published'
@@ -119,9 +126,7 @@ export default function AdminPropertiesPage() {
           ? `/admin/properties/${propertyId}/suspend`
           : `/admin/properties/${propertyId}/reject`;
 
-      await apiFetch(endpoint, {
-        method: "PATCH"
-      });
+      await apiFetch(endpoint, { method: "PATCH" });
 
       setProperties((prev) =>
         prev.map((p) => (p.id === propertyId ? { ...p, status: newStatus } : p))
@@ -129,20 +134,30 @@ export default function AdminPropertiesPage() {
       if (selectedProperty && selectedProperty.id === propertyId) {
         setSelectedProperty({ ...selectedProperty, status: newStatus });
       }
-    } catch (err) {
-      console.error("Failed to update property status:", err);
+      showToast(
+        newStatus === 'Published' ? 'Property approved & published' :
+        newStatus === 'Suspended' ? 'Property suspended' : 'Property rejected',
+        true
+      );
+    } catch {
+      showToast('Action failed — check your connection or permissions', false);
+    } finally {
+      setActionLoading(null);
     }
   };
 
   const handleDeleteProperty = async (propertyId: string) => {
+    if (!confirm('Delete this property permanently?')) return;
+    setActionLoading('Deleted');
     try {
-      await apiFetch(`/admin/properties/${propertyId}`, {
-        method: "DELETE"
-      });
+      await apiFetch(`/admin/properties/${propertyId}`, { method: "DELETE" });
       setProperties((prev) => prev.filter((p) => p.id !== propertyId));
       setSelectedProperty(null);
-    } catch (err) {
-      console.error("Failed to delete property:", err);
+      showToast('Property deleted', true);
+    } catch {
+      showToast('Delete failed — check your permissions', false);
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -166,6 +181,15 @@ export default function AdminPropertiesPage() {
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed top-5 right-5 z-[200] px-5 py-3 rounded-2xl shadow-2xl text-sm font-bold flex items-center gap-2.5 transition-all
+          ${toast.ok ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
+          {toast.ok ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+          {toast.msg}
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-800 p-6 rounded-2xl border border-slate-700/80 shadow-xl">
         <div>
@@ -533,27 +557,43 @@ export default function AdminPropertiesPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   onClick={() => handleUpdateStatus(selectedProperty.id, "Published")}
-                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md"
+                  disabled={!!actionLoading}
+                  className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md transition-opacity"
                 >
-                  <CheckCircle2 className="h-4 w-4" /> Approve & Publish
+                  {actionLoading === 'Published'
+                    ? <span className="animate-spin h-4 w-4 rounded-full border-2 border-white border-t-transparent inline-block" />
+                    : <CheckCircle2 className="h-4 w-4" />}
+                  Approve & Publish
                 </button>
                 <button
                   onClick={() => handleUpdateStatus(selectedProperty.id, "Rejected")}
-                  className="px-3.5 py-2 bg-rose-600/30 hover:bg-rose-600/50 text-rose-300 font-bold rounded-xl text-xs flex items-center gap-1.5"
+                  disabled={!!actionLoading}
+                  className="px-3.5 py-2 bg-rose-600/30 hover:bg-rose-600/50 disabled:opacity-60 disabled:cursor-not-allowed text-rose-300 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-opacity"
                 >
-                  <XCircle className="h-4 w-4" /> Reject
+                  {actionLoading === 'Rejected'
+                    ? <span className="animate-spin h-4 w-4 rounded-full border-2 border-rose-300 border-t-transparent inline-block" />
+                    : <XCircle className="h-4 w-4" />}
+                  Reject
                 </button>
                 <button
                   onClick={() => handleUpdateStatus(selectedProperty.id, "Suspended")}
-                  className="px-3.5 py-2 bg-amber-600/30 hover:bg-amber-600/50 text-amber-300 font-bold rounded-xl text-xs flex items-center gap-1.5"
+                  disabled={!!actionLoading}
+                  className="px-3.5 py-2 bg-amber-600/30 hover:bg-amber-600/50 disabled:opacity-60 disabled:cursor-not-allowed text-amber-300 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-opacity"
                 >
-                  <Ban className="h-4 w-4" /> Suspend
+                  {actionLoading === 'Suspended'
+                    ? <span className="animate-spin h-4 w-4 rounded-full border-2 border-amber-300 border-t-transparent inline-block" />
+                    : <Ban className="h-4 w-4" />}
+                  Suspend
                 </button>
                 <button
                   onClick={() => handleDeleteProperty(selectedProperty.id)}
-                  className="px-3.5 py-2 bg-slate-800 hover:bg-rose-700 text-rose-400 hover:text-white font-bold rounded-xl text-xs flex items-center gap-1.5 border border-slate-700"
+                  disabled={!!actionLoading}
+                  className="px-3.5 py-2 bg-slate-800 hover:bg-rose-700 disabled:opacity-60 disabled:cursor-not-allowed text-rose-400 hover:text-white font-bold rounded-xl text-xs flex items-center gap-1.5 border border-slate-700 transition-opacity"
                 >
-                  <Trash2 className="h-4 w-4" /> Delete
+                  {actionLoading === 'Deleted'
+                    ? <span className="animate-spin h-4 w-4 rounded-full border-2 border-rose-400 border-t-transparent inline-block" />
+                    : <Trash2 className="h-4 w-4" />}
+                  Delete
                 </button>
               </div>
             </div>

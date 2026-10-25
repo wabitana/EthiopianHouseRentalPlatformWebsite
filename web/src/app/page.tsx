@@ -103,7 +103,7 @@ export default function HomePage() {
   ];
 
   return (
-    <div className="bg-slate-50 overflow-x-hidden">
+    <div className="bg-slate-50 overflow-x-clip">
       <HeroSection config={hero} />
       <PlatformHighlightsSection features={features} />
       <NeighborhoodGuideSection />

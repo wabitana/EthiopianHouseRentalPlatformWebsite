@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api";
 import {
   Building2,
   CheckCircle2,
@@ -44,9 +45,24 @@ export default function AgentAddPropertyWizardPage() {
     utilitiesIncluded: true,
     amenities: ["Generator", "24/7 Security", "Water Tank", "Balcony"],
     uploadedPhotoCount: 3,
-    uploadedDocCount: 2,
     agreedToTerms: true,
   });
+
+  useEffect(() => {
+    async function loadAgentProfile() {
+      try {
+        const prof = await apiFetch("/agent/profile");
+        if (prof?.assignedArea) {
+          setFormData((prev) => ({
+            ...prev,
+            city: prof.assignedArea,
+            subCity: prof.assignedArea,
+          }));
+        }
+      } catch (_) {}
+    }
+    loadAgentProfile();
+  }, []);
 
   const steps = [
     { num: 1, label: "Property Type" },
