@@ -49,7 +49,7 @@ app.use(cors({
     ) {
       callback(null, true);
     } else {
-      callback(new Error('CORS not allowed for this origin'));
+      callback(null, false);
     }
   },
   credentials: true, // Required for cross-origin cookies
@@ -66,6 +66,7 @@ app.use('/uploads', express.static(uploadsPath));
 // REST API v1 Modular Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', authRoutes);
+app.use('/api/v1/profile', authRoutes);
 app.use('/api/v1/properties', propertyRoutes);
 app.use('/api/v1/provider', providerRoutes);
 app.use('/api/v1/favorites', favoritesRoutes);
@@ -91,7 +92,7 @@ app.use('/api/v1/maintenance', maintenanceRoutes);
 app.use('/api/cms', cmsRoutes);
 app.use('/api/services', vendorServicesRoutes);
 app.use('/api/addresses', vendorServicesRoutes);
-app.use('/api/bookings', vendorServicesRoutes);
+app.use('/api/profile', authRoutes);
 app.use('/api/chat', aiRoutes);
 
 // Health check endpoint

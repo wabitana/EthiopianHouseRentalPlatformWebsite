@@ -107,7 +107,7 @@ export default function EcosystemsStack() {
   return (
     <section className="relative w-full pt-24 pb-32 bg-slate-950 overflow-visible">
       {/* Sticky Header Section */}
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 mb-16 md:mb-24">
+      <div className="mx-auto max-w-7xl px-6 sm:px-10 lg:px-14 xl:px-16 mb-16 md:mb-24">
         <motion.div 
           className="max-w-4xl mx-auto text-center"
           initial={{ opacity: 0, y: -20 }}

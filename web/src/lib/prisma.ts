@@ -7,7 +7,7 @@ const createModelProxy = (modelName: string) => {
       return async (...args: any[]) => {
         try {
           if (prop === 'findMany' || prop === 'findUnique' || prop === 'findFirst') {
-            const endpoint = modelName.toLowerCase() === 'product' || modelName.toLowerCase() === 'property' 
+            const endpoint = modelName.toLowerCase() === 'property' 
               ? `${BACKEND_URL}/properties` 
               : `${BACKEND_URL}/services/packages`;
             

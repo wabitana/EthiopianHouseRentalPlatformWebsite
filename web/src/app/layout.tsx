@@ -25,28 +25,13 @@ export const metadata: Metadata = {
   },
 };
 
-async function getCartCount(userId: string) {
-  try {
-    const result = await prisma.cartItem.aggregate({
-      where: { userId },
-      _sum: { quantity: true },
-    });
-    return result._sum.quantity || 0;
-  } catch (error) {
-    console.warn("Failed to fetch cart count from database:", error);
-    return 0;
-  }
-}
-
 import { PortalHotkeyListener } from "@/components/portal/portal-hotkey-listener";
-
 import { MainLayoutWrapper } from "@/components/layout/main-layout-wrapper";
 
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const user = await getSession();
-  const cartCount = user?.role === "CUSTOMER" ? await getCartCount(user.id) : 0;
   const cmsData = await getCmsConfig();
   const { cms_footer, cms_navbar } = cmsData as any;
 
@@ -55,7 +40,6 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col bg-slate-50">
         <MainLayoutWrapper
           user={user}
-          cartCount={cartCount}
           cmsNavbar={cms_navbar}
           cmsFooter={cms_footer}
         >

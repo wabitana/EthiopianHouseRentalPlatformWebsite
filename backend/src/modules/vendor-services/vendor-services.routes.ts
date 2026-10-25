@@ -15,58 +15,17 @@ router.get('/packages', async (_req, res) => {
   return res.json({ packages: DEFAULT_PACKAGES });
 });
 
-// GET /api/v1/services/slots
-router.get('/slots', async (req, res) => {
-  const { date, type } = req.query;
-  const times = ['09:00 AM', '11:00 AM', '02:00 PM', '04:00 PM'];
-  const slots = times.map((t) => ({ time: t, available: true }));
-  return res.json({ date: date || new Date().toISOString().split('T')[0], type: type || 'INSPECTION', slots });
-});
-
-// POST /api/v1/services/book
-router.post('/book', authenticateToken, async (req: AuthRequest, res) => {
+// GET /api/v1/addresses
+router.get('/addresses', authenticateToken, async (req: AuthRequest, res) => {
   const userId = req.user?.id;
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-  const { type, address, estimatedPrice } = req.body;
-  if (!type || !address || !estimatedPrice) {
-    return res.status(400).json({ error: 'Missing required booking details' });
-  }
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const defaultAddress = user?.address
+    ? [{ id: 'addr-default', label: 'Primary Residence', address: user.address, city: user.city || 'Addis Ababa', isDefault: true }]
+    : [];
 
-  const bookingNumber = `SRV-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
-
-  await prisma.notification.create({
-    data: {
-      userId,
-      title: 'Service Booking Created!',
-      message: `Your booking #${bookingNumber} (${type}) has been placed. We will contact you for confirmation.`,
-      type: 'SYSTEM',
-    },
-  });
-
-  return res.status(201).json({
-    success: true,
-    booking: {
-      id: `booking-${Date.now()}`,
-      bookingNumber,
-      userId,
-      type,
-      status: 'PENDING',
-      address,
-      estimatedPrice,
-      createdAt: new Date(),
-    },
-  });
-});
-
-// GET /api/v1/services/bookings
-router.get('/bookings', authenticateToken, async (_req, res) => {
-  return res.json({ bookings: [] });
-});
-
-// GET /api/v1/addresses
-router.get('/addresses', authenticateToken, async (_req, res) => {
-  return res.json({ addresses: [] });
+  return res.json({ addresses: defaultAddress });
 });
 
 // POST /api/v1/addresses
@@ -76,7 +35,7 @@ router.post('/addresses', authenticateToken, async (req: AuthRequest, res) => {
     success: true,
     address: {
       id: `addr-${Date.now()}`,
-      label,
+      label: label || 'Home',
       address,
       city: city || 'Addis Ababa',
       isDefault: true,

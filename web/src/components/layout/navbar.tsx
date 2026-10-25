@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ShoppingCart,
   Store,
   LayoutDashboard,
   Wrench,
@@ -26,7 +25,6 @@ import { NotificationBell } from "@/components/customer/notification-bell";
 
 interface NavbarProps {
   user: SessionUser | null;
-  cartCount?: number;
   cmsNavbar?: {
     siteName?: string;
     siteTagline?: string;
@@ -44,7 +42,7 @@ const customerLinks = [
   { href: "/launch-app", label: "Launch App", icon: LayoutDashboard },
 ];
 
-export function Navbar({ user, cartCount = 0, cmsNavbar = {} }: NavbarProps) {
+export function Navbar({ user, cmsNavbar = {} }: NavbarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -93,20 +91,7 @@ export function Navbar({ user, cartCount = 0, cmsNavbar = {} }: NavbarProps) {
             <span>Telegram Bot</span>
           </a>
           {user && user.role === "CUSTOMER" && (
-            <>
-              <NotificationBell />
-              <Link
-                href="/cart"
-                className="relative hidden rounded-lg p-2 text-slate-600 hover:bg-slate-100 md:flex"
-              >
-                <ShoppingCart className="h-5 w-5" />
-                {cartCount > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-600 text-[10px] font-bold text-white">
-                    {cartCount}
-                  </span>
-                )}
-              </Link>
-            </>
+            <NotificationBell />
           )}
 
           {user ? (

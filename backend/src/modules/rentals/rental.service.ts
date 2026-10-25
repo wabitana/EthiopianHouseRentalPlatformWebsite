@@ -295,7 +295,12 @@ Status: Proposed by Tenant (Pending Landlord Approval)`;
     });
   }
 
-  async updateRentalStatus(requestId: string, userId: string, status: 'ACCEPTED' | 'REJECTED' | 'ACTIVE' | 'COMPLETED' | 'TERMINATED') {
+  async updateRentalStatus(
+    requestId: string,
+    userId: string,
+    status: 'ACCEPTED' | 'REJECTED' | 'ACTIVE' | 'COMPLETED' | 'TERMINATED',
+    userRole?: string
+  ) {
     const rentalReq = await prisma.rentalRequest.findUnique({
       where: { id: requestId },
       include: { property: true },
@@ -303,8 +308,21 @@ Status: Proposed by Tenant (Pending Landlord Approval)`;
 
     if (!rentalReq) throw new Error('Rental request not found');
 
-    if (rentalReq.ownerId !== userId && rentalReq.renterId !== userId) {
+    const isAdmin = userRole === 'admin';
+
+    // Must be either the owner, the renter, or a platform administrator
+    if (!isAdmin && rentalReq.ownerId !== userId && rentalReq.renterId !== userId) {
       throw new Error('Not authorized to modify this rental request');
+    }
+
+    // Prevent modifications on already terminal states
+    if (rentalReq.status === 'COMPLETED' || rentalReq.status === 'TERMINATED') {
+      throw new Error(`Cannot modify a rental request that is already ${rentalReq.status.toLowerCase()}`);
+    }
+
+    // Only property owner (or admin) can accept, activate, or complete rental requests
+    if (!isAdmin && ['ACCEPTED', 'ACTIVE', 'COMPLETED'].includes(status) && rentalReq.ownerId !== userId) {
+      throw new Error('Only the property owner can accept or activate a rental request');
     }
 
     const updated = await prisma.rentalRequest.update({

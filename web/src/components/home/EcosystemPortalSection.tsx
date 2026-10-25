@@ -10,7 +10,7 @@ export default function EcosystemPortalSection() {
 
   return (
     <section className="bg-white py-24 text-slate-900 border-t border-slate-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+      <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 xl:px-16">
         <div className="text-center max-w-2xl mx-auto mb-10 space-y-3">
           <div className="inline-flex items-center gap-2 rounded-full bg-blue-100 px-4 py-1 text-xs font-bold text-blue-800 uppercase tracking-widest">
             <Building2 className="h-4 w-4 text-blue-600" /> Complete Rental Ecosystem

@@ -11,7 +11,8 @@
     "prisma:push": "prisma db push",
     "seed": "ts-node prisma/seed.ts",
     "prisma:seed": "prisma db seed",
-    "migrate:cloudinary": "ts-node src/scripts/migrate-local-images-to-cloudinary.ts"
+    "migrate:cloudinary": "ts-node src/scripts/migrate-local-images-to-cloudinary.ts",
+    "test": "ts-node --transpile-only tests/audit-verification.test.ts"
   },
   "dependencies": {
     "@langchain/core": "^1.2.8",
@@ -38,6 +39,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^11.17.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
@@ -46,11 +48,18 @@
     "@types/node": "^20.11.24",
     "@types/nodemailer": "^8.0.1",
     "prisma": "^5.10.0",
+    "prisma-erd-generator": "^3.2.1",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.3.3"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
-  }
+  },
+  "args": [
+    "--no-sandbox",
+    "--disable-setuid-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-gpu"
+  ]
 }

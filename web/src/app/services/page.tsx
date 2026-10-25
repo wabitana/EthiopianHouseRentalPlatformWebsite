@@ -102,8 +102,8 @@ export default async function ServicesPage() {
                   <p className="text-slate-700 font-medium text-sm flex items-center"><Check className="w-4 h-4 text-emerald-500 mr-3" />Verified Cleaning Staff</p>
                   <p className="text-slate-700 font-medium text-sm flex items-center"><Check className="w-4 h-4 text-emerald-500 mr-3" />100% Satisfaction Guarantee</p>
                 </div>
-                <Link href="/services/book?type=CLEANING" className="flex items-center justify-center w-full bg-white border-2 border-emerald-100 text-emerald-700 font-bold py-3 rounded-xl hover:bg-emerald-600 hover:text-white transition-all">
-                  Book Cleaning <ArrowRight className="w-4 h-4 ml-2" />
+                <Link href="/#contact" className="flex items-center justify-center w-full bg-white border-2 border-emerald-100 text-emerald-700 font-bold py-3 rounded-xl hover:bg-emerald-600 hover:text-white transition-all">
+                  Inquire Cleaning <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
               </div>
 
@@ -122,8 +122,8 @@ export default async function ServicesPage() {
                   <p className="text-slate-700 font-medium text-sm flex items-center"><Check className="w-4 h-4 text-emerald-500 mr-3" />Prevent Hidden Move-In Costs</p>
                   <p className="text-slate-700 font-medium text-sm flex items-center"><Check className="w-4 h-4 text-emerald-500 mr-3" />Same-Day Digital Delivery</p>
                 </div>
-                <Link href="/services/book?type=PEST_CONTROL" className="flex items-center justify-center w-full bg-white border-2 border-emerald-100 text-emerald-700 font-bold py-3 rounded-xl hover:bg-emerald-600 hover:text-white transition-all">
-                  Schedule Inspection <ArrowRight className="w-4 h-4 ml-2" />
+                <Link href="/#contact" className="flex items-center justify-center w-full bg-white border-2 border-emerald-100 text-emerald-700 font-bold py-3 rounded-xl hover:bg-emerald-600 hover:text-white transition-all">
+                  Request Inspection <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
               </div>
 
@@ -142,8 +142,8 @@ export default async function ServicesPage() {
                   <p className="text-slate-700 font-medium text-sm flex items-center"><Check className="w-4 h-4 text-emerald-500 mr-3" />GPS Truck Live Tracking</p>
                   <p className="text-slate-700 font-medium text-sm flex items-center"><Check className="w-4 h-4 text-emerald-500 mr-3" />Experienced Movers</p>
                 </div>
-                <Link href="/services/book?type=MOVING" className="flex items-center justify-center w-full bg-white border-2 border-emerald-100 text-emerald-700 font-bold py-3 rounded-xl hover:bg-emerald-600 hover:text-white transition-all">
-                  Book Moving Truck <ArrowRight className="w-4 h-4 ml-2" />
+                <Link href="/#contact" className="flex items-center justify-center w-full bg-white border-2 border-emerald-100 text-emerald-700 font-bold py-3 rounded-xl hover:bg-emerald-600 hover:text-white transition-all">
+                  Inquire Moving Truck <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
               </div>
 
@@ -162,7 +162,7 @@ export default async function ServicesPage() {
                   <p className="text-slate-700 font-medium text-sm flex items-center"><Check className="w-4 h-4 text-emerald-500 mr-3" />Verified Hardware</p>
                   <p className="text-slate-700 font-medium text-sm flex items-center"><Check className="w-4 h-4 text-emerald-500 mr-3" />Rapid On-Site Arrival</p>
                 </div>
-                <Link href="/services/book?type=PEST_CONTROL" className="flex items-center justify-center w-full bg-white border-2 border-emerald-100 text-emerald-700 font-bold py-3 rounded-xl hover:bg-emerald-600 hover:text-white transition-all">
+                <Link href="/#contact" className="flex items-center justify-center w-full bg-white border-2 border-emerald-100 text-emerald-700 font-bold py-3 rounded-xl hover:bg-emerald-600 hover:text-white transition-all">
                   Request Locksmith <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
               </div>
@@ -182,8 +182,8 @@ export default async function ServicesPage() {
                   <p className="text-slate-700 font-medium text-sm flex items-center"><Check className="w-4 h-4 text-emerald-500 mr-3" />Long-Term Protection</p>
                   <p className="text-slate-700 font-medium text-sm flex items-center"><Check className="w-4 h-4 text-emerald-500 mr-3" />Certified Technicians</p>
                 </div>
-                <Link href="/services/book?type=PEST_CONTROL" className="flex items-center justify-center w-full bg-white border-2 border-emerald-100 text-emerald-700 font-bold py-3 rounded-xl hover:bg-emerald-600 hover:text-white transition-all">
-                  Book Pest Control <ArrowRight className="w-4 h-4 ml-2" />
+                <Link href="/#contact" className="flex items-center justify-center w-full bg-white border-2 border-emerald-100 text-emerald-700 font-bold py-3 rounded-xl hover:bg-emerald-600 hover:text-white transition-all">
+                  Inquire Pest Control <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
               </div>
 
@@ -202,8 +202,8 @@ export default async function ServicesPage() {
                   <p className="text-slate-700 font-medium text-sm flex items-center"><Check className="w-4 h-4 text-emerald-500 mr-3" />Upfront ETB Rates</p>
                   <p className="text-slate-700 font-medium text-sm flex items-center"><Check className="w-4 h-4 text-emerald-500 mr-3" />Quality Guarantee</p>
                 </div>
-                <Link href="/services/book?type=CLEANING" className="flex items-center justify-center w-full bg-white border-2 border-emerald-100 text-emerald-700 font-bold py-3 rounded-xl hover:bg-emerald-600 hover:text-white transition-all">
-                  Book Handyman <ArrowRight className="w-4 h-4 ml-2" />
+                <Link href="/#contact" className="flex items-center justify-center w-full bg-white border-2 border-emerald-100 text-emerald-700 font-bold py-3 rounded-xl hover:bg-emerald-600 hover:text-white transition-all">
+                  Inquire Handyman <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
               </div>
 
@@ -272,10 +272,8 @@ export default async function ServicesPage() {
 
                 <p className="mt-2 text-sm text-slate-600">{service.description}</p>
 
-                <Link href={`/services/book?type=${service.type}`} className="mt-6 block">
-
-                  <Button className="w-full">Schedule Appointment</Button>
-
+                <Link href="/#contact" className="mt-6 block">
+                  <Button className="w-full">Inquire Service</Button>
                 </Link>
 
               </CardContent>

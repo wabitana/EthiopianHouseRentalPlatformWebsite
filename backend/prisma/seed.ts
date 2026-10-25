@@ -4,151 +4,127 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-async function main() {
-  await prisma.featurePhoneSms.deleteMany({});
-  await prisma.assistedTenant.deleteMany({});
-  await prisma.task.deleteMany({});
-  await prisma.propertyDocument.deleteMany({});
-  await prisma.identityDocument.deleteMany({});
-  await prisma.report.deleteMany({});
-  await prisma.payment.deleteMany({});
-  await prisma.notification.deleteMany({});
-  await prisma.favorite.deleteMany({});
-  await prisma.inquiry.deleteMany({});
-  await prisma.property.deleteMany({});
-  await prisma.subscription.deleteMany({});
-  await prisma.user.deleteMany({});
+interface SeedUserData {
+  name: string;
+  email: string;
+  phone: string;
+  password: string;
+  role: 'admin' | 'agent';
+  assignedArea?: string;
+  city?: string;
+}
 
-  // 1. Create SINGLE Super Administrator Account
-  const adminPasswordHash = await bcrypt.hash('AdminPassword123!', 10);
+interface SeedPlanData {
+  name: string;
+  priceETB: number;
+  durationDays: number;
+  maxListings: number;
+  features: string[];
+}
 
-  const superAdmin = await prisma.user.create({
-    data: {
-      name: 'Ethiopian Platform Administrator',
-      email: 'admin@ethiopianhouserental.et',
-      phone: '+251 94 634 0709',
-      passwordHash: adminPasswordHash,
-      role: 'admin',
-      isVerified: true,
-      isEmailVerified: true,
-      active: true,
-      city: 'Addis Ababa',
-    },
-  });
+const SEED_USERS: SeedUserData[] = [
+  {
+    name: 'Ethiopian Platform Administrator',
+    email: 'admin@ethiopianhouserental.et',
+    phone: '+251 94 634 0709',
+    password: 'AdminPassword123!',
+    role: 'admin',
+    city: 'Addis Ababa',
+  },
+  {
+    name: 'Dawit Wolde',
+    email: 'dawit.agent@delala.et',
+    phone: '+251 91 123 4567',
+    password: 'AgentPassword123!',
+    role: 'agent',
+    city: 'Addis Ababa',
+    assignedArea: 'Bole & Kazanchis',
+  },
+  {
+    name: 'Tigist Alemu',
+    email: 'tigist.agent@delala.et',
+    phone: '+251 92 987 6543',
+    password: 'AgentPassword123!',
+    role: 'agent',
+    city: 'Addis Ababa',
+    assignedArea: 'Yeka & CMC',
+  },
+];
 
-  // 2. Create Field Agent Accounts
-  const agentPasswordHash = await bcrypt.hash('AgentPassword123!', 10);
+const SEED_PLANS: SeedPlanData[] = [
+  {
+    name: 'Basic',
+    priceETB: 500,
+    durationDays: 30,
+    maxListings: 3,
+    features: ['Up to 3 Active Property Listings', 'Basic Analytics', 'Standard Support'],
+  },
+  {
+    name: 'Professional',
+    priceETB: 1200,
+    durationDays: 30,
+    maxListings: 10,
+    features: ['Up to 10 Listings + 360° Panorama Tours', 'Advanced Analytics', 'Priority Support'],
+  },
+  {
+    name: 'Business',
+    priceETB: 2500,
+    durationDays: 30,
+    maxListings: 100,
+    features: ['Unlimited Listings', 'Dedicated Account Manager', '24/7 Priority Support'],
+  },
+];
 
-  const agent1 = await prisma.user.create({
-    data: {
-      name: 'Dawit Wolde',
-      email: 'dawit.agent@delala.et',
-      phone: '+251 91 123 4567',
-      passwordHash: agentPasswordHash,
-      role: 'agent',
-      isVerified: true,
-      isEmailVerified: true,
-      active: true,
-      city: 'Addis Ababa',
-      assignedArea: 'Bole & Kazanchis',
-    },
-  });
+async function seedUser(userData: SeedUserData): Promise<void> {
+  const passwordHash = await bcrypt.hash(userData.password, 10);
+  const commonPayload = {
+    name: userData.name,
+    phone: userData.phone,
+    passwordHash,
+    role: userData.role,
+    isVerified: true,
+    isEmailVerified: true,
+    active: true,
+    city: userData.city ?? 'Addis Ababa',
+    ...(userData.assignedArea ? { assignedArea: userData.assignedArea } : {}),
+  };
 
-  const agent2 = await prisma.user.create({
-    data: {
-      name: 'Tigist Alemu',
-      email: 'tigist.agent@delala.et',
-      phone: '+251 92 987 6543',
-      passwordHash: agentPasswordHash,
-      role: 'agent',
-      isVerified: true,
-      isEmailVerified: true,
-      active: true,
-      city: 'Addis Ababa',
-      assignedArea: 'Yeka & CMC',
-    },
-  });
-
-  // 3. Create Platform Subscription Plans
-  await prisma.subscriptionPlan.upsert({
-    where: { name: 'Basic' },
-    update: { priceETB: 500, durationDays: 30, maxListings: 3 },
+  await prisma.user.upsert({
+    where: { email: userData.email },
+    update: commonPayload,
     create: {
-      name: 'Basic',
-      priceETB: 500,
-      durationDays: 30,
-      maxListings: 3,
-      features: JSON.stringify(['Up to 3 Active Property Listings', 'Basic Analytics', 'Standard Support']),
+      ...commonPayload,
+      email: userData.email,
     },
   });
+}
+
+async function seedPlan(plan: SeedPlanData): Promise<void> {
+  const commonPayload = {
+    priceETB: plan.priceETB,
+    durationDays: plan.durationDays,
+    maxListings: plan.maxListings,
+    features: JSON.stringify(plan.features),
+  };
 
   await prisma.subscriptionPlan.upsert({
-    where: { name: 'Professional' },
-    update: { priceETB: 1200, durationDays: 30, maxListings: 10 },
+    where: { name: plan.name },
+    update: commonPayload,
     create: {
-      name: 'Professional',
-      priceETB: 1200,
-      durationDays: 30,
-      maxListings: 10,
-      features: JSON.stringify(['Up to 10 Listings + 360° Panorama Tours', 'Advanced Analytics', 'Priority Support']),
+      name: plan.name,
+      ...commonPayload,
     },
   });
+}
 
-  await prisma.subscriptionPlan.upsert({
-    where: { name: 'Business' },
-    update: { priceETB: 2500, durationDays: 30, maxListings: 100 },
-    create: {
-      name: 'Business',
-      priceETB: 2500,
-      durationDays: 30,
-    },
-  });
-
-  // 4. Create Demo Inquiries
-  const sampleProp = await prisma.property.findFirst();
-  const sampleSeeker = await prisma.user.findFirst({ where: { role: 'seeker' } });
-  const sampleProvider = await prisma.user.findFirst({ where: { role: 'provider' } });
-
-  if (sampleProp && sampleSeeker) {
-    await prisma.inquiry.upsert({
-      where: { id: 'inq_seed_1' },
-      update: {},
-      create: {
-        id: 'inq_seed_1',
-        propertyId: sampleProp.id,
-        propertyTitle: sampleProp.title,
-        seekerId: sampleSeeker.id,
-        seekerName: sampleSeeker.name,
-        seekerPhone: sampleSeeker.phone,
-        providerId: sampleProvider?.id || sampleSeeker.id,
-        message: 'Selam! I submitted an inquiry for viewing this property.',
-        messages: JSON.stringify([
-          {
-            id: 'msg_seed_1',
-            senderId: sampleSeeker.id,
-            senderName: sampleSeeker.name,
-            senderRole: 'seeker',
-            text: 'Selam! I submitted an inquiry for viewing this property.',
-            createdAt: new Date(Date.now() - 3600000).toISOString(),
-          },
-          {
-            id: 'msg_seed_2',
-            senderId: sampleProvider?.id || 'admin_user',
-            senderName: sampleProvider?.name || 'Ethiopian Property Platform Admin',
-            senderRole: 'admin',
-            text: 'Tenayistillin! Our inspection team has received your inquiry.',
-            createdAt: new Date().toISOString(),
-          }
-        ]),
-        status: 'responded',
-      },
-    });
-  }
+async function main(): Promise<void> {
+  await Promise.all(SEED_USERS.map((user) => seedUser(user)));
+  await Promise.all(SEED_PLANS.map((plan) => seedPlan(plan)));
 }
 
 main()
-  .catch((e) => {
-    console.error('Seeding error:', e);
+  .catch((err) => {
+    process.stderr.write(`Seeding error: ${err instanceof Error ? err.message : String(err)}\n`);
     process.exit(1);
   })
   .finally(async () => {

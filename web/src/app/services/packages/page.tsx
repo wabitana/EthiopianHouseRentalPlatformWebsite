@@ -102,10 +102,10 @@ export default function ServicePackagesPage() {
                     </Link>
                   ) : (
                     <Link
-                      href={`/services/book?type=${pkg.type}&package=${pkg.slug}`}
+                      href="/#contact"
                       className="mt-6 block"
                     >
-                      <Button className="w-full">Book Now</Button>
+                      <Button className="w-full">Inquire Now</Button>
                     </Link>
                   )}
                 </CardContent>

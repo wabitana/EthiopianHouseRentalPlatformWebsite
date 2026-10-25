@@ -25,7 +25,7 @@ export default function ContactSection() {
       {/* Abstract Background Accents */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-50 rounded-full blur-[120px] opacity-60 -z-0" />
 
-      <div className="max-w-6xl mx-auto px-6 relative z-10">
+      <div className="max-w-6xl mx-auto px-6 sm:px-10 lg:px-14 xl:px-16 relative z-10">
         
         {/* Header Section */}
         <div className="text-center mb-16">

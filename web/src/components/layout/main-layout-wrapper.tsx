@@ -9,7 +9,6 @@ import type { SessionUser } from "@/lib/auth";
 
 interface MainLayoutWrapperProps {
   user: SessionUser | null;
-  cartCount: number;
   cmsNavbar: any;
   cmsFooter: any;
   children: React.ReactNode;
@@ -17,7 +16,6 @@ interface MainLayoutWrapperProps {
 
 export function MainLayoutWrapper({
   user,
-  cartCount,
   cmsNavbar,
   cmsFooter,
   children,
@@ -37,7 +35,7 @@ export function MainLayoutWrapper({
   return (
     <>
       <PortalHotkeyListener />
-      <Navbar user={user} cartCount={cartCount} cmsNavbar={cmsNavbar} />
+      <Navbar user={user} cmsNavbar={cmsNavbar} />
       <main className="flex-1 pb-0">{children}</main>
       <PushPrompt />
       <footer className="bg-slate-900 text-slate-300 pt-16 pb-8">
