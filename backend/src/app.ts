@@ -95,6 +95,33 @@ app.use('/api/addresses', vendorServicesRoutes);
 app.use('/api/profile', authRoutes);
 app.use('/api/chat', aiRoutes);
 
+import { prisma, withDbRetry } from './prisma';
+
+// Public platform statistics endpoint
+const handleGetStats = async (_req: express.Request, res: express.Response) => {
+  try {
+    const [properties, users, inquiries, agreements] = await withDbRetry(() =>
+      Promise.all([
+        prisma.property.count({ where: { listingStatus: 'active' } }),
+        prisma.user.count(),
+        prisma.inquiry.count(),
+        prisma.rentalAgreement.count(),
+      ])
+    );
+    return res.json({
+      launchYear: 2026,
+      verifiedProperties: properties,
+      totalUsers: users,
+      completedInquiries: inquiries + agreements,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch platform stats' });
+  }
+};
+
+app.get('/api/v1/stats', handleGetStats);
+app.get('/api/stats', handleGetStats);
+
 // Health check endpoint
 app.get('/api/v1/health', (_req, res) => {
   res.json({ status: 'ok', service: 'Ethiopian Property Platform REST API', version: 'v1' });

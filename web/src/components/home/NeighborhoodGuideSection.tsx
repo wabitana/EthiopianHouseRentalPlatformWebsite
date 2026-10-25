@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MapPin, ShieldCheck, Footprints, GraduationCap, Building2, ArrowRight, Star } from "lucide-react";
+import { ShieldCheck, Footprints, GraduationCap, Building2, ArrowRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
 
@@ -97,9 +97,6 @@ export default function NeighborhoodGuideSection() {
     <section className="bg-white py-24 text-slate-900 border-t border-slate-200">
       <div className="max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 xl:px-16">
         <div className="text-center max-w-2xl mx-auto mb-12 space-y-3">
-          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-4 py-1 text-xs font-bold text-emerald-800 uppercase tracking-widest">
-            <MapPin className="h-4 w-4 text-emerald-600" /> City Living Intelligence
-          </div>
           <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-slate-900">
             Explore Premier Ethiopian <br />
             <span className="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">

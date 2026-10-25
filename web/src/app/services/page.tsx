@@ -29,24 +29,20 @@ const serviceIcons = {
 export default async function ServicesPage() {
   let reviews: any[] = [];
   try {
-    reviews = await prisma.review.findMany({
-      where: { serviceBookingId: { not: null } },
-      include: { user: { select: { name: true } }, serviceBooking: { select: { type: true } } },
+    const fetched = await prisma.review.findMany({
       orderBy: { createdAt: "desc" },
       take: 3,
     });
+    if (Array.isArray(fetched)) {
+      reviews = fetched.filter((r: any) => r && typeof r === "object");
+    }
   } catch (error) {
     console.warn("Failed to fetch reviews from database:", error);
   }
 
-
-
   const avgRating =
-
     reviews.length > 0
-
-      ? reviews.reduce((s, r) => s + r.rating, 0) / reviews.length
-
+      ? reviews.reduce((s, r) => s + (Number(r?.rating) || 5), 0) / reviews.length
       : 4.8;
 
 
@@ -338,26 +334,16 @@ export default async function ServicesPage() {
 
                 <div className="mt-4 space-y-3 border-t pt-4">
 
-                  {reviews.map((r) => (
-
-                    <div key={r.id} className="text-sm">
-
+                  {reviews.map((r, i) => (
+                    <div key={r?.id || i} className="text-sm">
                       <div className="flex items-center gap-2">
-
-                        <StarRating value={r.rating} size="sm" />
-
-                        <span className="font-medium">{r.user.name}</span>
-
+                        <StarRating value={Math.round(Number(r?.rating) || 5)} size="sm" />
+                        <span className="font-medium">{r?.user?.name || r?.name || "Verified Tenant"}</span>
                       </div>
-
-                      {r.comment && (
-
+                      {r?.comment && (
                         <p className="mt-1 text-slate-600 line-clamp-2">{r.comment}</p>
-
                       )}
-
                     </div>
-
                   ))}
 
                 </div>

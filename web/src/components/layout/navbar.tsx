@@ -58,7 +58,6 @@ export function Navbar({ user, cmsNavbar = {} }: NavbarProps) {
           </div>
           <div className="hidden sm:block">
             <p className="text-sm font-bold text-slate-900">{cmsNavbar.siteName || "Ethiopian Property Platform"}</p>
-            <p className="text-[10px] text-slate-500">{cmsNavbar.siteTagline || "Ethiopian Home & Commercial Property Rental & Sale Platform"}</p>
           </div>
         </Link>
 

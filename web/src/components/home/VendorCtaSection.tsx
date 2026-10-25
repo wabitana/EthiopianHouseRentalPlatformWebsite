@@ -32,11 +32,6 @@ export default function VendorCtaSection({ config: vendorCta }: VendorCtaSection
 
             {/* Left: Text Content */}
             <div className="space-y-3 max-w-2xl">
-              <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 text-xs font-semibold text-emerald-400 tracking-wide uppercase">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                {vendorCta.badge || "B2B Portal"}
-              </div>
-
               <h3 className="text-2xl md:text-3xl font-black tracking-tight text-white">
                 {vendorCta.title || "Are you a vendor or service provider?"}
               </h3>
