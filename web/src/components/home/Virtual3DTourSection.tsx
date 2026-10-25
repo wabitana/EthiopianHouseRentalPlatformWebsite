@@ -137,10 +137,72 @@ const roomDetails = [
   }
 ];
 
+class WebGLErrorBoundary extends React.Component<
+  { fallback: React.ReactNode; children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch() {}
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
+function isWebGLSupported(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const canvas = document.createElement("canvas");
+    return !!(
+      window.WebGLRenderingContext &&
+      (canvas.getContext("webgl", { failIfMajorPerformanceCaveat: false }) ||
+        canvas.getContext("experimental-webgl"))
+    );
+  } catch {
+    return false;
+  }
+}
+
 export default function Virtual3DTourSection() {
   const [activeRoomId, setActiveRoomId] = useState<string>("living");
+  const [webGLAvailable, setWebGLAvailable] = useState<boolean>(false);
+  const [isMounted, setIsMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    setWebGLAvailable(isWebGLSupported());
+  }, []);
 
   const currentRoom = roomDetails.find(r => r.id === activeRoomId) || roomDetails[0];
+
+  const fallbackView = (
+    <div className="relative h-full w-full">
+      <img
+        src={currentRoom.image}
+        alt={currentRoom.label}
+        className="w-full h-full object-cover brightness-90"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent" />
+      <div className="absolute top-4 left-4 bg-slate-950/80 backdrop-blur-md border border-slate-800 px-3.5 py-1.5 rounded-xl text-[11px] font-semibold text-emerald-400 flex items-center gap-2">
+        <Sparkles className="h-3.5 w-3.5" /> High-Resolution Photo Walkthrough
+      </div>
+      <div className="absolute bottom-4 left-4 right-4 bg-slate-950/80 backdrop-blur-md border border-slate-800 p-3 rounded-2xl flex items-center justify-between">
+        <span className="text-xs text-slate-300 font-semibold">{currentRoom.label}</span>
+        <span className="text-[11px] text-emerald-400 font-bold">Verified Virtual Tour</span>
+      </div>
+    </div>
+  );
 
   return (
     <section className="bg-slate-950 text-white py-24 relative overflow-hidden border-t border-slate-800">
@@ -186,23 +248,27 @@ export default function Virtual3DTourSection() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
           {/* 3D Canvas Box (7 columns) */}
           <div className="lg:col-span-7 relative h-[420px] sm:h-[480px] rounded-3xl bg-slate-900/90 border border-slate-800 overflow-hidden shadow-2xl">
-            <Canvas>
-              <PerspectiveCamera makeDefault position={[4, 3, 5]} fov={45} />
-              <ambientLight intensity={0.7} />
-              <directionalLight position={[10, 10, 5]} intensity={1.2} />
-              <pointLight position={[-10, -10, -10]} intensity={0.5} />
-              <House3DModel activeRoom={activeRoomId} />
-              <OrbitControls enableZoom={false} autoRotate autoRotateSpeed={0.8} />
-            </Canvas>
-
-            {/* Canvas Controls Overlay Overlay */}
-            <div className="absolute top-4 left-4 bg-slate-950/80 backdrop-blur-md border border-slate-800 px-3.5 py-1.5 rounded-xl text-[11px] font-semibold text-emerald-400 flex items-center gap-2">
-              <Sparkles className="h-3.5 w-3.5" /> Live 3D Spatial Wireframe • Drag to Rotate
-            </div>
-
-            <div className="absolute bottom-4 right-4 bg-slate-950/80 backdrop-blur-md border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white flex items-center gap-2">
-              <Maximize2 className="h-3.5 w-3.5 text-emerald-400" /> Full Interactive Mode
-            </div>
+            {!isMounted || !webGLAvailable ? (
+              fallbackView
+            ) : (
+              <WebGLErrorBoundary fallback={fallbackView}>
+                <Canvas>
+                  <PerspectiveCamera makeDefault position={[4, 3, 5]} fov={45} />
+                  <ambientLight intensity={0.7} />
+                  <directionalLight position={[10, 10, 5]} intensity={1.2} />
+                  <pointLight position={[-10, -10, -10]} intensity={0.5} />
+                  <House3DModel activeRoom={activeRoomId} />
+                  <OrbitControls enableZoom={false} autoRotate autoRotateSpeed={0.8} />
+                </Canvas>
+                {/* Canvas Controls Overlay Overlay */}
+                <div className="absolute top-4 left-4 bg-slate-950/80 backdrop-blur-md border border-slate-800 px-3.5 py-1.5 rounded-xl text-[11px] font-semibold text-emerald-400 flex items-center gap-2">
+                  <Sparkles className="h-3.5 w-3.5" /> Live 3D Spatial Wireframe • Drag to Rotate
+                </div>
+                <div className="absolute bottom-4 right-4 bg-slate-950/80 backdrop-blur-md border border-slate-800 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white flex items-center gap-2">
+                  <Maximize2 className="h-3.5 w-3.5 text-emerald-400" /> Full Interactive Mode
+                </div>
+              </WebGLErrorBoundary>
+            )}
           </div>
 
           {/* Room Specifications Card (5 columns) */}

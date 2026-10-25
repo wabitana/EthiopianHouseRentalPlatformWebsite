@@ -27,6 +27,11 @@ import {
 
 const app = express();
 
+const configuredFrontendUrls = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((u) => u.trim())
+  .filter(Boolean);
+
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
@@ -34,7 +39,7 @@ const allowedOrigins = [
   'http://127.0.0.1:3001',
   'http://10.0.2.2:3000',
   'http://10.0.2.2:3001',
-  ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+  ...configuredFrontendUrls,
 ];
 
 app.use(cors({
@@ -42,6 +47,8 @@ app.use(cors({
     if (
       !origin ||
       allowedOrigins.includes(origin) ||
+      origin.endsWith('.vercel.app') ||
+      origin.endsWith('.onrender.com') ||
       origin.startsWith('http://localhost:') ||
       origin.startsWith('http://127.0.0.1:') ||
       origin.startsWith('http://192.168.') ||
