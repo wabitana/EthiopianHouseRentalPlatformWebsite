@@ -13,38 +13,20 @@ const requireAgentOrAdmin = (req: AuthRequest, res: any, next: any) => {
   next();
 };
 
-function getTownKeywords(areaStr?: string | null): string[] {
-  if (!areaStr) return [];
-  const trimmed = areaStr.trim();
-  if (!trimmed) return [];
-  const parts = trimmed.split(/&|,|\/|\band\b/i).map((s) => s.trim()).filter(Boolean);
-  return Array.from(new Set([trimmed, ...parts]));
-}
+import {
+  getTownKeywords,
+  buildPropertyTerritoryFilter,
+  buildUserTerritoryFilter,
+  isPropertyInTerritory,
+  isUserInTerritory,
+  isTextInTerritory,
+  verifyAgentPropertyAccess,
+  verifyAgentUserAccess,
+} from '../../utils/agentTerritory';
 
-function buildPropertyTownFilter(town?: string | null) {
-  const keywords = getTownKeywords(town);
-  if (keywords.length === 0) return {};
-  const orList = keywords.flatMap((kw) => [
-    { city: { contains: kw, mode: 'insensitive' as const } },
-    { area: { contains: kw, mode: 'insensitive' as const } },
-    { neighborhood: { contains: kw, mode: 'insensitive' as const } },
-    { addressDetails: { contains: kw, mode: 'insensitive' as const } },
-    { title: { contains: kw, mode: 'insensitive' as const } },
-  ]);
-  return { OR: orList };
-}
-
-function buildUserTownFilter(town?: string | null) {
-  const keywords = getTownKeywords(town);
-  if (keywords.length === 0) return {};
-  const orList = keywords.flatMap((kw) => [
-    { city: { contains: kw, mode: 'insensitive' as const } },
-    { address: { contains: kw, mode: 'insensitive' as const } },
-    { region: { contains: kw, mode: 'insensitive' as const } },
-    { assignedArea: { contains: kw, mode: 'insensitive' as const } },
-  ]);
-  return { OR: orList };
-}
+// Backward compatibility alias for local route calls
+const buildPropertyTownFilter = buildPropertyTerritoryFilter;
+const buildUserTownFilter = buildUserTerritoryFilter;
 
 // GET /api/v1/agent/profile - Retrieve authenticated agent's stats
 router.get('/profile', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
@@ -450,9 +432,13 @@ router.patch('/properties/:id/inspect', authenticateToken, requireAgentOrAdmin, 
     const { id } = req.params;
     const { notes, documentUrl, listingStatus } = req.body;
 
-    // Verify property exists
-    const property = await prisma.property.findUnique({ where: { id } });
-    if (!property) return res.status(404).json({ error: 'Property not found' });
+    const userRole = req.user?.role?.toLowerCase() || 'agent';
+    const access = await verifyAgentPropertyAccess(req.user!.id, userRole, id);
+    if (!access.authorized) {
+      return res.status(403).json({ error: access.error });
+    }
+
+    const property = access.property;
 
     // Update property listingStatus, verification, etc.
     const updatedProperty = await prisma.property.update({
@@ -548,11 +534,56 @@ router.get('/stats', authenticateToken, requireAgentOrAdmin, async (req: AuthReq
   }
 });
 
+// Helper to format property response
+const formatAgentProperty = (p: any) => {
+  let imagesArr: string[] = [];
+  try {
+    imagesArr = typeof p.images === 'string' ? JSON.parse(p.images) : p.images || [];
+  } catch (_) {
+    imagesArr = [];
+  }
+
+  let amenitiesArr: string[] = [];
+  try {
+    amenitiesArr = typeof p.amenities === 'string' ? JSON.parse(p.amenities) : p.amenities || [];
+  } catch (_) {
+    amenitiesArr = [];
+  }
+
+  return {
+    id: p.id,
+    title: p.title,
+    description: p.description,
+    propertyType: p.propertyType,
+    price: p.price,
+    rentalPeriod: p.rentalPeriod,
+    rooms: p.rooms,
+    bathrooms: p.bathrooms,
+    city: p.city,
+    area: p.area,
+    neighborhood: p.neighborhood,
+    addressDetails: p.addressDetails,
+    images: imagesArr,
+    amenities: amenitiesArr,
+    availability: p.availability,
+    isVerified: p.isVerified,
+    listingStatus: p.listingStatus,
+    viewsCount: p.viewsCount,
+    inquiriesCount: p.inquiriesCount,
+    providerId: p.providerId,
+    providerName: p.provider?.name || p.providerName || 'Landlord',
+    providerPhone: p.provider?.phone || p.providerPhone || '',
+    createdAt: p.createdAt,
+    updatedAt: p.updatedAt,
+  };
+};
+
 // GET /api/v1/agent/properties - List properties strictly filtered to agent's assigned operational town
 router.get('/properties', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
   try {
     const userId = req.user?.id;
     const isAdmin = req.user?.role?.toLowerCase() === 'admin';
+    const { searchQuery, city, area } = req.query;
 
     let areaFilter: any = {};
 
@@ -564,12 +595,40 @@ router.get('/properties', authenticateToken, requireAgentOrAdmin, async (req: Au
 
       const assignedTown = (agentUser?.assignedArea || agentUser?.city || '').trim();
       if (assignedTown) {
-        areaFilter = buildPropertyTownFilter(assignedTown);
+        areaFilter = buildPropertyTerritoryFilter(assignedTown);
       }
     }
 
+    // Combine with optional search / filter parameters, keeping territory strictly enforced
+    const andFilters: any[] = [];
+    if (Object.keys(areaFilter).length > 0) {
+      andFilters.push(areaFilter);
+    }
+
+    if (city && String(city).trim() && String(city).toLowerCase() !== 'all') {
+      andFilters.push({ city: { contains: String(city).trim(), mode: 'insensitive' } });
+    }
+
+    if (area && String(area).trim() && String(area).toLowerCase() !== 'all') {
+      andFilters.push({ area: { contains: String(area).trim(), mode: 'insensitive' } });
+    }
+
+    if (searchQuery && String(searchQuery).trim()) {
+      const q = String(searchQuery).trim();
+      andFilters.push({
+        OR: [
+          { title: { contains: q, mode: 'insensitive' } },
+          { description: { contains: q, mode: 'insensitive' } },
+          { neighborhood: { contains: q, mode: 'insensitive' } },
+          { addressDetails: { contains: q, mode: 'insensitive' } },
+        ],
+      });
+    }
+
+    const where = andFilters.length > 0 ? { AND: andFilters } : {};
+
     const properties = await prisma.property.findMany({
-      where: areaFilter,
+      where,
       orderBy: { createdAt: 'desc' },
       include: {
         provider: {
@@ -585,52 +644,210 @@ router.get('/properties', authenticateToken, requireAgentOrAdmin, async (req: Au
       },
     });
 
-    const formatted = properties.map((p) => {
-      let imagesArr: string[] = [];
-      try {
-        imagesArr = typeof p.images === 'string' ? JSON.parse(p.images) : p.images || [];
-      } catch (_) {
-        imagesArr = [];
-      }
-
-      let amenitiesArr: string[] = [];
-      try {
-        amenitiesArr = typeof p.amenities === 'string' ? JSON.parse(p.amenities) : p.amenities || [];
-      } catch (_) {
-        amenitiesArr = [];
-      }
-
-      return {
-        id: p.id,
-        title: p.title,
-        description: p.description,
-        propertyType: p.propertyType,
-        price: p.price,
-        rentalPeriod: p.rentalPeriod,
-        rooms: p.rooms,
-        bathrooms: p.bathrooms,
-        city: p.city,
-        area: p.area,
-        neighborhood: p.neighborhood,
-        addressDetails: p.addressDetails,
-        images: imagesArr,
-        amenities: amenitiesArr,
-        availability: p.availability,
-        isVerified: p.isVerified,
-        listingStatus: p.listingStatus,
-        viewsCount: p.viewsCount,
-        inquiriesCount: p.inquiriesCount,
-        providerId: p.providerId,
-        providerName: p.provider?.name || p.providerName || 'Landlord',
-        providerPhone: p.provider?.phone || p.providerPhone || '',
-        createdAt: p.createdAt,
-        updatedAt: p.updatedAt,
-      };
-    });
-
-    return res.json(formatted);
+    return res.json(properties.map(formatAgentProperty));
   } catch (error) {
     return res.status(500).json({ error: 'Failed to fetch agent properties' });
+  }
+});
+
+// GET /api/v1/agent/properties/:id - View single property with territorial authorization
+router.get('/properties/:id', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id!;
+    const userRole = req.user?.role!;
+
+    const access = await verifyAgentPropertyAccess(userId, userRole, id);
+    if (!access.authorized) {
+      return res.status(403).json({ error: access.error });
+    }
+
+    return res.json(formatAgentProperty(access.property));
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch property details' });
+  }
+});
+
+// POST /api/v1/agent/properties - Create property listing restricted to agent's assigned area
+router.post('/properties', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user?.id!;
+    const isAdmin = req.user?.role?.toLowerCase() === 'admin';
+
+    const agentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, phone: true, avatarUrl: true, assignedArea: true, city: true },
+    });
+
+    const assignedArea = agentUser?.assignedArea || agentUser?.city || 'Addis Ababa';
+
+    const {
+      title,
+      description,
+      propertyType,
+      price,
+      rentalPeriod,
+      rooms,
+      bathrooms,
+      city,
+      area,
+      neighborhood,
+      addressDetails,
+      images,
+      amenities,
+      providerId,
+    } = req.body;
+
+    if (!title || !price || !city || !area) {
+      return res.status(400).json({ error: 'Title, price, city, and area are required' });
+    }
+
+    // Territorial Access Control: Ensure the property belongs to agent's assigned territory
+    if (!isAdmin) {
+      const isAllowed = isPropertyInTerritory({ city, area, neighborhood, addressDetails, title }, assignedArea);
+      if (!isAllowed) {
+        return res.status(403).json({
+          error: `Access Denied: You are only authorized to create properties in your assigned territory (${assignedArea}). You cannot create listings in (${city}, ${area}).`,
+        });
+      }
+    }
+
+    let targetProviderId = userId;
+    let targetProviderName = agentUser?.name || 'Agent';
+    let targetProviderPhone = agentUser?.phone || '';
+
+    if (providerId) {
+      const provider = await prisma.user.findUnique({ where: { id: providerId } });
+      if (!provider) {
+        return res.status(404).json({ error: 'Assigned landlord/provider not found' });
+      }
+      if (!isAdmin && !isUserInTerritory(provider, assignedArea)) {
+        return res.status(403).json({
+          error: `Access Denied: Provider "${provider.name}" does not belong to your assigned territory (${assignedArea}).`,
+        });
+      }
+      targetProviderId = provider.id;
+      targetProviderName = provider.name;
+      targetProviderPhone = provider.phone || '';
+    }
+
+    const created = await prisma.property.create({
+      data: {
+        providerId: targetProviderId,
+        providerName: targetProviderName,
+        providerPhone: targetProviderPhone,
+        title,
+        description: description || '',
+        propertyType: propertyType || 'Apartment',
+        price: Number(price),
+        rentPrice: Number(price),
+        rentalPeriod: rentalPeriod || 'Monthly',
+        rooms: Number(rooms || 1),
+        bathrooms: Number(bathrooms || 1),
+        city,
+        area,
+        neighborhood: neighborhood || area,
+        addressDetails: addressDetails || '',
+        images: JSON.stringify(images || []),
+        amenities: JSON.stringify(amenities || []),
+        availability: true,
+        isVerified: true,
+        listingStatus: 'active',
+      },
+    });
+
+    return res.status(201).json(formatAgentProperty(created));
+  } catch (error) {
+    console.error('Agent create property error:', error);
+    return res.status(500).json({ error: 'Failed to create property listing' });
+  }
+});
+
+// PATCH /api/v1/agent/properties/:id - Update property in agent's assigned area
+router.patch('/properties/:id', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id!;
+    const userRole = req.user?.role!;
+    const isAdmin = userRole.toLowerCase() === 'admin';
+
+    const access = await verifyAgentPropertyAccess(userId, userRole, id);
+    if (!access.authorized) {
+      return res.status(403).json({ error: access.error });
+    }
+
+    const {
+      title,
+      description,
+      propertyType,
+      price,
+      rentalPeriod,
+      rooms,
+      bathrooms,
+      city,
+      area,
+      neighborhood,
+      addressDetails,
+      images,
+      amenities,
+      availability,
+      listingStatus,
+    } = req.body;
+
+    // Prevent agent from moving property outside assigned territory
+    if (!isAdmin && (city || area)) {
+      const assignedArea = access.assignedArea!;
+      const testProp = { ...access.property, ...(city && { city }), ...(area && { area }) };
+      if (!isPropertyInTerritory(testProp, assignedArea)) {
+        return res.status(403).json({
+          error: `Access Denied: You cannot move a property to a city or area outside your assigned territory (${assignedArea}).`,
+        });
+      }
+    }
+
+    const updated = await prisma.property.update({
+      where: { id },
+      data: {
+        ...(title && { title }),
+        ...(description !== undefined && { description }),
+        ...(propertyType && { propertyType }),
+        ...(price !== undefined && { price: Number(price) }),
+        ...(rentalPeriod && { rentalPeriod }),
+        ...(rooms !== undefined && { rooms: Number(rooms) }),
+        ...(bathrooms !== undefined && { bathrooms: Number(bathrooms) }),
+        ...(city && { city }),
+        ...(area && { area }),
+        ...(neighborhood && { neighborhood }),
+        ...(addressDetails !== undefined && { addressDetails }),
+        ...(images && { images: JSON.stringify(images) }),
+        ...(amenities && { amenities: JSON.stringify(amenities) }),
+        ...(availability !== undefined && { availability: Boolean(availability) }),
+        ...(listingStatus && { listingStatus }),
+      },
+    });
+
+    return res.json(formatAgentProperty(updated));
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to update property' });
+  }
+});
+
+// DELETE /api/v1/agent/properties/:id - Delete property in agent's assigned area
+router.delete('/properties/:id', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id!;
+    const userRole = req.user?.role!;
+
+    const access = await verifyAgentPropertyAccess(userId, userRole, id);
+    if (!access.authorized) {
+      return res.status(403).json({ error: access.error });
+    }
+
+    await prisma.property.delete({ where: { id } });
+    return res.json({ success: true, message: 'Property deleted successfully' });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to delete property' });
   }
 });
 
@@ -654,10 +871,10 @@ router.get('/providers', authenticateToken, requireAgentOrAdmin, async (req: Aut
         whereClause = {
           role: { in: ['provider', 'PROVIDER', 'landlord'] },
           OR: [
-            ...(buildUserTownFilter(assignedTown).OR || []),
+            ...(buildUserTerritoryFilter(assignedTown).OR || []),
             {
               properties: {
-                some: buildPropertyTownFilter(assignedTown),
+                some: buildPropertyTerritoryFilter(assignedTown),
               },
             },
           ],
@@ -706,7 +923,7 @@ router.get('/seekers', authenticateToken, requireAgentOrAdmin, async (req: AuthR
       if (assignedTown) {
         whereClause = {
           role: { in: ['seeker', 'SEEKER', 'tenant'] },
-          ...(buildUserTownFilter(assignedTown)),
+          ...(buildUserTerritoryFilter(assignedTown)),
         };
       }
     }
@@ -729,6 +946,140 @@ router.get('/seekers', authenticateToken, requireAgentOrAdmin, async (req: AuthR
     return res.json(seekers);
   } catch (error) {
     return res.status(500).json({ error: 'Failed to fetch house seekers' });
+  }
+});
+
+// GET /api/v1/agent/users/:id - View user details with territorial authorization
+router.get('/users/:id', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const access = await verifyAgentUserAccess(req.user!.id, req.user!.role, id);
+    if (!access.authorized) {
+      return res.status(403).json({ error: access.error });
+    }
+
+    const { passwordHash, ...safeUser } = access.targetUser;
+    return res.json(safeUser);
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch user details' });
+  }
+});
+
+// POST /api/v1/agent/users - Register a seeker or provider in agent's assigned area
+router.post('/users', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user?.id!;
+    const isAdmin = req.user?.role?.toLowerCase() === 'admin';
+
+    const agentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { assignedArea: true, city: true },
+    });
+    const assignedArea = agentUser?.assignedArea || agentUser?.city || 'Addis Ababa';
+
+    const { name, email, phone, role, city, region, address } = req.body;
+    if (!name || !email) {
+      return res.status(400).json({ error: 'Name and email are required' });
+    }
+
+    const userRole = (role || 'seeker').toLowerCase();
+    if (!['seeker', 'provider'].includes(userRole)) {
+      return res.status(400).json({ error: 'Agents can only register seekers or providers' });
+    }
+
+    const targetCity = city || assignedArea;
+    if (!isAdmin) {
+      if (!isTextInTerritory(targetCity, assignedArea) && !isTextInTerritory(address, assignedArea)) {
+        return res.status(403).json({
+          error: `Access Denied: You can only register users in your assigned territory (${assignedArea}).`,
+        });
+      }
+    }
+
+    const bcrypt = require('bcryptjs');
+    const passwordHash = await bcrypt.hash('DelalaUser123!', 10);
+
+    const newUser = await prisma.user.create({
+      data: {
+        name,
+        email,
+        phone,
+        role: userRole,
+        passwordHash,
+        city: targetCity,
+        region: region || targetCity,
+        address,
+        assignedArea: targetCity,
+        isVerified: true,
+        active: true,
+      },
+    });
+
+    const { passwordHash: _, ...safeUser } = newUser;
+    return res.status(201).json(safeUser);
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return res.status(400).json({ error: 'Email or phone already registered' });
+    }
+    return res.status(500).json({ error: 'Failed to create user' });
+  }
+});
+
+// PATCH /api/v1/agent/users/:id - Update seeker or provider in agent's assigned area
+router.patch('/users/:id', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const access = await verifyAgentUserAccess(req.user!.id, req.user!.role, id);
+    if (!access.authorized) {
+      return res.status(403).json({ error: access.error });
+    }
+
+    const { name, phone, address, city, active } = req.body;
+    const isAdmin = req.user?.role?.toLowerCase() === 'admin';
+
+    if (!isAdmin && city) {
+      if (!isTextInTerritory(city, access.assignedArea)) {
+        return res.status(403).json({
+          error: `Access Denied: Cannot transfer user to a city outside your assigned territory (${access.assignedArea}).`,
+        });
+      }
+    }
+
+    const updated = await prisma.user.update({
+      where: { id },
+      data: {
+        ...(name && { name }),
+        ...(phone && { phone }),
+        ...(address !== undefined && { address }),
+        ...(city && { city }),
+        ...(active !== undefined && { active: Boolean(active) }),
+      },
+    });
+
+    const { passwordHash: _, ...safeUser } = updated;
+    return res.json(safeUser);
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to update user' });
+  }
+});
+
+// DELETE /api/v1/agent/users/:id - Delete seeker or provider in agent's assigned area
+router.delete('/users/:id', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
+  try {
+    const { id } = req.params;
+    const access = await verifyAgentUserAccess(req.user!.id, req.user!.role, id);
+    if (!access.authorized) {
+      return res.status(403).json({ error: access.error });
+    }
+
+    if (['admin', 'agent'].includes(access.targetUser.role?.toLowerCase())) {
+      return res.status(403).json({ error: 'Cannot delete admin or agent accounts' });
+    }
+
+    await prisma.user.delete({ where: { id } });
+    return res.json({ success: true, message: 'User deleted successfully' });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to delete user' });
   }
 });
 
