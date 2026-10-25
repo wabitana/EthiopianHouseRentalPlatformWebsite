@@ -380,7 +380,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       return await _authRepository.getTwoFactorSettings();
     } catch (_) {
-      return {'enable2FA': true, 'requireOTPForInquiry': true};
+      return {'enable2FA': false, 'requireOTPForInquiry': false};
     }
   }
 

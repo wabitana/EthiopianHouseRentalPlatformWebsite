@@ -675,8 +675,8 @@ router.get('/2fa-settings', authenticateToken, async (req: AuthRequest, res) => 
     }
 
     return res.json({
-      enable2FA: true,
-      requireOTPForInquiry: true,
+      enable2FA: false,
+      requireOTPForInquiry: false,
     });
   } catch (error) {
     console.error('Get 2FA settings error:', error);
@@ -958,8 +958,8 @@ router.post('/login', async (req, res) => {
     const config2FA = await prisma.platformConfig.findUnique({
       where: { key: `2fa_settings_${user.id}` },
     });
-    let enable2FA = true;
-    let requireOTPForInquiry = true;
+    let enable2FA = false;
+    let requireOTPForInquiry = false;
     if (config2FA) {
       try {
         const parsed = JSON.parse(config2FA.value);

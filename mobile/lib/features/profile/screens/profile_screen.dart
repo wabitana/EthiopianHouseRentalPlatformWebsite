@@ -1079,8 +1079,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // Background sync from backend if available
     context.read<AuthProvider>().getTwoFactorSettings().then((settings) {
       if (settings.containsKey('enable2FA')) {
-        UserSettingsService.set2FAEnabled(settings['enable2FA'] ?? true);
-        UserSettingsService.set2FAInquiry(settings['requireOTPForInquiry'] ?? true);
+        UserSettingsService.set2FAEnabled(settings['enable2FA'] ?? false);
+        UserSettingsService.set2FAInquiry(settings['requireOTPForInquiry'] ?? false);
       }
     }).catchError((_) {});
 

@@ -152,7 +152,7 @@ class MockAuthRemoteDataSource implements AuthRemoteDataSource {
   @override
   Future<Map<String, bool>> getTwoFactorSettings() async {
     await Future.delayed(const Duration(milliseconds: 200));
-    return {'enable2FA': true, 'requireOTPForInquiry': true};
+    return {'enable2FA': false, 'requireOTPForInquiry': false};
   }
 
   @override

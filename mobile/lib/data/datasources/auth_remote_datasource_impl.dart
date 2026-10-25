@@ -7,6 +7,7 @@ import '../../shared/models/user_model.dart';
 import 'auth_remote_datasource.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/services/user_settings_service.dart';
 
 class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
   final GoogleSignIn _googleSignIn = GoogleSignIn(
@@ -66,6 +67,16 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
       await TokenStorage.saveUserData(userMap);
       final user = UserModel.fromJson(userMap);
       await TokenStorage.saveUserRole(user.role.code);
+
+      final twoFactor = res['twoFactorSettings'] ?? (userMap['twoFactorSettings'] as Map<String, dynamic>?);
+      if (twoFactor is Map) {
+        await UserSettingsService.set2FAEnabled(twoFactor['enable2FA'] == true);
+        await UserSettingsService.set2FAInquiry(twoFactor['requireOTPForInquiry'] == true);
+      } else {
+        await UserSettingsService.set2FAEnabled(false);
+        await UserSettingsService.set2FAInquiry(false);
+      }
+
       return user;
     }
     throw ApiException('Failed to parse login response');
@@ -325,7 +336,7 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
         };
       }
     } catch (_) {}
-    return {'enable2FA': true, 'requireOTPForInquiry': true};
+    return {'enable2FA': false, 'requireOTPForInquiry': false};
   }
 
   @override
