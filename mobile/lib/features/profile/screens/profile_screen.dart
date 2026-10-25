@@ -438,6 +438,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     bool obscureNew = true;
     bool obscureConfirm = true;
     bool isLoading = false;
+    String? modalError;
 
     showModalBottomSheet(
       context: context,
@@ -478,6 +479,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     const Divider(color: Color(0xFFE2E8F0)),
                     const SizedBox(height: 12),
+
+                    if (modalError != null) ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.rejectedBackground,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.rejected.withValues(alpha: 0.3)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded, color: AppColors.rejected, size: 20),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                modalError!,
+                                style: const TextStyle(
+                                  color: AppColors.rejected,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
 
                     CustomTextField(
                       label: 'Current Password',
@@ -524,6 +554,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       validator: (val) {
                         if (val == null || val.length < 6) return 'New password must be at least 6 characters';
+                        if (val == currentPasswordController.text) return 'New password must be different from current password';
                         return null;
                       },
                     ),
@@ -562,20 +593,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         if (formKey.currentState!.validate()) {
                           setModalState(() {
                             isLoading = true;
+                            modalError = null;
                           });
-                          await context.read<AuthProvider>().changePassword(
+                          final authProvider = context.read<AuthProvider>();
+                          final success = await authProvider.changePassword(
                                 currentPasswordController.text,
                                 newPasswordController.text,
                               );
                           if (ctx.mounted) {
-                            Navigator.of(ctx).pop();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Password updated successfully!'),
-                                backgroundColor: AppColors.success,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
+                            if (success) {
+                              Navigator.of(ctx).pop();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Password updated successfully! ✓'),
+                                  backgroundColor: AppColors.success,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            } else {
+                              setModalState(() {
+                                isLoading = false;
+                                modalError = authProvider.errorMessage ?? 'Failed to update password. Please check your current password.';
+                              });
+                            }
                           }
                         }
                       },
@@ -1029,9 +1069,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // 5. Two-Factor Authentication (2FA) Modal
-  void _showTwoFactorModal(BuildContext context) {
-    bool enable2FA = true;
-    bool requireOTPForInquiry = true;
+  void _showTwoFactorModal(BuildContext context) async {
+    bool enable2FA = await UserSettingsService.get2FAEnabled();
+    bool requireOTPForInquiry = await UserSettingsService.get2FAInquiry();
+    bool isSaving = false;
+
+    if (!context.mounted) return;
+
+    // Background sync from backend if available
+    context.read<AuthProvider>().getTwoFactorSettings().then((settings) {
+      if (settings.containsKey('enable2FA')) {
+        UserSettingsService.set2FAEnabled(settings['enable2FA'] ?? false);
+        UserSettingsService.set2FAInquiry(settings['requireOTPForInquiry'] ?? false);
+      }
+    }).catchError((_) {});
 
     showModalBottomSheet(
       context: context,
@@ -1089,9 +1140,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   CustomButton(
                     text: 'Save Security Settings',
                     icon: Icons.shield_rounded,
+                    isLoading: isSaving,
                     onPressed: () async {
+                      setModalState(() => isSaving = true);
+                      final authProvider = context.read<AuthProvider>();
                       await UserSettingsService.set2FAEnabled(enable2FA);
                       await UserSettingsService.set2FAInquiry(requireOTPForInquiry);
+                      await authProvider.saveTwoFactorSettings(enable2FA, requireOTPForInquiry);
                       if (ctx.mounted) {
                         Navigator.of(ctx).pop();
                         ScaffoldMessenger.of(context).showSnackBar(

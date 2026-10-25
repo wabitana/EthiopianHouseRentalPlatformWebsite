@@ -20,6 +20,10 @@ import '../../../shared/widgets/neighborhood_radar_widget.dart';
 import '../../rentals/screens/digital_lease_generator_screen.dart';
 import '../../rentals/screens/schedule_tour_modal.dart';
 import '../../rentals/screens/roommate_rent_splitter_screen.dart';
+import '../../../core/services/user_settings_service.dart';
+import 'package:url_launcher/url_launcher.dart';
+import '../../../core/network/api_client.dart';
+import '../../../core/constants/api_endpoints.dart';
 
 
 class PropertyDetailScreen extends StatefulWidget {
@@ -201,6 +205,22 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                     text: 'Send Message to Provider',
                     isLoading: isSubmitting,
                     onPressed: () async {
+                      final msg = messageController.text.trim();
+                      if (msg.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Please enter an inquiry message first')),
+                        );
+                        return;
+                      }
+
+                      // Check 2FA preference: "Verify House Inquiry Messages"
+                      final require2FA = await UserSettingsService.get2FAInquiry();
+                      if (!context.mounted) return;
+                      if (require2FA) {
+                        final verified = await _showInquiry2FAConfirmation(context);
+                        if (!verified || !context.mounted) return;
+                      }
+
                       setModalState(() {
                         isSubmitting = true;
                       });
@@ -208,7 +228,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                       final success = await context.read<InquiryProvider>().sendInquiry(
                             property: property,
                             seeker: auth.currentUser!,
-                            message: messageController.text.trim(),
+                            message: msg,
                           );
 
                       if (context.mounted) {
@@ -231,6 +251,159 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     );
   }
 
+  void _callLandlord(PropertyModel property) async {
+    try {
+      ApiClient.post(
+        ApiEndpoints.propertyTrackInteraction(property.id),
+        body: {'type': 'phone_call'},
+      );
+    } catch (_) {}
+
+    final phone = property.providerPhone.replaceAll(RegExp(r'[\s\-()]'), '');
+    final uri = Uri.parse('tel:$phone');
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Landlord phone: ${property.providerPhone}')),
+          );
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Landlord phone: ${property.providerPhone}')),
+        );
+      }
+    }
+  }
+
+  Future<bool> _showInquiry2FAConfirmation(BuildContext parentCtx) async {
+    final otpController = TextEditingController();
+    bool isVerifying = false;
+    String? errorText;
+
+    final result = await showModalBottomSheet<bool>(
+      context: parentCtx,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            padding: EdgeInsets.only(
+              top: 24,
+              left: 24,
+              right: 24,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              color: AppColors.primaryContainer,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.shield_rounded, color: AppColors.primary, size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Inquiry 2FA Security Check',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: AppColors.textMuted),
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Color(0xFFE2E8F0)),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Two-Factor verification before contacting landlords is enabled on your profile. Enter your 6-digit confirmation code to securely transmit this inquiry.',
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                  ),
+                  const SizedBox(height: 16),
+                  if (errorText != null) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.rejectedBackground,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.rejected.withValues(alpha: 0.3)),
+                      ),
+                      child: Text(
+                        errorText!,
+                        style: const TextStyle(color: AppColors.rejected, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                  CustomTextField(
+                    label: '6-Digit Confirmation Code',
+                    hint: 'e.g. 123456',
+                    controller: otpController,
+                    keyboardType: TextInputType.number,
+                    prefixIcon: Icons.lock_clock_outlined,
+                  ),
+                  const SizedBox(height: 20),
+                  CustomButton(
+                    text: 'Confirm & Send Inquiry',
+                    isLoading: isVerifying,
+                    trailingIcon: Icons.arrow_forward_rounded,
+                    onPressed: () async {
+                      final code = otpController.text.trim();
+                      if (code.length < 4) {
+                        setModalState(() {
+                          errorText = 'Please enter a valid 6-digit OTP code';
+                        });
+                        return;
+                      }
+                      setModalState(() {
+                        isVerifying = true;
+                        errorText = null;
+                      });
+                      final verified = await context.read<AuthProvider>().verifyPhoneOtp(code);
+                      if (ctx.mounted) {
+                        if (verified) {
+                          Navigator.of(ctx).pop(true);
+                        } else {
+                          setModalState(() {
+                            isVerifying = false;
+                            errorText = 'Invalid code. Enter valid SMS OTP code.';
+                          });
+                        }
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    return result == true;
+  }
+
   void _showReportModal(BuildContext context, PropertyModel property) {
     showModalBottomSheet(
       context: context,
@@ -247,6 +420,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final propProvider = context.read<PropertyProvider>();
       try {
         final prop = propProvider.properties.firstWhere((p) => p.id == widget.propertyId);
@@ -261,6 +435,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
     final propertyProvider = context.watch<PropertyProvider>();
     final favoritesProvider = context.watch<FavoritesProvider>();
     final user = context.watch<AuthProvider>().currentUser;
+    context.watch<CurrencyProvider>();
 
     PropertyModel? found;
     try {
@@ -504,9 +679,21 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                           neighborhood: property.neighborhood,
                           latitude: property.latitude,
                           longitude: property.longitude,
+                          onDirectionsPressed: () {
+                            try {
+                              ApiClient.post(
+                                ApiEndpoints.propertyTrackInteraction(property.id),
+                                body: {'type': 'map_directions'},
+                              );
+                            } catch (_) {}
+                          },
                         ),
                         const SizedBox(height: 16),
-                        NeighborhoodRadarWidget(city: property.city, area: property.area),
+                        NeighborhoodRadarWidget(
+                          city: property.city,
+                          area: property.area,
+                          property: property,
+                        ),
                         const SizedBox(height: 20),
 
                         // Impressive Action Hub (Lease Contract, Schedule Visit, Rent Splitter)
@@ -580,7 +767,10 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (_) => RoommateRentSplitterScreen(initialPrice: property.price),
+                                      builder: (_) => RoommateRentSplitterScreen(
+                                        initialPrice: property.price,
+                                        propertyTitle: property.title,
+                                      ),
                                     ),
                                   );
                                 },
@@ -684,13 +874,29 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
                                   ],
                                 ),
                               ),
-                              OutlinedButton(
-                                style: OutlinedButton.styleFrom(
-                                  minimumSize: const Size(90, 38),
-                                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                                ),
-                                onPressed: () => _showInquiryModal(context, property),
-                                child: const Text('Contact'),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Call Landlord',
+                                    icon: const Icon(Icons.phone, color: AppColors.primary, size: 20),
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                                      padding: const EdgeInsets.all(8),
+                                      minimumSize: const Size(36, 36),
+                                    ),
+                                    onPressed: () => _callLandlord(property),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  OutlinedButton(
+                                    style: OutlinedButton.styleFrom(
+                                      minimumSize: const Size(78, 38),
+                                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    ),
+                                    onPressed: () => _showInquiryModal(context, property),
+                                    child: const Text('Contact'),
+                                  ),
+                                ],
                               ),
                             ],
                           ),

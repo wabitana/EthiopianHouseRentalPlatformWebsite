@@ -30,6 +30,9 @@ abstract class AuthRemoteDataSource {
   Future<UserModel> verifyIdentity(String idType, String idNumber, {String? documentImage, String? selfieImage});
   Future<bool> forgotPassword(String email);
   Future<bool> resetPassword(String email, String code, String newPassword);
+  Future<bool> changePassword(String currentPassword, String newPassword);
+  Future<Map<String, bool>> getTwoFactorSettings();
+  Future<bool> saveTwoFactorSettings(bool enable2FA, bool requireOTPForInquiry);
 }
 
 class MockAuthRemoteDataSource implements AuthRemoteDataSource {
@@ -137,6 +140,24 @@ class MockAuthRemoteDataSource implements AuthRemoteDataSource {
   @override
   Future<bool> resetPassword(String email, String code, String newPassword) async {
     await Future.delayed(const Duration(milliseconds: 400));
+    return true;
+  }
+
+  @override
+  Future<bool> changePassword(String currentPassword, String newPassword) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return true;
+  }
+
+  @override
+  Future<Map<String, bool>> getTwoFactorSettings() async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    return {'enable2FA': false, 'requireOTPForInquiry': false};
+  }
+
+  @override
+  Future<bool> saveTwoFactorSettings(bool enable2FA, bool requireOTPForInquiry) async {
+    await Future.delayed(const Duration(milliseconds: 200));
     return true;
   }
 }

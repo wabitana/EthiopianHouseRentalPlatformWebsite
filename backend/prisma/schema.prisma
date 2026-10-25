@@ -1,12 +1,16 @@
-// ==========================================
-// ETHIOPIAN HOUSE RENTAL & DELALA PLATFORM SCHEMA
-// Normalized Phase 1 Production Architecture
-// ==========================================
 
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
 }
+
+generator erd {
+  provider        = "prisma-erd-generator"
+  output          = "./ERD.svg"
+  theme           = "neutral"
+  puppeteerConfig = "./package.json"
+}
+
 
 datasource db {
   provider = "postgresql"
@@ -61,7 +65,7 @@ enum AgreementStatus {
 
 // ==========================================
 // 1. USER & IDENTITY ENTITIES
-// ==========================================
+// ========================================== 
 
 model User {
   id            String   @id @default(uuid())
@@ -73,7 +77,6 @@ model User {
   role          String   @default("seeker") // seeker, provider, admin, agent
 
   avatarUrl     String?
-  telegramChatId String?  @unique
 
   isVerified                 Boolean @default(false)
 
@@ -650,3 +653,22 @@ model RefreshToken {
 
   createdAt DateTime @default(now())
 }
+
+model MaintenanceRequest {
+  id            String   @id @default(uuid())
+  tenantId      String
+  providerId    String
+  propertyId    String?
+  propertyTitle String?
+  title         String
+  description   String
+  category      String   @default("General")
+  status        String   @default("PENDING")
+  tenantName    String?
+  tenantPhone   String?
+  providerName  String?
+  providerNotes String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+

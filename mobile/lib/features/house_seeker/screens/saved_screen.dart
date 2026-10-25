@@ -23,6 +23,7 @@ class _SavedScreenState extends State<SavedScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final user = context.read<AuthProvider>().currentUser;
       if (user != null) {
         context.read<FavoritesProvider>().loadFavorites(user.id);

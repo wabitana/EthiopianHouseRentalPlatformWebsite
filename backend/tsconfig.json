@@ -6,14 +6,22 @@
     "lib": ["es2020"],
     "outDir": "./dist",
     "rootDir": "./src",
-    "strict": true,
+    "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@langchain/langgraph/prebuilt": ["./node_modules/@langchain/langgraph/dist/prebuilt/index.d.ts"]
+      "@langchain/langgraph/prebuilt": [
+        "./node_modules/@langchain/langgraph/dist/prebuilt/index.d.ts"
+      ]
     }
   },
-  "include": ["src/**/*"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

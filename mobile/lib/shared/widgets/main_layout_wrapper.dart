@@ -17,13 +17,9 @@ class _MainLayoutWrapperState extends State<MainLayoutWrapper> {
     final auth = context.watch<AuthProvider>();
     final isProvider = auth.isProvider;
 
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      switchInCurve: Curves.easeIn,
-      switchOutCurve: Curves.easeOut,
-      child: isProvider
-          ? const ProviderMainLayout(key: ValueKey('ProviderMainLayout'))
-          : const SeekerMainLayout(key: ValueKey('SeekerMainLayout')),
-    );
+    if (isProvider) {
+      return const ProviderMainLayout(key: ValueKey('ProviderMainLayout'));
+    }
+    return const SeekerMainLayout(key: ValueKey('SeekerMainLayout'));
   }
 }

@@ -332,7 +332,8 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return success;
     } catch (e) {
-      _errorMessage = 'Failed to send password reset code';
+      final msg = e.toString().replaceAll('Exception: ', '').trim();
+      _errorMessage = msg.isEmpty ? 'Failed to send password reset code' : msg;
       _isLoading = false;
       notifyListeners();
       return false;
@@ -349,7 +350,8 @@ class AuthProvider extends ChangeNotifier {
       notifyListeners();
       return success;
     } catch (e) {
-      _errorMessage = 'Failed to reset password. Check verification code.';
+      final msg = e.toString().replaceAll('Exception: ', '').trim();
+      _errorMessage = msg.isEmpty ? 'Failed to reset password. Check verification code.' : msg;
       _isLoading = false;
       notifyListeners();
       return false;
@@ -358,10 +360,35 @@ class AuthProvider extends ChangeNotifier {
 
   Future<bool> changePassword(String currentPassword, String newPassword) async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
-    await Future.delayed(const Duration(milliseconds: 500));
-    _isLoading = false;
-    notifyListeners();
-    return true;
+    try {
+      final success = await _authRepository.changePassword(currentPassword, newPassword);
+      _isLoading = false;
+      notifyListeners();
+      return success;
+    } catch (e) {
+      final msg = e.toString().replaceAll('Exception: ', '').trim();
+      _errorMessage = msg.isEmpty ? 'Failed to update password. Please check your current password.' : msg;
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  Future<Map<String, bool>> getTwoFactorSettings() async {
+    try {
+      return await _authRepository.getTwoFactorSettings();
+    } catch (_) {
+      return {'enable2FA': false, 'requireOTPForInquiry': false};
+    }
+  }
+
+  Future<bool> saveTwoFactorSettings(bool enable2FA, bool requireOTPForInquiry) async {
+    try {
+      return await _authRepository.saveTwoFactorSettings(enable2FA, requireOTPForInquiry);
+    } catch (_) {
+      return false;
+    }
   }
 }

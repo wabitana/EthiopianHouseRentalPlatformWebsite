@@ -60,17 +60,11 @@ export function startEmailReminderScheduler(intervalHours: number = 48): void {
   const intervalMs = intervalHours * 60 * 60 * 1000;
   console.log(`🚀 Starting Email Reminder Scheduler (Interval: Every ${intervalHours} Hours)...`);
 
-  // Initial trigger after 30 seconds on server boot for testing
-  setTimeout(() => {
-    runUnverifiedUserEmailReminderJob().catch((err) =>
-      console.error('Initial reminder job failed:', err)
-    );
-  }, 30 * 1000);
-
-  // Recurring schedule
+  // Recurring schedule (only fires periodically, not on boot)
   setInterval(() => {
     runUnverifiedUserEmailReminderJob().catch((err) =>
       console.error('Recurring reminder job failed:', err)
     );
   }, intervalMs);
 }
+

@@ -22,6 +22,7 @@ import {
   vendorServicesRoutes,
   agentRoutes,
   telegramRoutes,
+  maintenanceRoutes,
 } from './modules';
 
 const app = express();
@@ -48,7 +49,7 @@ app.use(cors({
     ) {
       callback(null, true);
     } else {
-      callback(new Error('CORS not allowed for this origin'));
+      callback(null, false);
     }
   },
   credentials: true, // Required for cross-origin cookies
@@ -65,6 +66,7 @@ app.use('/uploads', express.static(uploadsPath));
 // REST API v1 Modular Routes
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', authRoutes);
+app.use('/api/v1/profile', authRoutes);
 app.use('/api/v1/properties', propertyRoutes);
 app.use('/api/v1/provider', providerRoutes);
 app.use('/api/v1/favorites', favoritesRoutes);
@@ -84,13 +86,41 @@ app.use('/api/v1/services', vendorServicesRoutes);
 app.use('/api/v1/addresses', vendorServicesRoutes);
 app.use('/api/v1/agent', agentRoutes);
 app.use('/api/v1/telegram', telegramRoutes);
+app.use('/api/v1/maintenance', maintenanceRoutes);
 
 // Backward compatibility proxies for web app legacy routes
 app.use('/api/cms', cmsRoutes);
 app.use('/api/services', vendorServicesRoutes);
 app.use('/api/addresses', vendorServicesRoutes);
-app.use('/api/bookings', vendorServicesRoutes);
+app.use('/api/profile', authRoutes);
 app.use('/api/chat', aiRoutes);
+
+import { prisma, withDbRetry } from './prisma';
+
+// Public platform statistics endpoint
+const handleGetStats = async (_req: express.Request, res: express.Response) => {
+  try {
+    const [properties, users, inquiries, agreements] = await withDbRetry(() =>
+      Promise.all([
+        prisma.property.count({ where: { listingStatus: 'active' } }),
+        prisma.user.count(),
+        prisma.inquiry.count(),
+        prisma.rentalAgreement.count(),
+      ])
+    );
+    return res.json({
+      launchYear: 2026,
+      verifiedProperties: properties,
+      totalUsers: users,
+      completedInquiries: inquiries + agreements,
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: 'Failed to fetch platform stats' });
+  }
+};
+
+app.get('/api/v1/stats', handleGetStats);
+app.get('/api/stats', handleGetStats);
 
 // Health check endpoint
 app.get('/api/v1/health', (_req, res) => {

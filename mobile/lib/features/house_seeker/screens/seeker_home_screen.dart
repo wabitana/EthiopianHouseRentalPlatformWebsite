@@ -21,6 +21,7 @@ import '../../tenants/screens/maintenance_portal_screen.dart';
 import '../../ai_assistant/screens/ai_assistant_screen.dart';
 import '../providers/ai_recommendations_provider.dart';
 import '../../../core/services/user_behavior_tracker.dart';
+import '../../../core/services/currency_service.dart';
 
 class SeekerHomeScreen extends StatelessWidget {
   const SeekerHomeScreen({super.key});
@@ -31,6 +32,7 @@ class SeekerHomeScreen extends StatelessWidget {
     final propertyProvider = context.watch<PropertyProvider>();
     final favoritesProvider = context.watch<FavoritesProvider>();
     final notificationProvider = context.watch<NotificationProvider>();
+    context.watch<CurrencyProvider>();
     final user = authProvider.currentUser;
 
     return Scaffold(
@@ -89,118 +91,212 @@ class SeekerHomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Unified Professional Dashboard Header Card with Primary Theme Color
+              // Unified Professional Dashboard Header Card with Primary Theme Color
               Container(
-                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Theme.of(context).primaryColor,
-                      Color.alphaBlend(Colors.black.withValues(alpha: 0.25), Theme.of(context).primaryColor),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: Theme.of(context).primaryColor.withValues(alpha: 0.35),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
+                      color: const Color(0xFF134E39).withValues(alpha: 0.35),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Top Row: User Profile & Greeting + Currency Selector
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 22,
-                          backgroundColor: Colors.white.withValues(alpha: 0.25),
-                          backgroundImage: (user?.avatarUrl != null && user!.avatarUrl!.trim().isNotEmpty && user.avatarUrl!.startsWith('http'))
-                              ? NetworkImage(user.avatarUrl!.trim())
-                              : null,
-                          child: (user?.avatarUrl == null || user!.avatarUrl!.trim().isEmpty || !user.avatarUrl!.startsWith('http'))
-                              ? const Icon(Icons.person, color: Colors.white)
-                              : null,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Selam, ${user?.name.split(' ').first ?? 'Seeker'} 👋',
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              Text(
-                                'Find your next home in Ethiopia',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.white.withValues(alpha: 0.85),
-                                ),
-                              ),
-                            ],
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Stack(
+                    children: [
+                      // Rich Emerald Gradient Background
+                      Positioned.fill(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [
+                                Color(0xFF134E39),
+                                Color(0xFF1B5E43),
+                                Color(0xFF0F3827),
+                              ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.16),
+                              width: 1.2,
+                            ),
+                            borderRadius: BorderRadius.circular(24),
                           ),
                         ),
-                        const CurrencySelectorWidget(isCompact: true),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-                    Divider(height: 1, color: Colors.white.withValues(alpha: 0.2)),
-                    const SizedBox(height: 12),
+                      ),
 
-                    // Integrated Quick Action Buttons Row inside Primary Card
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildQuickActionButton(
-                            icon: Icons.compare_arrows_rounded,
-                            label: 'Compare',
-                            color: Colors.white,
-                            isDarkTheme: true,
-                            onTap: () {
-                              showModalBottomSheet(
-                                context: context,
-                                isScrollControlled: true,
-                                shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-                                builder: (_) => PropertyComparisonSheet(properties: propertyProvider.properties.take(3).toList()),
-                              );
-                            },
+                      // Decorative Soft Orbs
+                      Positioned(
+                        top: -35,
+                        right: -35,
+                        child: Container(
+                          width: 140,
+                          height: 140,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.05),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildQuickActionButton(
-                            icon: Icons.notifications_active_outlined,
-                            label: 'Saved Alerts',
-                            color: Colors.white,
-                            isDarkTheme: true,
-                            onTap: () {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => const SavedSearchesScreen()));
-                            },
+                      ),
+                      Positioned(
+                        bottom: -40,
+                        left: -20,
+                        child: Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFF10B981).withValues(alpha: 0.08),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildQuickActionButton(
-                            icon: Icons.build_outlined,
-                            label: 'Repairs',
-                            color: Colors.white,
-                            isDarkTheme: true,
-                            onTap: () {
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenancePortalScreen()));
-                            },
-                          ),
+                      ),
+
+                      // Card Content with Comfortable Breathing Room
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Top Row: User Profile & Greeting + Currency Selector
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(2.5),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: Colors.white.withValues(alpha: 0.4),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: CircleAvatar(
+                                    radius: 24,
+                                    backgroundColor: Colors.white.withValues(alpha: 0.25),
+                                    backgroundImage: (user?.avatarUrl != null && user!.avatarUrl!.trim().isNotEmpty && user.avatarUrl!.startsWith('http'))
+                                        ? NetworkImage(user.avatarUrl!.trim())
+                                        : null,
+                                    child: (user?.avatarUrl == null || user!.avatarUrl!.trim().isEmpty || !user.avatarUrl!.startsWith('http'))
+                                        ? const Icon(Icons.person, color: Colors.white, size: 24)
+                                        : null,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          'Selam, ${user?.name.trim().isNotEmpty == true ? UserModel.cleanDisplayName(user!.name) : 'Seeker'} 👋',
+                                          maxLines: 1,
+                                          style: const TextStyle(
+                                            fontSize: 18,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: -0.3,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          'Find your next home in Ethiopia',
+                                          maxLines: 1,
+                                          style: TextStyle(
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w400,
+                                            color: Colors.white.withValues(alpha: 0.9),
+                                            letterSpacing: 0.1,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                const CurrencySelectorWidget(isCompact: true, isDark: true),
+                              ],
+                            ),
+
+                            // Smooth Translucent Gradient Divider
+                            Container(
+                              height: 1,
+                              margin: const EdgeInsets.symmetric(vertical: 18),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    Colors.white.withValues(alpha: 0.04),
+                                    Colors.white.withValues(alpha: 0.22),
+                                    Colors.white.withValues(alpha: 0.04),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // Flexible Quick Action Chips Row
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildQuickActionButton(
+                                    icon: Icons.compare_arrows_rounded,
+                                    label: 'Compare',
+                                    color: Colors.white,
+                                    isDarkTheme: true,
+                                    onTap: () {
+                                      showModalBottomSheet(
+                                        context: context,
+                                        isScrollControlled: true,
+                                        backgroundColor: Colors.transparent,
+                                        shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+                                        builder: (_) => PropertyComparisonSheet(properties: propertyProvider.properties.take(3).toList()),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _buildQuickActionButton(
+                                    icon: Icons.notifications_active_outlined,
+                                    label: 'Saved Alerts',
+                                    color: Colors.white,
+                                    isDarkTheme: true,
+                                    onTap: () {
+                                      Navigator.push(context, MaterialPageRoute(builder: (_) => const SavedSearchesScreen()));
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _buildQuickActionButton(
+                                    icon: Icons.build_outlined,
+                                    label: 'Repairs',
+                                    color: Colors.white,
+                                    isDarkTheme: true,
+                                    onTap: () {
+                                      Navigator.push(context, MaterialPageRoute(builder: (_) => const MaintenancePortalScreen()));
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -581,40 +677,51 @@ class SeekerHomeScreen extends StatelessWidget {
     required VoidCallback onTap,
     bool isDarkTheme = false,
   }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
-        decoration: BoxDecoration(
-          color: isDarkTheme
-              ? Colors.white.withValues(alpha: 0.18)
-              : color.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        splashColor: isDarkTheme ? Colors.white.withValues(alpha: 0.16) : color.withValues(alpha: 0.15),
+        highlightColor: isDarkTheme ? Colors.white.withValues(alpha: 0.08) : color.withValues(alpha: 0.08),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
+          decoration: BoxDecoration(
             color: isDarkTheme
-                ? Colors.white.withValues(alpha: 0.3)
-                : color.withValues(alpha: 0.2),
+                ? Colors.white.withValues(alpha: 0.12)
+                : color.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDarkTheme
+                  ? Colors.white.withValues(alpha: 0.22)
+                  : color.withValues(alpha: 0.18),
+              width: 1,
+            ),
           ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 16, color: isDarkTheme ? Colors.white : color),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  color: isDarkTheme ? Colors.white : color,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: isDarkTheme ? Colors.white : color),
+              const SizedBox(width: 5),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.1,
+                      color: isDarkTheme ? Colors.white : color,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

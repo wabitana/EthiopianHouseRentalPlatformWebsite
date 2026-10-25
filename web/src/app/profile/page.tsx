@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, MapPin, Package, Wrench, Bell } from "lucide-react";
+import { User, MapPin, Building2, LayoutDashboard, Bell } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,7 +16,6 @@ interface Profile {
   address: string | null;
   city: string | null;
   createdAt: string;
-  _count: { orders: number; serviceBookings: number };
 }
 
 export default function ProfilePage() {
@@ -78,21 +77,21 @@ export default function ProfilePage() {
       </div>
 
       <div className="mb-6 grid grid-cols-3 gap-3">
-        <Link href="/orders">
+        <Link href="/browse-houses">
           <Card className="card-hover text-center">
             <CardContent className="p-4">
-              <Package className="mx-auto h-5 w-5 text-emerald-600" />
-              <p className="mt-1 text-lg font-bold">{profile._count.orders}</p>
-              <p className="text-xs text-slate-500">Orders</p>
+              <Building2 className="mx-auto h-5 w-5 text-emerald-600" />
+              <p className="mt-1 text-sm font-bold">Listings</p>
+              <p className="text-xs text-slate-500">Browse houses</p>
             </CardContent>
           </Card>
         </Link>
-        <Link href="/orders">
+        <Link href="/launch-app">
           <Card className="card-hover text-center">
             <CardContent className="p-4">
-              <Wrench className="mx-auto h-5 w-5 text-emerald-600" />
-              <p className="mt-1 text-lg font-bold">{profile._count.serviceBookings}</p>
-              <p className="text-xs text-slate-500">Bookings</p>
+              <LayoutDashboard className="mx-auto h-5 w-5 text-emerald-600" />
+              <p className="mt-1 text-sm font-bold">Portal</p>
+              <p className="text-xs text-slate-500">Dashboard</p>
             </CardContent>
           </Card>
         </Link>

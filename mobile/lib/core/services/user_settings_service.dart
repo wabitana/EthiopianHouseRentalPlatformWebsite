@@ -22,7 +22,7 @@ class UserSettingsService {
   // 2FA Settings
   static Future<bool> get2FAEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_key2FAEnabled) ?? true;
+    return prefs.getBool(_key2FAEnabled) ?? false;
   }
 
   static Future<void> set2FAEnabled(bool val) async {
@@ -32,7 +32,7 @@ class UserSettingsService {
 
   static Future<bool> get2FAInquiry() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_key2FAInquiry) ?? true;
+    return prefs.getBool(_key2FAInquiry) ?? false;
   }
 
   static Future<void> set2FAInquiry(bool val) async {

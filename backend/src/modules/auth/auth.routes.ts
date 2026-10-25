@@ -73,13 +73,66 @@ const generateTokens = async (user: any) => {
   return { accessToken: token, token, refreshToken };
 };
 
+// Helper to cryptographically verify Google ID Token with Google OAuth API
+async function verifyGoogleIdToken(token: string) {
+  try {
+    const res = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(token)}`);
+    if (!res.ok) return null;
+    const data = await res.json() as {
+      email?: string;
+      email_verified?: string | boolean;
+      name?: string;
+      picture?: string;
+      aud?: string;
+      iss?: string;
+      exp?: string;
+    };
+    if (!data.email) return null;
+
+    // Verify token issuer (must originate from accounts.google.com)
+    const validIssuers = ['accounts.google.com', 'https://accounts.google.com'];
+    if (data.iss && !validIssuers.includes(data.iss)) {
+      console.warn('Google token issuer mismatch:', data.iss);
+      return null;
+    }
+
+    // Verify expiration timestamp
+    if (data.exp) {
+      const expTimeMs = Number(data.exp) * 1000;
+      if (isNaN(expTimeMs) || expTimeMs < Date.now()) {
+        console.warn('Google token has expired');
+        return null;
+      }
+    }
+
+    const isEmailVerified = data.email_verified === true || data.email_verified === 'true';
+    if (!isEmailVerified) return null;
+
+    const expectedAud = process.env.GOOGLE_CLIENT_ID;
+    if (expectedAud && data.aud !== expectedAud) {
+      console.warn('Google token audience mismatch');
+      return null;
+    }
+
+    return {
+      email: data.email.toLowerCase().trim(),
+      name: data.name || data.email.split('@')[0],
+      avatarUrl: data.picture,
+    };
+  } catch (error) {
+    console.error('Google token verification error:', error);
+    return null;
+  }
+}
+
 const googleAuthSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  name: z.string().min(1, 'Name is required'),
+  idToken: z.string().optional(),
+  credential: z.string().optional(),
+  email: z.string().email('Invalid email address').optional(),
+  name: z.string().optional(),
   role: z.string().optional(),
   avatarUrl: z.string().optional(),
   googleId: z.string().optional(),
-  idToken: z.string().optional(),
   phone: z.string().optional(),
   region: z.string().optional(),
   city: z.string().optional(),
@@ -97,27 +150,52 @@ router.post('/google', async (req, res) => {
       });
     }
 
-    const { email, name, role, avatarUrl, phone, region, city, address } = parseResult.data;
+    const { idToken, credential, role, avatarUrl, phone, region, city, address } = parseResult.data;
+    const tokenToVerify = idToken || credential;
+
+    // Cryptographic verification is strictly required for Google authentication.
+    // Client-provided email/name are never trusted as proof of identity without a valid Google ID token.
+    if (!tokenToVerify) {
+      return res.status(400).json({ error: 'A valid Google ID token (idToken or credential) is required' });
+    }
+
+    const verified = await verifyGoogleIdToken(tokenToVerify);
+    if (!verified) {
+      return res.status(401).json({ error: 'Invalid, forged, expired, or unverified Google token' });
+    }
+
+    const verifiedEmail = verified.email;
+    const verifiedName = verified.name;
+    const verifiedAvatar = verified.avatarUrl || avatarUrl;
+
+    // Role Security: Strict allowlist. Users CANNOT assign themselves 'admin' or 'agent'
     const reqRole = (role || 'seeker').toLowerCase();
-    const normalizedRole = (reqRole === 'provider' || reqRole === 'house_provider' || reqRole === 'house provider')
-        ? 'provider'
-        : (reqRole === 'admin' ? 'admin' : (reqRole === 'agent' ? 'agent' : 'seeker'));
+    const safeRole = (reqRole === 'provider' || reqRole === 'house_provider' || reqRole === 'house provider')
+      ? 'provider'
+      : 'seeker';
 
     // 1. Search for existing user by email
     let user = await withDbRetry(() =>
       prisma.user.findFirst({
-        where: { email: { equals: email.trim(), mode: 'insensitive' } },
+        where: { email: { equals: verifiedEmail, mode: 'insensitive' } },
       })
     );
 
     if (user) {
+      // Prevent privilege escalation or impersonation: administrative/agent accounts cannot be accessed via public Google OAuth
+      if (user.role === 'admin' || user.role === 'agent') {
+        return res.status(403).json({
+          error: 'Administrative and Agent accounts cannot log in through public Google Sign-In. Please use the Portal login with your credentials.',
+        });
+      }
+
       // User exists -> Update role if logging in as provider & auto-verify email
       const updates: any = { isEmailVerified: true };
-      if (normalizedRole === 'provider' && user.role === 'seeker') {
+      if (safeRole === 'provider' && user.role === 'seeker') {
         updates.role = 'provider';
       }
-      if (avatarUrl && !user.avatarUrl) {
-        updates.avatarUrl = avatarUrl;
+      if (verifiedAvatar && !user.avatarUrl) {
+        updates.avatarUrl = verifiedAvatar;
       }
       if (region) updates.region = region;
       if (city) updates.city = city;
@@ -139,14 +217,14 @@ router.post('/google', async (req, res) => {
       user = await withDbRetry(() =>
         prisma.user.create({
           data: {
-            name: name.trim(),
-            email: email.trim(),
+            name: verifiedName,
+            email: verifiedEmail,
             passwordHash,
             phone: phone || null,
-            role: normalizedRole,
-            isVerified: normalizedRole === 'seeker' ? true : false,
+            role: safeRole,
+            isVerified: safeRole === 'seeker',
             isEmailVerified: true,
-            avatarUrl: avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
+            avatarUrl: verifiedAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=250&q=80',
             region: region || 'Addis Ababa',
             city: city || 'Addis Ababa',
             address: address || null,
@@ -157,6 +235,22 @@ router.post('/google', async (req, res) => {
 
     // 2. Issue JWT Access & Refresh Tokens
     const { accessToken, refreshToken } = await generateTokens(user);
+
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.cookie('delala_token', accessToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 1000,
+      path: '/',
+    });
+    res.cookie('delala_refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+      path: '/',
+    });
 
     return res.status(200).json({
       message: 'Google OAuth authentication successful',
@@ -231,7 +325,6 @@ router.post('/register', async (req, res) => {
         role: normalizedRole,
         region: region || 'Addis Ababa',
         city: city || 'Bole',
-        address: address || undefined,
         isVerified: false,
         isEmailVerified: false,
         emailVerificationCode: hashedCode,
@@ -239,7 +332,9 @@ router.post('/register', async (req, res) => {
       },
     });
 
-    console.log(`✉️ Email Verification OTP for ${email}: ${emailCode}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`✉️ Email Verification OTP for ${email}: ${emailCode}`);
+    }
     sendVerificationEmail(email, emailCode, user.name).catch((err) => {
       console.error('Email dispatch error:', err);
     });
@@ -249,13 +344,49 @@ router.post('/register', async (req, res) => {
       requiresEmailVerification: true,
       email: user.email,
       role: user.role,
-      code: emailCode, // Included for easy dev testing
     });
   } catch (error) {
     console.error('Register error:', error);
     return res.status(500).json({ error: 'Failed to register user' });
   }
 });
+
+// In-memory attempt tracking to prevent OTP brute-forcing (5 attempts per 15 mins)
+const otpAttempts = new Map<string, { count: number; firstAttempt: number }>();
+
+function checkOtpAttemptLimit(key: string): boolean {
+  const now = Date.now();
+  const record = otpAttempts.get(key);
+  if (!record || now - record.firstAttempt > 15 * 60 * 1000) {
+    otpAttempts.set(key, { count: 1, firstAttempt: now });
+    return true;
+  }
+  if (record.count >= 5) {
+    return false;
+  }
+  record.count += 1;
+  return true;
+}
+
+function resetOtpAttempts(key: string) {
+  otpAttempts.delete(key);
+}
+
+// In-memory cooldown tracker to prevent OTP flooding / SMS exhaustion (60 seconds minimum interval)
+const otpResendTracker = new Map<string, number>();
+
+function checkOtpResendAllowed(key: string, cooldownSec = 60): { allowed: boolean; remainingSec: number } {
+  const now = Date.now();
+  const lastSent = otpResendTracker.get(key.toLowerCase());
+  if (lastSent) {
+    const elapsedSec = (now - lastSent) / 1000;
+    if (elapsedSec < cooldownSec) {
+      return { allowed: false, remainingSec: Math.ceil(cooldownSec - elapsedSec) };
+    }
+  }
+  otpResendTracker.set(key.toLowerCase(), now);
+  return { allowed: true, remainingSec: 0 };
+}
 
 // POST /api/v1/auth/verify-email
 router.post('/verify-email', async (req, res) => {
@@ -268,7 +399,7 @@ router.post('/verify-email', async (req, res) => {
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(400).json({ error: 'Invalid verification request' });
     }
 
     if (user.isEmailVerified) {
@@ -289,6 +420,16 @@ router.post('/verify-email', async (req, res) => {
       });
     }
 
+    if (!checkOtpAttemptLimit(email)) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerificationCode: null, emailVerificationExpires: null },
+      });
+      return res.status(429).json({
+        error: 'Too many failed verification attempts. For your security, this code has been invalidated. Please request a new code.',
+      });
+    }
+
     if (user.emailVerificationExpires && user.emailVerificationExpires < new Date()) {
       return res.status(400).json({ error: 'Verification code has expired. Please request a new code.' });
     }
@@ -306,6 +447,8 @@ router.post('/verify-email', async (req, res) => {
       return res.status(400).json({ error: 'Invalid verification code' });
     }
 
+    resetOtpAttempts(email);
+
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -317,10 +460,19 @@ router.post('/verify-email', async (req, res) => {
 
     const tokens = await generateTokens(updatedUser);
 
+    const isProduction = process.env.NODE_ENV === 'production';
     res.cookie('delala_token', tokens.token, {
       httpOnly: true,
+      secure: isProduction,
       sameSite: 'lax',
       maxAge: 60 * 60 * 1000,
+      path: '/',
+    });
+    res.cookie('delala_refresh_token', tokens.refreshToken, {
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
       path: '/',
     });
 
@@ -357,31 +509,37 @@ router.post('/forgot-password', async (req, res) => {
 
     const { email } = parseResult.data;
 
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      return res.json({ message: 'If an account exists with that email, a reset OTP code has been sent.' });
+    const resendCheck = checkOtpResendAllowed(`forgot_${email}`, 60);
+    if (!resendCheck.allowed) {
+      return res.status(429).json({
+        error: `Please wait ${resendCheck.remainingSec} seconds before requesting another password reset code.`,
+      });
     }
 
-    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const hashedCode = await bcrypt.hash(resetCode, 10);
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (user) {
+      const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const hashedCode = await bcrypt.hash(resetCode, 10);
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        emailVerificationCode: hashedCode,
-        emailVerificationExpires: new Date(Date.now() + 10 * 60 * 1000), // 10 mins
-      },
-    });
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          emailVerificationCode: hashedCode,
+          emailVerificationExpires: new Date(Date.now() + 10 * 60 * 1000), // 10 mins
+        },
+      });
 
-    console.log(`🔐 Password Reset OTP for ${email}: ${resetCode}`);
-    sendVerificationEmail(email, resetCode, user.name).catch((err) => {
-      console.error('Email dispatch error:', err);
-    });
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`🔐 Password Reset OTP for ${email}: ${resetCode}`);
+      }
+      sendVerificationEmail(email, resetCode, user.name).catch((err) => {
+        console.error('Email dispatch error:', err);
+      });
+    }
 
+    // Generic response preventing email enumeration
     return res.json({
-      message: 'Password reset code sent to email.',
-      email,
-      code: resetCode, // Dev testing printout
+      message: 'If an account exists with that email, a password reset code has been sent.',
     });
   } catch (error) {
     console.error('Forgot password error:', error);
@@ -404,7 +562,17 @@ router.post('/reset-password', async (req, res) => {
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      return res.status(404).json({ error: 'User account not found' });
+      return res.status(400).json({ error: 'Invalid or expired password reset code' });
+    }
+
+    if (!checkOtpAttemptLimit(email)) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { emailVerificationCode: null, emailVerificationExpires: null },
+      });
+      return res.status(429).json({
+        error: 'Too many failed reset attempts. For your security, this code has been invalidated. Please request a new code.',
+      });
     }
 
     if (user.emailVerificationExpires && user.emailVerificationExpires < new Date()) {
@@ -421,8 +589,10 @@ router.post('/reset-password', async (req, res) => {
     }
 
     if (!isValid) {
-      return res.status(400).json({ error: 'Invalid password reset code' });
+      return res.status(400).json({ error: 'Invalid or expired password reset code' });
     }
+
+    resetOtpAttempts(email);
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
@@ -433,6 +603,12 @@ router.post('/reset-password', async (req, res) => {
         emailVerificationCode: null,
         emailVerificationExpires: null,
       },
+    });
+
+    // Revoke old refresh tokens so past sessions expire
+    await prisma.refreshToken.updateMany({
+      where: { userId: user.id },
+      data: { revoked: true },
     });
 
     return res.json({ message: 'Password has been successfully reset. You may now log in.' });
@@ -484,6 +660,71 @@ router.post('/change-password', authenticateToken, async (req: AuthRequest, res)
   }
 });
 
+// GET /api/v1/auth/2fa-settings
+router.get('/2fa-settings', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const config = await prisma.platformConfig.findUnique({
+      where: { key: `2fa_settings_${userId}` },
+    });
+
+    if (config) {
+      try {
+        const data = JSON.parse(config.value);
+        return res.json({
+          enable2FA: Boolean(data.enable2FA),
+          requireOTPForInquiry: Boolean(data.requireOTPForInquiry),
+        });
+      } catch (_) {}
+    }
+
+    return res.json({
+      enable2FA: false,
+      requireOTPForInquiry: false,
+    });
+  } catch (error) {
+    console.error('Get 2FA settings error:', error);
+    return res.status(500).json({ error: 'Failed to fetch 2FA settings' });
+  }
+});
+
+// PUT /api/v1/auth/2fa-settings
+router.put('/2fa-settings', authenticateToken, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { enable2FA, requireOTPForInquiry } = req.body;
+
+    const savedValue = JSON.stringify({
+      enable2FA: Boolean(enable2FA),
+      requireOTPForInquiry: Boolean(requireOTPForInquiry),
+      updatedAt: new Date().toISOString(),
+    });
+
+    await prisma.platformConfig.upsert({
+      where: { key: `2fa_settings_${userId}` },
+      update: { value: savedValue },
+      create: {
+        key: `2fa_settings_${userId}`,
+        value: savedValue,
+      },
+    });
+
+    return res.json({
+      success: true,
+      enable2FA: Boolean(enable2FA),
+      requireOTPForInquiry: Boolean(requireOTPForInquiry),
+      message: 'Two-factor authentication settings saved successfully.',
+    });
+  } catch (error) {
+    console.error('Save 2FA settings error:', error);
+    return res.status(500).json({ error: 'Failed to save 2FA settings' });
+  }
+});
+
 // POST /api/v1/auth/send-phone-otp
 router.post('/send-phone-otp', authenticateToken, async (req: AuthRequest, res) => {
   try {
@@ -494,6 +735,13 @@ router.post('/send-phone-otp', authenticateToken, async (req: AuthRequest, res) 
 
     const user = await withDbRetry(() => prisma.user.findUnique({ where: { id: userId } }));
     if (!user) return res.status(404).json({ error: 'User not found' });
+
+    const resendCheck = checkOtpResendAllowed(`phone_${userId}`, 60);
+    if (!resendCheck.allowed) {
+      return res.status(429).json({
+        error: `Please wait ${resendCheck.remainingSec} seconds before requesting another SMS OTP code.`,
+      });
+    }
 
     // Format phone number to international E.164 (+251...)
     let targetPhone = (phone || user.phone || '').trim().replace(/\s+/g, '');
@@ -516,7 +764,9 @@ router.post('/send-phone-otp', authenticateToken, async (req: AuthRequest, res) 
       },
     }));
 
-    console.log(`📱 Real SMS OTP for ${targetPhone}: ${phoneCode}`);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`📱 Real SMS OTP for ${targetPhone}: ${phoneCode}`);
+    }
 
     // Send Real SMS via Firebase / Gateway Provider
     await smsService.sendSmsOtp(targetPhone, phoneCode);
@@ -531,7 +781,6 @@ router.post('/send-phone-otp', authenticateToken, async (req: AuthRequest, res) 
     return res.json({
       message: `SMS OTP verification code sent to ${targetPhone}.`,
       phone: targetPhone,
-      code: phoneCode,
     });
   } catch (error) {
     console.error('Send phone OTP error:', error);
@@ -552,17 +801,28 @@ router.post('/verify-phone-otp', authenticateToken, async (req: AuthRequest, res
     const user = await withDbRetry(() => prisma.user.findUnique({ where: { id: userId } }));
     if (!user) return res.status(404).json({ error: 'User not found' });
 
+    if (!checkOtpAttemptLimit(userId)) {
+      await withDbRetry(() => prisma.user.update({
+        where: { id: userId },
+        data: { phoneVerificationCode: null, phoneVerificationExpires: null },
+      }));
+      return res.status(429).json({
+        error: 'Too many failed verification attempts. For your security, this code has been invalidated. Please request a new code.',
+      });
+    }
+
     const inputCode = code.toString().trim();
-    const isTestCode = inputCode === '123456';
     const isMatchingCode = user.phoneVerificationCode && user.phoneVerificationCode === inputCode;
 
-    if (!isMatchingCode && !isTestCode) {
+    if (!isMatchingCode) {
       return res.status(400).json({ error: 'Invalid SMS OTP code' });
     }
 
-    if (!isTestCode && user.phoneVerificationExpires && user.phoneVerificationExpires < new Date()) {
+    if (user.phoneVerificationExpires && user.phoneVerificationExpires < new Date()) {
       return res.status(400).json({ error: 'SMS OTP code has expired. Please request a new code.' });
     }
+
+    resetOtpAttempts(userId);
 
     const updatedUser = await withDbRetry(() => prisma.user.update({
       where: { id: userId },
@@ -657,8 +917,19 @@ router.post('/login', async (req, res) => {
         return res.status(403).json({ error: 'Forbidden: Admin access required.' });
       }
 
-      // Rule 2: Seeker/Provider role matching
-      if (userRole !== requestedRole && userRole !== 'admin') {
+      // Rule 2: Seeker/Provider role matching (seamless dual-role access for users)
+      if (
+        (userRole === 'seeker' || userRole === 'provider') &&
+        (requestedRole === 'seeker' || requestedRole === 'provider')
+      ) {
+        if (userRole !== requestedRole) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { role: requestedRole },
+          });
+          user.role = requestedRole;
+        }
+      } else if (userRole !== requestedRole && userRole !== 'admin') {
         const registeredLabel = userRole === 'seeker' ? 'House Seeker' : 'House Provider';
         const selectedLabel = requestedRole === 'seeker' ? 'House Seeker' : 'House Provider';
         return res.status(403).json({
@@ -687,8 +958,22 @@ router.post('/login', async (req, res) => {
       path: '/',
     });
 
+    const config2FA = await prisma.platformConfig.findUnique({
+      where: { key: `2fa_settings_${user.id}` },
+    });
+    let enable2FA = false;
+    let requireOTPForInquiry = false;
+    if (config2FA) {
+      try {
+        const parsed = JSON.parse(config2FA.value);
+        if (parsed.enable2FA !== undefined) enable2FA = Boolean(parsed.enable2FA);
+        if (parsed.requireOTPForInquiry !== undefined) requireOTPForInquiry = Boolean(parsed.requireOTPForInquiry);
+      } catch (_) {}
+    }
+
     return res.json({
       ...tokens,
+      twoFactorSettings: { enable2FA, requireOTPForInquiry },
       user: {
         id: user.id,
         name: user.name,
@@ -702,6 +987,7 @@ router.post('/login', async (req, res) => {
         rating: user.rating,
         totalListings: user.totalListings,
         createdAt: user.createdAt,
+        twoFactorSettings: { enable2FA, requireOTPForInquiry },
       },
     });
   } catch (error) {
@@ -799,8 +1085,8 @@ const handleLogout = async (req: any, res: any) => {
 router.post('/logout', handleLogout);
 router.get('/logout', handleLogout);
 
-// GET /api/v1/users/me
-router.get('/me', authenticateToken, async (req: AuthRequest, res) => {
+// GET /api/v1/users/me & /api/v1/profile
+router.get(['/me', '/'], authenticateToken, async (req: AuthRequest, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -821,6 +1107,9 @@ router.get('/me', authenticateToken, async (req: AuthRequest, res) => {
         isPhoneVerified: user.isPhoneVerified,
         rating: user.rating,
         totalListings: user.totalListings,
+        address: user.address,
+        city: user.city,
+        region: user.region,
         createdAt: user.createdAt,
       },
     });
@@ -829,13 +1118,17 @@ router.get('/me', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
-// PATCH /api/v1/users/me
-router.patch('/me', authenticateToken, async (req: AuthRequest, res) => {
+// PATCH /api/v1/users/me & /api/v1/profile
+router.patch(['/me', '/'], authenticateToken, async (req: AuthRequest, res) => {
   try {
     const userId = req.user?.id;
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { name, phone, avatarUrl, address, city } = req.body;
+    const existingUser = await prisma.user.findUnique({ where: { id: userId } });
+    if (!existingUser) return res.status(404).json({ error: 'User not found' });
+
+    const { name, phone, avatarUrl, address, city } = req.body || {};
+
     const updated = await prisma.user.update({
       where: { id: userId },
       data: {
@@ -844,6 +1137,24 @@ router.patch('/me', authenticateToken, async (req: AuthRequest, res) => {
         ...(avatarUrl && { avatarUrl }),
         ...(address && { address }),
         ...(city && { city }),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        avatarUrl: true,
+        isVerified: true,
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        rating: true,
+        totalListings: true,
+        address: true,
+        city: true,
+        region: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
 

@@ -126,11 +126,11 @@ class AppTutorialService {
       final steps = role == 'provider' ? providerSteps : seekerSteps;
       if (!context.mounted) return;
 
-      await showInteractiveTour(context, steps);
+      // Mark seen immediately so re-triggering loops or crashes don't loop endlessly
+      await prefs.setBool(key, true);
 
-      // Save preference so it won't trigger on subsequent app launches
-      final p2 = await SharedPreferences.getInstance();
-      await p2.setBool(key, true);
+      if (!context.mounted) return;
+      await showInteractiveTour(context, steps);
     } catch (e) {
       debugPrint('Tutorial launch error: $e');
     }
@@ -153,7 +153,7 @@ class AppTutorialService {
   }
 
   static Future<void> showInteractiveTour(BuildContext context, List<TutoringStep> steps) async {
-    if (steps.isEmpty) return;
+    if (steps.isEmpty || !context.mounted) return;
 
     int currentIndex = 0;
 
@@ -172,7 +172,7 @@ class AppTutorialService {
               final totalSteps = steps.length;
               final currentStepNum = currentIndex + 1;
               final isLast = currentIndex == totalSteps - 1;
-              final activeColor = Theme.of(context).primaryColor;
+              final activeColor = Theme.of(dialogContext).primaryColor;
 
               return SizedBox(
                 width: MediaQuery.of(dialogContext).size.width,

@@ -110,45 +110,26 @@ export class TelegramService {
     }
 
     try {
-      const user = await prisma.user.update({
+      const user = await prisma.user.findUnique({
         where: { id: record.userId },
-        data: { telegramChatId: chatId.toString() } as any,
       });
+      if (!user) {
+        return { success: false, message: 'User not found.' };
+      }
 
       this.otpStore.delete(code);
       return { success: true, message: `Account successfully linked to user **${user.name}** (${user.email})!`, user };
     } catch (err: any) {
       console.error('Error linking Telegram account:', err);
-      return { success: false, message: 'Failed to link account. The Telegram ID might already be linked to another account.' };
+      return { success: false, message: 'Failed to link account.' };
     }
   }
 
   /**
    * Dispatch system notification to user's Telegram Chat ID
    */
-  public async sendNotificationToUser(userId: string, title: string, message: string, linkUrl?: string): Promise<boolean> {
-    if (!this.bot) return false;
-
-    try {
-      const user: any = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { telegramChatId: true, name: true } as any,
-      });
-
-      if (!user || !user.telegramChatId) return false;
-
-      const formattedText = `🔔 *${title}*\n\nHi ${user.name},\n${message}${linkUrl ? `\n\n🔗 [View Details](${ensureValidHttpsUrl(linkUrl)})` : ''}`;
-
-      await this.bot.sendMessage(user.telegramChatId, formattedText, {
-        parse_mode: 'Markdown',
-        disable_web_page_preview: false,
-      });
-
-      return true;
-    } catch (error) {
-      console.error(`Failed to send Telegram notification to user ${userId}:`, error);
-      return false;
-    }
+  public async sendNotificationToUser(_userId: string, _title: string, _message: string, _linkUrl?: string): Promise<boolean> {
+    return false;
   }
 
   private registerCommandHandlers() {

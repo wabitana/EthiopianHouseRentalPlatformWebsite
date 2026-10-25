@@ -9,6 +9,7 @@ import '../screens/provider_inquiries_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 import '../../house_seeker/providers/property_provider.dart';
 import '../../house_seeker/providers/inquiry_provider.dart';
+import '../../tenants/providers/maintenance_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class ProviderMainLayout extends StatefulWidget {
@@ -38,6 +39,7 @@ class _ProviderMainLayoutState extends State<ProviderMainLayout> {
       if (auth.currentUser != null) {
         context.read<PropertyProvider>().fetchProviderProperties(auth.currentUser!.id);
         context.read<InquiryProvider>().fetchProviderInquiries(auth.currentUser!.id);
+        context.read<MaintenanceProvider>().fetchProviderTickets();
       }
     });
   }

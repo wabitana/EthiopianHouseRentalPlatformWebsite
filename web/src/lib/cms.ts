@@ -32,15 +32,15 @@ export const defaultCmsConfig = {
   ],
   cms_counters: [
     { value: 2026, label: 'Platform Infrastructure Launch' },
-    { value: 4500, label: 'Verified Properties Listed' },
-    { value: 18500, label: 'Satisfied Tenants & Buyers' },
-    { value: 12000, label: 'Completed Inquiries & Requests' },
+    { value: 6, label: 'Verified Properties Listed' },
+    { value: 6, label: 'Satisfied Tenants & Buyers' },
+    { value: 8, label: 'Completed Inquiries & Requests' },
   ],
   cms_cta: {
     title: 'Ready to Find Your Ideal Property in Ethiopia?',
     subtitle: "Join thousands of tenants, buyers, landlords, and property managers operating on Ethiopia's unified rental ecosystem.",
     buttonText: 'Browse All Property Listings',
-    buttonLink: '/marketplace',
+    buttonLink: '/browse-houses',
   },
   cms_about: {
     badge: 'About Ethiopian Property Platform',
@@ -53,7 +53,7 @@ export const defaultCmsConfig = {
     phone: '+251 911 000 000',
     services: ['Verified residential & commercial property listings', 'Move-in cleaning, inspection & tenant logistics', 'Instant Chapa subscription payments & digital agreements'],
     explorebuttonText: 'Find Your Home Now',
-    exploreButtonLink: '/marketplace',
+    exploreButtonLink: '/browse-houses',
     videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-industrial-facility-with-pipelines-at-sunset-41481-large.mp4',
   },
   cms_how_it_works: {
@@ -67,7 +67,7 @@ export const defaultCmsConfig = {
       { step: '04', title: 'Move In & Enjoy Services', description: 'Schedule move-in deep cleaning, key collection, and access 24/7 maintenance support.' },
     ],
     ctaText: 'Start Exploring Today',
-    ctaLink: '/marketplace',
+    ctaLink: '/browse-houses',
   },
   cms_app_section: {
     badge: 'Now Available on Mobile & Web',
@@ -110,7 +110,10 @@ export const defaultCmsConfig = {
   },
 };
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1";
+const BACKEND_URL =
+  (typeof window === "undefined" && process.env.BACKEND_INTERNAL_URL)
+    ? process.env.BACKEND_INTERNAL_URL
+    : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000/api/v1");
 
 export async function getCmsConfig() {
   try {

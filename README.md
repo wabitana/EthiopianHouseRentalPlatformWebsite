@@ -20,6 +20,7 @@ Ethiopian-House-Rental/
 ├── backend/            # Main Node.js REST API Server (Express + Prisma + Neon PostgreSQL)
 ├── mobile/             # Flutter Cross-Platform Mobile Application (iOS & Android)
 └── web/                # Next.js 15 Web Platform & Admin Dashboard
+
 ```
 
 ### 🏛️ Unified System Flow
@@ -36,6 +37,32 @@ Ethiopian-House-Rental/
                             │ Prisma ORM
                             ▼
               🐘 Neon Cloud PostgreSQL Database
+```
+
+---
+
+## 🐳 Docker Quickstart (Run Entire Stack in 1 Step)
+
+You can run the entire platform (PostgreSQL Database, Node.js Backend API, and Next.js Web Dashboard) fully containerized with **Docker Compose**:
+
+### 1. Prerequisites
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
+
+### 2. Launch Stack
+```bash
+docker compose up --build
+```
+
+### 3. Access Services
+- **🌐 Next.js Web Application**: [http://localhost:3001](http://localhost:3001)
+- **⚙️ Backend REST API**: [http://localhost:3000/api/v1](http://localhost:3000/api/v1)
+- **🐘 PostgreSQL Database**: `localhost:5432` (`db: ethiopian_house_rental`, `user: postgres`)
+
+> **Note**: Database schema migrations and demo data seeding occur automatically inside the backend container when launched for the first time.
+
+To stop the containers:
+```bash
+docker compose down
 ```
 
 ---
