@@ -245,7 +245,7 @@ class _SavedSearchesScreenState extends State<SavedSearchesScreen> {
                       )
                     : ListView.separated(
                         itemCount: search.matchingProperties.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        separatorBuilder: (ctx, i) => const SizedBox(height: 12),
                         itemBuilder: (ctx, idx) {
                           final prop = search.matchingProperties[idx];
                           final hasImg = prop.images.isNotEmpty && prop.images.first.startsWith('http');
@@ -277,7 +277,7 @@ class _SavedSearchesScreenState extends State<SavedSearchesScreen> {
                                             width: 72,
                                             height: 72,
                                             fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) => Container(
+                                            errorBuilder: (context, error, stackTrace) => Container(
                                               width: 72,
                                               height: 72,
                                               color: Colors.grey.shade200,
@@ -370,9 +370,9 @@ class _SavedSearchesScreenState extends State<SavedSearchesScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         return StatefulBuilder(
-          builder: (context, setModalState) {
+          builder: (sheetContext, setModalState) {
             return Container(
-              height: MediaQuery.of(context).size.height * 0.88,
+              height: MediaQuery.of(sheetContext).size.height * 0.88,
               decoration: const BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -381,7 +381,7 @@ class _SavedSearchesScreenState extends State<SavedSearchesScreen> {
                 left: 20,
                 right: 20,
                 top: 16,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 16,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -604,8 +604,8 @@ class _SavedSearchesScreenState extends State<SavedSearchesScreen> {
                                   isNotify: isNotify,
                                 );
 
-                                if (mounted) {
-                                  Navigator.pop(context);
+                                if (mounted && sheetContext.mounted) {
+                                  Navigator.pop(sheetContext);
                                   setState(() {
                                     _savedSearches.insert(0, created);
                                   });
@@ -886,7 +886,7 @@ class _SavedSearchesScreenState extends State<SavedSearchesScreen> {
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
                                 itemCount: search.matchingProperties.length,
-                                separatorBuilder: (_, __) => const SizedBox(width: 6),
+                                separatorBuilder: (ctx, i) => const SizedBox(width: 6),
                                 itemBuilder: (ctx, idx) {
                                   final prop = search.matchingProperties[idx];
                                   final hasImg = prop.images.isNotEmpty && prop.images.first.startsWith('http');
@@ -908,7 +908,7 @@ class _SavedSearchesScreenState extends State<SavedSearchesScreen> {
                                               width: 24,
                                               height: 24,
                                               fit: BoxFit.cover,
-                                              errorBuilder: (_, __, ___) => const Icon(Icons.home, size: 16),
+                                              errorBuilder: (ctx, err, st) => const Icon(Icons.home, size: 16),
                                             ),
                                           )
                                         else
