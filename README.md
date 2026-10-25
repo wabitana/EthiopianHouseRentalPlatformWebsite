@@ -215,13 +215,18 @@ The platform includes a dedicated Telegram bot for searching homes, receiving pu
 ---
 
 ## Group Members
-## Name   ===============                ID
+## Name   ===============                  ID                   Role                             Contct
 
-### 1. Shanbel kibre CTC-416-26
-### 2. Wabi  Tena CTC-338-26
-### 3. Serawit Shimels CTC-271-26
-### 4. Tomas   Godefa CTC-2336-26
+### 1. Shanbel kibre                  CTC-416-26         Full-stack Engineer                 +251946340709             
+### 2. Wabi  Tena (Team Leader)       CTC-338-26         AI and Mobile App Engineer          +251961570007
+### 3. Serawit Shimels                CTC-271-26         Frontend Engineer                   +251943357763
+### 4. Tomas   Godefa                 CTC-2336-26        Frontend Engineer                   +251902603463
 
+
+
+Contirubition
+
+<img width="719" height="619" alt="image" src="https://github.com/user-attachments/assets/d5034367-33e9-46ec-b20e-586f6aee653b" />
 
 
 
