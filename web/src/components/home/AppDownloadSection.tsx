@@ -25,6 +25,8 @@ const DEFAULT_FEATURES = [
   "Move-in service booking & contract history",
 ];
 
+const APK_URL = process.env.NEXT_PUBLIC_APK_DOWNLOAD_URL || "https://github.com/wabitana/EthiopianHouseRentalPlatformWebsite/releases/latest/download/app-release.apk";
+
 export default function AppDownloadSection({ config: appSection }: AppDownloadSectionProps) {
   return (
     <div className="my-16 max-w-7xl mx-auto px-6 sm:px-10 lg:px-14 xl:px-16">
@@ -61,23 +63,24 @@ export default function AppDownloadSection({ config: appSection }: AppDownloadSe
 
               {/* Native App Store Buttons */}
               <div className="flex flex-wrap justify-center lg:justify-start gap-4 pt-4">
-                {/* Google Play Button */}
+                {/* Google Play / Android APK Download Button */}
                 <a
-                  href={appSection.playStoreLink || "#play-store"}
+                  href={APK_URL}
+                  download="ethiopian-house-rental.apk"
                   className="flex items-center gap-3 bg-slate-900 border border-slate-900 hover:border-lime-500/50 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl transition-all shadow-lg group hover:-translate-y-0.5 active:translate-y-0"
                 >
                   <svg className="w-6 h-6 fill-current text-white group-hover:text-lime-400 transition-colors" viewBox="0 0 24 24">
                     <path d="M3,5.27V18.73L16.55,12L3,5.27M17.87,11.33L14.3,9.5L3.63,4.12C3.43,4.02 3.22,3.97 3,4V4C3.41,4 3.8,4.13 4.13,4.35L17.87,11.33M17.87,12.67L4.13,19.65C3.8,19.87 3.41,20 3,20V20C3.22,20.03 3.43,19.98 3.63,19.88L14.3,14.5L17.87,12.67M20.33,12L16.5,10.12V13.88L20.33,12C20.76,11.79 21,11.4 21,11C21,10.6 20.76,10.21 20.33,12Z" />
                   </svg>
                   <div className="text-left">
-                    <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Get it on</p>
-                    <p className="text-sm font-extrabold -mt-0.5">Google Play</p>
+                    <p className="text-[10px] uppercase tracking-wider text-lime-400 font-bold">Direct Download</p>
+                    <p className="text-sm font-extrabold -mt-0.5">Android APK (79MB)</p>
                   </div>
                 </a>
 
                 {/* App Store Button */}
                 <a
-                  href={appSection.appStoreLink || "#app-store"}
+                  href="/launch-app"
                   className="flex items-center gap-3 bg-slate-900 border border-slate-900 hover:border-lime-500/50 hover:bg-slate-800 text-white px-6 py-3 rounded-2xl transition-all shadow-lg group hover:-translate-y-0.5 active:translate-y-0"
                 >
                   <svg className="w-6 h-6 fill-current text-white group-hover:text-lime-400 transition-colors" viewBox="0 0 24 24">
@@ -196,10 +199,14 @@ export default function AppDownloadSection({ config: appSection }: AppDownloadSe
                           </div>
                         </div>
 
-                        <div className="p-2 rounded-xl bg-lime-400 hover:bg-lime-500 text-slate-950 font-bold text-center text-[10px] flex items-center justify-center gap-1.5 shadow-lg shadow-lime-400/10">
+                        <a
+                          href={APK_URL}
+                          download="ethiopian-house-rental.apk"
+                          className="p-2 rounded-xl bg-lime-400 hover:bg-lime-500 text-slate-950 font-bold text-center text-[10px] flex items-center justify-center gap-1.5 shadow-lg shadow-lime-400/10 cursor-pointer transition-transform active:scale-95"
+                        >
                           <Download className="h-3.5 w-3.5 stroke-[2.5]" />
-                          Launch Core Experience
-                        </div>
+                          Download Android APK
+                        </a>
                       </motion.div>
 
                       {/* Bottom Nav indicator */}
