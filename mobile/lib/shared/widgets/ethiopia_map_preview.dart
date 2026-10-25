@@ -14,6 +14,7 @@ class EthiopiaMapPreview extends StatefulWidget {
   final double? longitude;
   final bool isInteractive;
   final ValueChanged<LatLng>? onLocationSelected;
+  final VoidCallback? onDirectionsPressed;
 
   const EthiopiaMapPreview({
     super.key,
@@ -24,6 +25,7 @@ class EthiopiaMapPreview extends StatefulWidget {
     this.longitude,
     this.isInteractive = false,
     this.onLocationSelected,
+    this.onDirectionsPressed,
   });
 
   @override
@@ -117,6 +119,7 @@ class _EthiopiaMapPreviewState extends State<EthiopiaMapPreview> {
   }
 
   void _openGoogleMapsDirections() async {
+    widget.onDirectionsPressed?.call();
     final query =
         '${widget.neighborhood}, ${widget.area}, ${widget.city}, Ethiopia';
     final targetUrlString =

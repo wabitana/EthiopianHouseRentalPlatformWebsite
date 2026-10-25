@@ -8,6 +8,7 @@ import '../../../shared/widgets/empty_state_widget.dart';
 import '../../house_seeker/providers/property_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../house_seeker/screens/property_detail_screen.dart';
+import '../../../core/services/currency_service.dart';
 
 class MyListingsScreen extends StatefulWidget {
   const MyListingsScreen({super.key});
@@ -33,6 +34,7 @@ class _MyListingsScreenState extends State<MyListingsScreen> with SingleTickerPr
 
   @override
   Widget build(BuildContext context) {
+    context.watch<CurrencyProvider>();
     final propertyProvider = context.watch<PropertyProvider>();
     final user = context.watch<AuthProvider>().currentUser;
     final myListings = propertyProvider.providerProperties;

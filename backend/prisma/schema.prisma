@@ -653,3 +653,22 @@ model RefreshToken {
 
   createdAt DateTime @default(now())
 }
+
+model MaintenanceRequest {
+  id            String   @id @default(uuid())
+  tenantId      String
+  providerId    String
+  propertyId    String?
+  propertyTitle String?
+  title         String
+  description   String
+  category      String   @default("General")
+  status        String   @default("PENDING")
+  tenantName    String?
+  tenantPhone   String?
+  providerName  String?
+  providerNotes String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+

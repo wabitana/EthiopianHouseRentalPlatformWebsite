@@ -41,10 +41,14 @@ extension AppCurrencyExtension on AppCurrency {
 class CurrencyProvider extends ChangeNotifier {
   static const String _prefKey = 'selected_currency_code';
   
+  static AppCurrency activeCurrency = AppCurrency.etb;
+  static const double activeUsdToEtb = 125.0;
+  static const double activeEurToEtb = 135.0;
+
   AppCurrency _selectedCurrency = AppCurrency.etb;
   // Official & market reference rates: 1 USD ≈ 125 ETB, 1 EUR ≈ 135 ETB
-  final double _usdToEtb = 125.0;
-  final double _eurToEtb = 135.0;
+  final double _usdToEtb = activeUsdToEtb;
+  final double _eurToEtb = activeEurToEtb;
 
   AppCurrency get selectedCurrency => _selectedCurrency;
   double get usdToEtb => _usdToEtb;
@@ -62,6 +66,7 @@ class CurrencyProvider extends ChangeNotifier {
         if (code == 'USD') _selectedCurrency = AppCurrency.usd;
         if (code == 'EUR') _selectedCurrency = AppCurrency.eur;
         if (code == 'ETB') _selectedCurrency = AppCurrency.etb;
+        activeCurrency = _selectedCurrency;
         notifyListeners();
       }
     } catch (_) {}
@@ -69,6 +74,7 @@ class CurrencyProvider extends ChangeNotifier {
 
   Future<void> setCurrency(AppCurrency currency) async {
     _selectedCurrency = currency;
+    activeCurrency = currency;
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -77,32 +83,40 @@ class CurrencyProvider extends ChangeNotifier {
   }
 
   String formatPrice(double priceInEtb) {
+    return formatWithCurrency(priceInEtb, _selectedCurrency);
+  }
+
+  static String formatStatic(double priceInEtb) {
+    return formatWithCurrency(priceInEtb, activeCurrency);
+  }
+
+  static String formatWithCurrency(double priceInEtb, AppCurrency currency) {
     double converted = priceInEtb;
     String symbol = AppCurrency.etb.symbol;
 
-    switch (_selectedCurrency) {
+    switch (currency) {
       case AppCurrency.etb:
         converted = priceInEtb;
         symbol = 'ETB';
         break;
       case AppCurrency.usd:
-        converted = priceInEtb / _usdToEtb;
+        converted = priceInEtb / activeUsdToEtb;
         symbol = '\$';
         break;
       case AppCurrency.eur:
-        converted = priceInEtb / _eurToEtb;
+        converted = priceInEtb / activeEurToEtb;
         symbol = '€';
         break;
     }
 
-    if (_selectedCurrency == AppCurrency.etb) {
-      return '${_formatNumber(converted)} ETB';
+    if (currency == AppCurrency.etb) {
+      return '${_formatNumberStatic(converted)} ETB';
     } else {
-      return '$symbol${_formatNumber(converted)}';
+      return '$symbol${_formatNumberStatic(converted)}';
     }
   }
 
-  String _formatNumber(double amount) {
+  static String _formatNumberStatic(double amount) {
     if (amount >= 1000000) {
       return '${(amount / 1000000).toStringAsFixed(1)}M';
     }

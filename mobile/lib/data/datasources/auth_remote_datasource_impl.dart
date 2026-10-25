@@ -297,4 +297,47 @@ class ApiAuthRemoteDataSource implements AuthRemoteDataSource {
     );
     return res != null && res['message'] != null;
   }
+
+  @override
+  Future<bool> changePassword(String currentPassword, String newPassword) async {
+    final res = await ApiClient.post(
+      ApiEndpoints.changePassword,
+      body: {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+      },
+      requireAuth: true,
+    );
+    return res != null && (res['success'] == true || res['message'] != null);
+  }
+
+  @override
+  Future<Map<String, bool>> getTwoFactorSettings() async {
+    try {
+      final res = await ApiClient.get(
+        ApiEndpoints.twoFactorSettings,
+        requireAuth: true,
+      );
+      if (res is Map) {
+        return {
+          'enable2FA': res['enable2FA'] == true,
+          'requireOTPForInquiry': res['requireOTPForInquiry'] == true,
+        };
+      }
+    } catch (_) {}
+    return {'enable2FA': true, 'requireOTPForInquiry': true};
+  }
+
+  @override
+  Future<bool> saveTwoFactorSettings(bool enable2FA, bool requireOTPForInquiry) async {
+    final res = await ApiClient.put(
+      ApiEndpoints.twoFactorSettings,
+      body: {
+        'enable2FA': enable2FA,
+        'requireOTPForInquiry': requireOTPForInquiry,
+      },
+      requireAuth: true,
+    );
+    return res != null && res['success'] == true;
+  }
 }

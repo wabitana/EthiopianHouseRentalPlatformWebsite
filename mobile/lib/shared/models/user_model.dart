@@ -64,6 +64,15 @@ class UserModel {
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
+  static String cleanDisplayName(String rawName) {
+    String cleaned = rawName.trim();
+    cleaned = cleaned.replaceAll(RegExp(r'\s+Seeker$', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'\s+Dual\s+User$', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'\s+Landlord\s*\([^\)]*\)$', caseSensitive: false), '');
+    cleaned = cleaned.replaceAll(RegExp(r'\s*\([^\)]*Provider[^\)]*\)$', caseSensitive: false), '');
+    return cleaned.trim().isNotEmpty ? cleaned.trim() : rawName.trim();
+  }
+
   UserModel copyWith({
     String? id,
     String? name,
@@ -122,7 +131,7 @@ class UserModel {
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(
       id: json['id'] as String? ?? '',
-      name: json['name'] as String? ?? 'User',
+      name: cleanDisplayName(json['name'] as String? ?? 'User'),
       email: json['email'] as String? ?? '',
       phone: json['phone'] as String? ?? '',
       role: UserRoleExtension.fromCode(json['role'] as String? ?? 'seeker'),

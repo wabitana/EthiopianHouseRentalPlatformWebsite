@@ -8,12 +8,12 @@ import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/profile/screens/theme_settings_screen.dart';
 import '../../features/notifications/screens/notification_center_screen.dart';
 import '../../features/ai_assistant/screens/ai_assistant_screen.dart';
-import '../../features/house_seeker/screens/search_screen.dart';
 import '../../features/house_provider/screens/post_house_wizard_screen.dart';
 import '../../features/house_provider/screens/provider_analytics_screen.dart';
 import '../../features/house_provider/screens/provider_inquiries_screen.dart';
 import '../../features/house_provider/screens/my_listings_screen.dart';
 import '../../features/house_provider/screens/subscription_plans_screen.dart';
+import '../../features/house_provider/screens/provider_maintenance_screen.dart';
 import '../../features/profile/screens/identity_verification_screen.dart';
 import '../../shared/models/user_model.dart';
 import '../../shared/widgets/verification_badge.dart';
@@ -376,7 +376,7 @@ class AppNavigationDrawer extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            user?.name ?? 'User Profile',
+                            user?.name != null ? UserModel.cleanDisplayName(user!.name) : 'User Profile',
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -430,27 +430,6 @@ class AppNavigationDrawer extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
               children: [
-                _buildDrawerTile(
-                  context,
-                  icon: Icons.swap_horiz_rounded,
-                  title: authProvider.isProvider ? 'Switch to House Seeker' : 'Switch to House Provider',
-                  subtitle: authProvider.isProvider ? 'Explore & inquire rental houses' : 'Manage properties & provider dashboard',
-                  primary: AppColors.secondary,
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    final targetRole = authProvider.isProvider ? UserRole.seeker : UserRole.provider;
-                    authProvider.switchRole(targetRole);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Switched to ${targetRole.displayName} Mode ✓'),
-                        backgroundColor: AppColors.primary,
-                        behavior: SnackBarBehavior.floating,
-                        duration: const Duration(seconds: 2),
-                      ),
-                    );
-                  },
-                ),
-
                 // -------------------------------------------------------------
                 // HOUSE PROVIDER / LANDLORD SPECIFIC DRAWER TOOLS
                 // -------------------------------------------------------------
@@ -535,6 +514,19 @@ class AppNavigationDrawer extends StatelessWidget {
                   ),
                   _buildDrawerTile(
                     context,
+                    icon: Icons.handyman_rounded,
+                    title: 'Tenant Repairs & Maintenance',
+                    subtitle: 'Manage & dispatch technicians for repair tickets',
+                    primary: const Color(0xFFF97316),
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const ProviderMaintenanceScreen()),
+                      );
+                    },
+                  ),
+                  _buildDrawerTile(
+                    context,
                     icon: Icons.auto_awesome_rounded,
                     title: 'AI Landlord Assistant',
                     subtitle: 'Optimize descriptions, price houses & auto-reply',
@@ -575,32 +567,6 @@ class AppNavigationDrawer extends StatelessWidget {
                 // HOUSE SEEKER / TENANT SPECIFIC DRAWER TOOLS
                 // -------------------------------------------------------------
                 else ...[
-                  _buildDrawerTile(
-                    context,
-                    icon: Icons.auto_awesome_rounded,
-                    title: 'AI Housing Assistant',
-                    subtitle: 'Search real properties & get smart recommendations',
-                    primary: Colors.amber.shade800,
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const AiAssistantScreen()),
-                      );
-                    },
-                  ),
-                  _buildDrawerTile(
-                    context,
-                    icon: Icons.map_rounded,
-                    title: 'Interactive Subcity Map Explorer',
-                    subtitle: 'Explore registered house pins on live map',
-                    primary: const Color(0xFF0284C7),
-                    onTap: () {
-                      Navigator.of(context).pop();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const SearchScreen()),
-                      );
-                    },
-                  ),
                   _buildDrawerTile(
                     context,
                     icon: Icons.description_outlined,

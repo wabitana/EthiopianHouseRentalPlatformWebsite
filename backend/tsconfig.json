@@ -3,15 +3,14 @@
     "target": "es2020",
     "module": "commonjs",
     "moduleResolution": "node",
-    "lib": [
-      "es2020"
-    ],
+    "lib": ["es2020"],
     "outDir": "./dist",
     "rootDir": "./src",
-    "strict": true,
+    "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
       "@langchain/langgraph/prebuilt": [

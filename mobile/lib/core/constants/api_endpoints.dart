@@ -52,6 +52,8 @@ class ApiEndpoints {
   static String get verificationStatus => '$baseUrl/verification/my-status';
   static String get forgotPassword => '$baseUrl/auth/forgot-password';
   static String get resetPassword => '$baseUrl/auth/reset-password';
+  static String get changePassword => '$baseUrl/auth/change-password';
+  static String get twoFactorSettings => '$baseUrl/auth/2fa-settings';
 
   // Subscriptions endpoints
   static String get subscriptionPlans => '$baseUrl/subscriptions/plans';
@@ -62,6 +64,11 @@ class ApiEndpoints {
   static String get properties => '$baseUrl/properties';
   static String propertyDetail(String id) => '$baseUrl/properties/$id';
   static String propertyAvailability(String id) => '$baseUrl/properties/$id/availability';
+  static String propertyNeighborhoodStats(String id) => '$baseUrl/properties/$id/neighborhood-stats';
+  static String propertyTrackInteraction(String id) => '$baseUrl/properties/$id/track-interaction';
+  static String get savedSearches => '$baseUrl/properties/saved-searches';
+  static String savedSearchToggle(String id) => '$baseUrl/properties/saved-searches/$id/toggle';
+  static String savedSearchDetail(String id) => '$baseUrl/properties/saved-searches/$id';
 
   // Provider endpoints
   static String get providerProperties => '$baseUrl/provider/properties';
@@ -84,4 +91,16 @@ class ApiEndpoints {
   static String get aiChat => '$baseUrl/ai/chat';
   static String get aiRecommendations => '$baseUrl/ai/recommendations';
   static String get aiMatchScore => '$baseUrl/ai/property-match-score';
+
+  // Maintenance & Repair endpoints
+  static String get maintenance => '$baseUrl/maintenance';
+  static String get maintenanceMyTickets => '$baseUrl/maintenance/my-tickets';
+  static String get maintenanceProviderTickets => '$baseUrl/maintenance/provider-tickets';
+  static String maintenanceStatus(String id) => '$baseUrl/maintenance/$id/status';
+
+  // Rentals, Tours & Digital Contracts
+  static String get rentals => '$baseUrl/rentals';
+  static String get scheduleVisit => '$baseUrl/rentals/visit';
+  static String get digitalContract => '$baseUrl/rentals/contract';
+  static String get userVisits => '$baseUrl/rentals/visits';
 }

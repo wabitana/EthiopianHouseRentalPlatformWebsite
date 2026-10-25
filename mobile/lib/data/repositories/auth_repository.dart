@@ -28,6 +28,9 @@ abstract class AuthRepository {
   Future<void> logout();
   Future<bool> forgotPassword(String emailOrPhone);
   Future<bool> performResetPassword(String email, String code, String newPassword);
+  Future<bool> changePassword(String currentPassword, String newPassword);
+  Future<Map<String, bool>> getTwoFactorSettings();
+  Future<bool> saveTwoFactorSettings(bool enable2FA, bool requireOTPForInquiry);
   Future<UserModel> updateProfile(UserModel updatedUser);
   Future<UserModel> verifyIdentity(String idType, String idNumber, {String? documentImage, String? selfieImage});
 }
@@ -98,6 +101,18 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<bool> performResetPassword(String email, String code, String newPassword) =>
       _remoteDataSource.resetPassword(email, code, newPassword);
+
+  @override
+  Future<bool> changePassword(String currentPassword, String newPassword) =>
+      _remoteDataSource.changePassword(currentPassword, newPassword);
+
+  @override
+  Future<Map<String, bool>> getTwoFactorSettings() =>
+      _remoteDataSource.getTwoFactorSettings();
+
+  @override
+  Future<bool> saveTwoFactorSettings(bool enable2FA, bool requireOTPForInquiry) =>
+      _remoteDataSource.saveTwoFactorSettings(enable2FA, requireOTPForInquiry);
 
   @override
   Future<UserModel> updateProfile(UserModel updatedUser) => _remoteDataSource.updateUserProfile(updatedUser);

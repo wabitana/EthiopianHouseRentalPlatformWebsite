@@ -5,7 +5,8 @@ import { PrismaNeon } from '@prisma/adapter-neon';
 import { PrismaClient } from '@prisma/client';
 import ws from 'ws';
 
-dotenv.config();
+const connectionString = process.env.DATABASE_URL || '';
+const isNeon = connectionString.includes('neon.tech');
 
 // Prioritize IPv4 over IPv6 across all Node.js net/DNS requests
 try {
@@ -42,10 +43,7 @@ pool.on('error', (err: any) => {
 
 const adapter = new PrismaNeon(pool);
 
-export const prisma = new PrismaClient({
-  adapter,
-  log: process.env.NODE_ENV === 'development' ? ['query', 'info', 'warn', 'error'] : ['error'],
-});
+export const prisma = prismaClientInstance;
 
 export async function connectDatabase() {
   try {

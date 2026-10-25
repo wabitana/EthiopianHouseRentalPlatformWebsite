@@ -1,10 +1,10 @@
 import 'package:intl/intl.dart';
 import '../constants/api_endpoints.dart';
+import '../services/currency_service.dart';
 
 class Formatters {
   static String formatCurrency(double amount) {
-    final formatter = NumberFormat('#,##0', 'en_US');
-    return '${formatter.format(amount)} ETB';
+    return CurrencyProvider.formatStatic(amount);
   }
 
   static String formatDate(DateTime date) {

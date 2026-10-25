@@ -1,5 +1,8 @@
+/// <reference types="node" />
 import bcrypt from 'bcryptjs';
-import { prisma } from '../src/prisma';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 interface SeedUserData {
   name: string;

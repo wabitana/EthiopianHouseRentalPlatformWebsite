@@ -7,6 +7,7 @@ import '../../../shared/widgets/custom_text_field.dart';
 import '../providers/auth_provider.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
+import '../../../core/services/user_settings_service.dart';
 import '../../../shared/widgets/main_layout_wrapper.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -34,12 +35,169 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       if (success && mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const MainLayoutWrapper()),
-          (route) => false,
-        );
+        // Enforce 2FA SMS OTP if user enabled it in security settings
+        final is2FAEnabled = await UserSettingsService.get2FAEnabled();
+        if (!mounted) return;
+        if (is2FAEnabled) {
+          final userPhone = authProvider.currentUser?.phone ?? _emailController.text.trim();
+          authProvider.sendPhoneOtp(userPhone);
+
+          final verified = await _showLogin2FAModal(context, userPhone);
+          if (!verified) return;
+        }
+
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const MainLayoutWrapper()),
+            (route) => false,
+          );
+        }
       }
     }
+  }
+
+  Future<bool> _showLogin2FAModal(BuildContext context, String rawPhone) async {
+    final otpController = TextEditingController();
+    bool isVerifying = false;
+    String? otpError;
+
+    String masked = rawPhone;
+    if (rawPhone.length > 6) {
+      masked = '${rawPhone.substring(0, 4)} ••• ••• ${rawPhone.substring(rawPhone.length - 2)}';
+    }
+
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      isDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return Container(
+            padding: EdgeInsets.only(
+              top: 24,
+              left: 24,
+              right: 24,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: const BoxDecoration(
+                              color: AppColors.primaryContainer,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.shield_rounded, color: AppColors.primary, size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            '2FA Security Check',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, color: AppColors.textMuted),
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                      ),
+                    ],
+                  ),
+                  const Divider(color: Color(0xFFE2E8F0)),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Two-Factor Authentication is enabled on your account. An SMS verification code has been dispatched to $masked.',
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+                  ),
+                  const SizedBox(height: 16),
+                  if (otpError != null) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.rejectedBackground,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.rejected.withValues(alpha: 0.3)),
+                      ),
+                      child: Text(
+                        otpError!,
+                        style: const TextStyle(color: AppColors.rejected, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                  CustomTextField(
+                    label: '6-Digit Verification Code',
+                    hint: 'e.g. 123456',
+                    controller: otpController,
+                    keyboardType: TextInputType.number,
+                    prefixIcon: Icons.lock_clock_outlined,
+                  ),
+                  const SizedBox(height: 20),
+                  CustomButton(
+                    text: 'Verify & Complete Login',
+                    isLoading: isVerifying,
+                    trailingIcon: Icons.arrow_forward_rounded,
+                    onPressed: () async {
+                      final code = otpController.text.trim();
+                      if (code.length < 4) {
+                        setModalState(() {
+                          otpError = 'Please enter the 6-digit verification code';
+                        });
+                        return;
+                      }
+                      setModalState(() {
+                        isVerifying = true;
+                        otpError = null;
+                      });
+
+                      final verified = await context.read<AuthProvider>().verifyPhoneOtp(code);
+                      if (ctx.mounted) {
+                        if (verified) {
+                          Navigator.of(ctx).pop(true);
+                        } else {
+                          setModalState(() {
+                            isVerifying = false;
+                            otpError = 'Invalid code. Enter valid SMS OTP code.';
+                          });
+                        }
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  Center(
+                    child: TextButton.icon(
+                      icon: const Icon(Icons.refresh_rounded, size: 16),
+                      label: const Text('Resend SMS OTP', style: TextStyle(fontSize: 13)),
+                      onPressed: () {
+                        context.read<AuthProvider>().sendPhoneOtp(rawPhone);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('New 2FA security code dispatched!')),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+
+    return result == true;
   }
 
   Future<void> _onGoogleLogin() async {

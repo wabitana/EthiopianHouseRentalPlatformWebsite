@@ -22,6 +22,7 @@ import {
   vendorServicesRoutes,
   agentRoutes,
   telegramRoutes,
+  maintenanceRoutes,
 } from './modules';
 
 const app = express();
@@ -85,6 +86,7 @@ app.use('/api/v1/services', vendorServicesRoutes);
 app.use('/api/v1/addresses', vendorServicesRoutes);
 app.use('/api/v1/agent', agentRoutes);
 app.use('/api/v1/telegram', telegramRoutes);
+app.use('/api/v1/maintenance', maintenanceRoutes);
 
 // Backward compatibility proxies for web app legacy routes
 app.use('/api/cms', cmsRoutes);

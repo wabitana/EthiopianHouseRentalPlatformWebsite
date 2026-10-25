@@ -8,6 +8,7 @@ import '../providers/inquiry_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 import 'inquiry_chat_screen.dart';
 import 'property_detail_screen.dart';
+import '../../../core/services/currency_service.dart';
 
 class SeekerInquiriesScreen extends StatelessWidget {
   const SeekerInquiriesScreen({super.key});
@@ -65,6 +66,7 @@ class _InquiryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    context.watch<CurrencyProvider>();
     final lastMessage = inquiry.messages.isNotEmpty
         ? inquiry.messages.last
         : null;
