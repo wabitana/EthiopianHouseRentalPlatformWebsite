@@ -32,7 +32,11 @@ class _ProviderDashboardScreenState extends State<ProviderDashboardScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      AppTutorialService.checkAndShowTutorial(context, 'provider');
+      if (!mounted) return;
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (!mounted) return;
+        AppTutorialService.checkAndShowTutorial(context, 'provider');
+      });
       context.read<MaintenanceProvider>().fetchProviderTickets();
     });
   }

@@ -420,6 +420,7 @@ class _PropertyDetailScreenState extends State<PropertyDetailScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       final propProvider = context.read<PropertyProvider>();
       try {
         final prop = propProvider.properties.firstWhere((p) => p.id == widget.propertyId);

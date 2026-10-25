@@ -50,8 +50,11 @@ class _SeekerMainLayoutState extends State<SeekerMainLayout> {
         context.read<InquiryProvider>().fetchSeekerInquiries(auth.currentUser!.id);
         context.read<NotificationProvider>().fetchNotifications(auth.currentUser!.id);
       }
-      // Trigger seeker tutorial
-      AppTutorialService.checkAndShowTutorial(context, 'seeker');
+      // Trigger seeker tutorial safely after layout is fully mounted
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (!mounted) return;
+        AppTutorialService.checkAndShowTutorial(context, 'seeker');
+      });
     });
   }
 

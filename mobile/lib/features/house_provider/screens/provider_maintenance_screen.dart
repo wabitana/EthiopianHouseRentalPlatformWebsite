@@ -20,6 +20,7 @@ class _ProviderMaintenanceScreenState extends State<ProviderMaintenanceScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<MaintenanceProvider>().fetchProviderTickets();
     });
   }

@@ -35,6 +35,7 @@ class _MaintenancePortalScreenState extends State<MaintenancePortalScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<MaintenanceProvider>().fetchMyTickets();
       final propProvider = context.read<PropertyProvider>();
       if (propProvider.properties.isNotEmpty && _selectedProperty == null) {
