@@ -46,7 +46,11 @@ class ApiClient {
 
     String errorMessage = 'An error occurred. Please try again.';
     if (body is Map && body.containsKey('error')) {
-      errorMessage = body['error'].toString();
+      if (body['error'] is Map && (body['error'] as Map)['message'] != null) {
+        errorMessage = (body['error'] as Map)['message'].toString();
+      } else {
+        errorMessage = body['error'].toString();
+      }
     } else if (body is Map && body.containsKey('message')) {
       errorMessage = body['message'].toString();
     }
@@ -94,7 +98,9 @@ class ApiClient {
               .get(Uri.parse(fallbackUrl), headers: headers)
               .timeout(_timeout);
           return _handleResponse(response);
-        } catch (_) {}
+        } on SocketException {
+          // Fallback also failed to connect
+        }
       }
       throw ApiException('Unable to connect to server. Please check internet connection.');
     } on ApiException {
@@ -132,7 +138,9 @@ class ApiClient {
               )
               .timeout(_timeout);
           return _handleResponse(response);
-        } catch (_) {}
+        } on SocketException {
+          // Fallback also failed to connect
+        }
       }
       throw ApiException('Unable to connect to server. Please check internet connection.');
     } on ApiException {
@@ -170,7 +178,9 @@ class ApiClient {
               )
               .timeout(_timeout);
           return _handleResponse(response);
-        } catch (_) {}
+        } on SocketException {
+          // Fallback also failed to connect
+        }
       }
       throw ApiException('Unable to connect to server. Please check internet connection.');
     } on ApiException {
@@ -208,7 +218,9 @@ class ApiClient {
               )
               .timeout(_timeout);
           return _handleResponse(response);
-        } catch (_) {}
+        } on SocketException {
+          // Fallback also failed to connect
+        }
       }
       throw ApiException('Unable to connect to server. Please check internet connection.');
     } on ApiException {
@@ -234,7 +246,9 @@ class ApiClient {
               .delete(Uri.parse(fallbackUrl), headers: headers)
               .timeout(_timeout);
           return _handleResponse(response);
-        } catch (_) {}
+        } on SocketException {
+          // Fallback also failed to connect
+        }
       }
       throw ApiException('Unable to connect to server. Please check internet connection.');
     } on ApiException {
