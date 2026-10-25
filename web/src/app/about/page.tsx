@@ -60,12 +60,12 @@ export default function AboutPage() {
               {
                 title: "Residential & Luxury Apartments",
                 image: "/images/residential_apartments.png",
-                href: "/marketplace",
+                href: "/browse-houses",
               },
               {
                 title: "Villas, Family Homes & Properties",
                 image: "/images/villas_family_homes.png",
-                href: "/marketplace",
+                href: "/browse-houses",
               },
               {
                 title: "Move-In Cleaning & Inspection Services",

@@ -48,7 +48,12 @@ export class SaleService {
     });
   }
 
-  async updateSaleStatus(requestId: string, userId: string, status: 'ACCEPTED' | 'REJECTED' | 'UNDER_REVIEW' | 'LEGAL_PROCESS' | 'COMPLETED') {
+  async updateSaleStatus(
+    requestId: string,
+    userId: string,
+    status: 'ACCEPTED' | 'REJECTED' | 'UNDER_REVIEW' | 'LEGAL_PROCESS' | 'COMPLETED',
+    userRole?: string
+  ) {
     const saleReq = await prisma.saleRequest.findUnique({
       where: { id: requestId },
       include: { property: true },
@@ -56,8 +61,21 @@ export class SaleService {
 
     if (!saleReq) throw new Error('Sale request not found');
 
-    if (saleReq.ownerId !== userId && saleReq.buyerId !== userId) {
+    const isAdmin = userRole === 'admin';
+
+    // Must be either the owner, the buyer, or a platform administrator
+    if (!isAdmin && saleReq.ownerId !== userId && saleReq.buyerId !== userId) {
       throw new Error('Not authorized to modify this sale request');
+    }
+
+    // Prevent modifications on already completed sales
+    if (saleReq.status === 'COMPLETED') {
+      throw new Error('Cannot modify a sale request that has already been completed');
+    }
+
+    // Only property owner (or admin) can accept, review, or complete purchase offers
+    if (!isAdmin && ['ACCEPTED', 'UNDER_REVIEW', 'LEGAL_PROCESS', 'COMPLETED'].includes(status) && saleReq.ownerId !== userId) {
+      throw new Error('Only the property owner can accept or advance a sale offer');
     }
 
     const updated = await prisma.saleRequest.update({

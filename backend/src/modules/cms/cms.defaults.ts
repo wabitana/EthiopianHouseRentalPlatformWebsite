@@ -40,7 +40,7 @@ export const defaultCmsConfig = {
     title: 'Ready to Find Your Ideal Property in Ethiopia?',
     subtitle: "Join thousands of tenants, buyers, landlords, and property managers operating on Ethiopia's unified rental ecosystem.",
     buttonText: 'Browse All Property Listings',
-    buttonLink: '/marketplace',
+    buttonLink: '/browse-houses',
   },
   cms_about: {
     badge: 'About Ethiopian Property Platform',
@@ -53,7 +53,7 @@ export const defaultCmsConfig = {
     phone: '+251 911 000 000',
     services: ['Verified residential & commercial property listings', 'Move-in cleaning, inspection & tenant logistics', 'Instant Chapa subscription payments & digital agreements'],
     explorebuttonText: 'Find Your Home Now',
-    exploreButtonLink: '/marketplace',
+    exploreButtonLink: '/browse-houses',
     videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-industrial-facility-with-pipelines-at-sunset-41481-large.mp4',
   },
   cms_how_it_works: {
@@ -67,7 +67,7 @@ export const defaultCmsConfig = {
       { step: '04', title: 'Move In & Enjoy Services', description: 'Schedule move-in deep cleaning, key collection, and access 24/7 maintenance support.' },
     ],
     ctaText: 'Start Exploring Today',
-    ctaLink: '/marketplace',
+    ctaLink: '/browse-houses',
   },
   cms_app_section: {
     badge: 'Now Available on Mobile & Web',
