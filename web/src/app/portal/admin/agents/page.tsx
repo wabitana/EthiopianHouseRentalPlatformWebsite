@@ -97,8 +97,7 @@ export default function AdminAgentsPage() {
       setLoading(true);
       const data = await apiFetch("/admin/agents");
       setAgents(data || []);
-    } catch (err) {
-      console.error("Failed to load field agents list:", err);
+    } catch {
     } finally {
       setLoading(false);
     }
@@ -233,7 +232,6 @@ export default function AdminAgentsPage() {
       const details = await apiFetch(`/admin/agents/${agent.id}/details`);
       setAgentDetails(details);
     } catch (err) {
-      console.error("Failed to load agent details:", err);
       setAgentDetails(null);
     }
     setDetailsDrawerOpen(true);
@@ -527,10 +525,9 @@ export default function AdminAgentsPage() {
 
             <div className="bg-purple-950/40 border border-purple-800/50 rounded-xl p-3 flex items-start gap-2.5 text-xs text-purple-200">
               <MapPin className="h-4 w-4 text-purple-400 shrink-0 mt-0.5" />
-              <div>
-                <span className="font-bold text-white block mb-0.5">Sub-City Territory Constraint:</span>
-                Agent <strong className="text-purple-300">{selectedAgent.name}</strong> operates in <strong className="text-emerald-400">{selectedAgent.assignedArea || 'Addis Ababa'}</strong>. Tasks assigned are auto-constrained to user & property addresses in this area.
-              </div>
+              <p>
+                Agent <strong className="text-purple-300">{selectedAgent.name}</strong> operates in <strong className="text-emerald-400">{selectedAgent.assignedArea || 'Addis Ababa'}</strong>. Tasks assigned are auto-constrained to user &amp; property addresses in this area.
+              </p>
             </div>
 
             <form onSubmit={handleAssignTask} className="space-y-3 text-xs">

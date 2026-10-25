@@ -13,6 +13,39 @@ const requireAgentOrAdmin = (req: AuthRequest, res: any, next: any) => {
   next();
 };
 
+function getTownKeywords(areaStr?: string | null): string[] {
+  if (!areaStr) return [];
+  const trimmed = areaStr.trim();
+  if (!trimmed) return [];
+  const parts = trimmed.split(/&|,|\/|\band\b/i).map((s) => s.trim()).filter(Boolean);
+  return Array.from(new Set([trimmed, ...parts]));
+}
+
+function buildPropertyTownFilter(town?: string | null) {
+  const keywords = getTownKeywords(town);
+  if (keywords.length === 0) return {};
+  const orList = keywords.flatMap((kw) => [
+    { city: { contains: kw, mode: 'insensitive' as const } },
+    { area: { contains: kw, mode: 'insensitive' as const } },
+    { neighborhood: { contains: kw, mode: 'insensitive' as const } },
+    { addressDetails: { contains: kw, mode: 'insensitive' as const } },
+    { title: { contains: kw, mode: 'insensitive' as const } },
+  ]);
+  return { OR: orList };
+}
+
+function buildUserTownFilter(town?: string | null) {
+  const keywords = getTownKeywords(town);
+  if (keywords.length === 0) return {};
+  const orList = keywords.flatMap((kw) => [
+    { city: { contains: kw, mode: 'insensitive' as const } },
+    { address: { contains: kw, mode: 'insensitive' as const } },
+    { region: { contains: kw, mode: 'insensitive' as const } },
+    { assignedArea: { contains: kw, mode: 'insensitive' as const } },
+  ]);
+  return { OR: orList };
+}
+
 // GET /api/v1/agent/profile - Retrieve authenticated agent's stats
 router.get('/profile', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
   try {
@@ -27,6 +60,9 @@ router.get('/profile', authenticateToken, requireAgentOrAdmin, async (req: AuthR
         role: true,
         avatarUrl: true,
         assignedArea: true,
+        city: true,
+        region: true,
+        address: true,
         active: true,
         createdAt: true,
       },
@@ -34,8 +70,10 @@ router.get('/profile', authenticateToken, requireAgentOrAdmin, async (req: AuthR
 
     if (!user) return res.status(404).json({ error: 'Agent profile not found' });
 
-    // Calculate dynamic stats
-    const areaFilter = user.assignedArea ? { area: { contains: user.assignedArea } } : {};
+    // Calculate dynamic stats scoped to agent's assigned town
+    const assignedTown = user.assignedArea || user.city || '';
+    const areaFilter = buildPropertyTownFilter(assignedTown);
+
     const [propsCount, verificationsCount, activeTasksCount] = await Promise.all([
       prisma.property.count({ where: areaFilter }).catch(() => 0),
       prisma.task.count({ where: { assignedAgentId: user.id, status: 'Completed' } }).catch(() => 0),
@@ -53,6 +91,87 @@ router.get('/profile', authenticateToken, requireAgentOrAdmin, async (req: AuthR
     });
   } catch (error) {
     return res.status(500).json({ error: 'Failed to fetch agent profile' });
+  }
+});
+
+// PATCH & PUT /api/v1/agent/profile - Update authenticated agent's profile
+router.patch('/profile', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { name, phone, email, avatarUrl, city, region, address } = req.body || {};
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(name ? { name } : {}),
+        ...(phone !== undefined ? { phone } : {}),
+        ...(email ? { email } : {}),
+        ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+        ...(city ? { city } : {}),
+        ...(region ? { region } : {}),
+        ...(address !== undefined ? { address } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        avatarUrl: true,
+        assignedArea: true,
+        city: true,
+        region: true,
+        address: true,
+        active: true,
+        createdAt: true,
+      },
+    });
+
+    return res.json({ user: updated, message: 'Agent profile updated successfully' });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to update agent profile' });
+  }
+});
+
+router.put('/profile', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+    const { name, phone, email, avatarUrl, city, region, address } = req.body || {};
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        ...(name ? { name } : {}),
+        ...(phone !== undefined ? { phone } : {}),
+        ...(email ? { email } : {}),
+        ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+        ...(city ? { city } : {}),
+        ...(region ? { region } : {}),
+        ...(address !== undefined ? { address } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        role: true,
+        avatarUrl: true,
+        assignedArea: true,
+        city: true,
+        region: true,
+        address: true,
+        active: true,
+        createdAt: true,
+      },
+    });
+
+    return res.json({ user: updated, message: 'Agent profile updated successfully' });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to update agent profile' });
   }
 });
 
@@ -383,10 +502,22 @@ router.get('/stats', authenticateToken, requireAgentOrAdmin, async (req: AuthReq
     const assignedArea = agentUser?.assignedArea || agentUser?.city || 'Addis Ababa';
 
     const agentWhere = isAdmin ? {} : { agentId: userId };
-    const propertyWhere = isAdmin ? { availability: true } : { availability: true, area: { contains: assignedArea } };
+    const propertyWhere = isAdmin
+      ? { availability: true }
+      : { availability: true, ...buildPropertyTownFilter(assignedArea) };
     const providerWhere = isAdmin
-      ? { role: 'provider' }
-      : { role: 'provider', OR: [{ city: { contains: assignedArea } }, { address: { contains: assignedArea } }] };
+      ? { role: { in: ['provider', 'PROVIDER', 'landlord'] } }
+      : {
+          role: { in: ['provider', 'PROVIDER', 'landlord'] },
+          OR: [
+            ...(buildUserTownFilter(assignedArea).OR || []),
+            {
+              properties: {
+                some: buildPropertyTownFilter(assignedArea),
+              },
+            },
+          ],
+        };
 
     const [
       assistedTenantsCount,
@@ -413,25 +544,140 @@ router.get('/stats', authenticateToken, requireAgentOrAdmin, async (req: AuthReq
       assignedArea,
     });
   } catch (error) {
-    console.error('Agent stats error:', error);
     return res.status(500).json({ error: 'Failed to fetch agent stats' });
   }
 });
 
-// GET /api/v1/agent/providers - List all house providers (landlords)
+// GET /api/v1/agent/properties - List properties strictly filtered to agent's assigned operational town
+router.get('/properties', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
+  try {
+    const userId = req.user?.id;
+    const isAdmin = req.user?.role?.toLowerCase() === 'admin';
+
+    let areaFilter: any = {};
+
+    if (!isAdmin) {
+      const agentUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { assignedArea: true, city: true },
+      });
+
+      const assignedTown = (agentUser?.assignedArea || agentUser?.city || '').trim();
+      if (assignedTown) {
+        areaFilter = buildPropertyTownFilter(assignedTown);
+      }
+    }
+
+    const properties = await prisma.property.findMany({
+      where: areaFilter,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        provider: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+            avatarUrl: true,
+            city: true,
+          },
+        },
+      },
+    });
+
+    const formatted = properties.map((p) => {
+      let imagesArr: string[] = [];
+      try {
+        imagesArr = typeof p.images === 'string' ? JSON.parse(p.images) : p.images || [];
+      } catch (_) {
+        imagesArr = [];
+      }
+
+      let amenitiesArr: string[] = [];
+      try {
+        amenitiesArr = typeof p.amenities === 'string' ? JSON.parse(p.amenities) : p.amenities || [];
+      } catch (_) {
+        amenitiesArr = [];
+      }
+
+      return {
+        id: p.id,
+        title: p.title,
+        description: p.description,
+        propertyType: p.propertyType,
+        price: p.price,
+        rentalPeriod: p.rentalPeriod,
+        rooms: p.rooms,
+        bathrooms: p.bathrooms,
+        city: p.city,
+        area: p.area,
+        neighborhood: p.neighborhood,
+        addressDetails: p.addressDetails,
+        images: imagesArr,
+        amenities: amenitiesArr,
+        availability: p.availability,
+        isVerified: p.isVerified,
+        listingStatus: p.listingStatus,
+        viewsCount: p.viewsCount,
+        inquiriesCount: p.inquiriesCount,
+        providerId: p.providerId,
+        providerName: p.provider?.name || p.providerName || 'Landlord',
+        providerPhone: p.provider?.phone || p.providerPhone || '',
+        createdAt: p.createdAt,
+        updatedAt: p.updatedAt,
+      };
+    });
+
+    return res.json(formatted);
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to fetch agent properties' });
+  }
+});
+
+// GET /api/v1/agent/providers - List house providers strictly filtered to agent's assigned operational town
 router.get('/providers', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
   try {
+    const userId = req.user?.id;
+    const isAdmin = req.user?.role?.toLowerCase() === 'admin';
+
+    let whereClause: any = { role: { in: ['provider', 'PROVIDER', 'landlord'] } };
+
+    if (!isAdmin) {
+      const agentUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { assignedArea: true, city: true },
+      });
+
+      const assignedTown = (agentUser?.assignedArea || agentUser?.city || '').trim();
+
+      if (assignedTown) {
+        whereClause = {
+          role: { in: ['provider', 'PROVIDER', 'landlord'] },
+          OR: [
+            ...(buildUserTownFilter(assignedTown).OR || []),
+            {
+              properties: {
+                some: buildPropertyTownFilter(assignedTown),
+              },
+            },
+          ],
+        };
+      }
+    }
+
     const providers = await prisma.user.findMany({
-      where: { role: { in: ['provider', 'PROVIDER', 'landlord'] } },
+      where: whereClause,
       select: {
         id: true,
         name: true,
         email: true,
         phone: true,
         city: true,
+        region: true,
+        address: true,
         avatarUrl: true,
         createdAt: true,
-        properties: { select: { id: true, title: true } },
+        properties: { select: { id: true, title: true, city: true, area: true, price: true } },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -441,17 +687,40 @@ router.get('/providers', authenticateToken, requireAgentOrAdmin, async (req: Aut
   }
 });
 
-// GET /api/v1/agent/seekers - List all house seekers
+// GET /api/v1/agent/seekers - List house seekers strictly filtered to agent's assigned operational town
 router.get('/seekers', authenticateToken, requireAgentOrAdmin, async (req: AuthRequest, res) => {
   try {
+    const userId = req.user?.id;
+    const isAdmin = req.user?.role?.toLowerCase() === 'admin';
+
+    let whereClause: any = { role: { in: ['seeker', 'SEEKER', 'tenant'] } };
+
+    if (!isAdmin) {
+      const agentUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { assignedArea: true, city: true },
+      });
+
+      const assignedTown = (agentUser?.assignedArea || agentUser?.city || '').trim();
+
+      if (assignedTown) {
+        whereClause = {
+          role: { in: ['seeker', 'SEEKER', 'tenant'] },
+          ...(buildUserTownFilter(assignedTown)),
+        };
+      }
+    }
+
     const seekers = await prisma.user.findMany({
-      where: { role: { in: ['seeker', 'SEEKER', 'tenant'] } },
+      where: whereClause,
       select: {
         id: true,
         name: true,
         email: true,
         phone: true,
         city: true,
+        region: true,
+        address: true,
         avatarUrl: true,
         createdAt: true,
       },

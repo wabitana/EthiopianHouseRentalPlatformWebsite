@@ -130,8 +130,7 @@ export async function getCmsConfig() {
       }
     }
     return defaultCmsConfig;
-  } catch (error) {
-    console.warn("Main backend CMS fetch fallback to defaults:", error);
+  } catch {
     return defaultCmsConfig;
   }
 }

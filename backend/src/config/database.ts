@@ -5,52 +5,47 @@ import { PrismaNeon } from '@prisma/adapter-neon';
 import { PrismaClient } from '@prisma/client';
 import ws from 'ws';
 
+dotenv.config();
+
 const connectionString = process.env.DATABASE_URL || '';
 const isNeon = connectionString.includes('neon.tech');
 
-// Prioritize IPv4 over IPv6 across all Node.js net/DNS requests
 try {
   dns.setDefaultResultOrder('ipv4first');
 } catch {
   // Ignore on older Node runtimes
 }
 
-// Custom WebSocket class enforcing IPv4 and resilient handshake timeout
 class ResilientWebSocket extends ws {
   constructor(address: any, protocols?: any, options?: any) {
-    const opts = Object.assign({}, options, {
-      family: 4, // Prevent stalling on unreachable IPv6 addresses
+    super(address, protocols, Object.assign({}, options, {
+      family: 4,
       handshakeTimeout: 30000,
-    });
-    super(address, protocols, opts);
+    }));
   }
 }
 
-neonConfig.webSocketConstructor = ResilientWebSocket;
+let prismaClientInstance: PrismaClient;
 
-const connectionString = process.env.DATABASE_URL;
-const pool = new Pool({
-  connectionString,
-  connectionTimeoutMillis: 30000,
-  idleTimeoutMillis: 60000,
-  max: 10,
-});
+if (isNeon) {
+  neonConfig.webSocketConstructor = ResilientWebSocket;
+  const pool = new Pool({
+    connectionString,
+    connectionTimeoutMillis: 30000,
+    idleTimeoutMillis: 60000,
+    max: 10,
+  });
 
-// Handle background websocket connection drops gracefully
-pool.on('error', (err: any) => {
-  console.warn('Neon WebSocket pool notice:', err?.message || err);
-});
+  pool.on('error', () => {});
 
-const adapter = new PrismaNeon(pool);
+  const adapter = new PrismaNeon(pool);
+  prismaClientInstance = new PrismaClient({ adapter });
+} else {
+  prismaClientInstance = new PrismaClient();
+}
 
 export const prisma = prismaClientInstance;
 
-export async function connectDatabase() {
-  try {
-    await prisma.$connect();
-    console.log('ostgreSQL Database connected successfully via Neon WebSockets (Port 443)');
-  } catch (error) {
-    console.error('Database connection failed:', error);
-  }
+export async function connectDatabase(): Promise<void> {
+  await prisma.$connect();
 }
-
