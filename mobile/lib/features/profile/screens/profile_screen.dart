@@ -418,7 +418,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           final rawUrl = res['url'] as String;
           final uploadedUrl = rawUrl.startsWith('http')
               ? rawUrl
-              : '${ApiEndpoints.mediaBaseUrl}$rawUrl';
+              : (rawUrl.startsWith('/') ? rawUrl : '/$rawUrl');
           onUploaded(uploadedUrl);
         }
       }

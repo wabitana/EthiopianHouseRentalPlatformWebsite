@@ -396,7 +396,7 @@ class _PostHouseWizardScreenState extends State<PostHouseWizardScreen> {
           final rawUrl = res['url'].toString();
           final uploadedUrl = rawUrl.startsWith('http')
               ? rawUrl
-              : '${ApiEndpoints.mediaBaseUrl}$rawUrl';
+              : (rawUrl.startsWith('/') ? rawUrl : '/$rawUrl');
           setState(() {
             _selectedImages.add(uploadedUrl);
           });
