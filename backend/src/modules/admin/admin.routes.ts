@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma, withDbRetry } from '../../prisma';
 import { authenticateToken, requireAdmin, AuthRequest } from '../../middleware/auth';
+import { buildPropertyTerritoryFilter, buildUserTerritoryFilter } from '../../utils/agentTerritory';
 
 const router = Router();
 router.use(authenticateToken);
@@ -1008,7 +1009,7 @@ router.put('/subscription-plans/:id', authenticateToken, async (req: AuthRequest
 // PLATFORM AGENT MANAGEMENT CRUD ENDPOINTS
 // ==========================================
 
-// GET /api/v1/admin/agents - Fetch all platform field agents
+// GET /api/v1/admin/agents - Fetch all platform field agents with accurate territory statistics
 router.get('/agents', authenticateToken, async (req: AuthRequest, res) => {
   try {
     if (req.user?.role !== 'admin') {
@@ -1034,10 +1035,13 @@ router.get('/agents', authenticateToken, async (req: AuthRequest, res) => {
 
     const formattedAgents = await Promise.all(
       agents.map(async (a) => {
-        const areaFilter = a.assignedArea ? { area: { contains: a.assignedArea } } : {};
-        const [propsCount, verificationsCount] = await Promise.all([
-          prisma.property.count({ where: areaFilter }).catch(() => 0),
+        const propFilter = buildPropertyTerritoryFilter(a.assignedArea);
+        const userFilter = buildUserTerritoryFilter(a.assignedArea);
+
+        const [propsCount, verificationsCount, usersCount] = await Promise.all([
+          prisma.property.count({ where: propFilter }).catch(() => 0),
           prisma.task.count({ where: { assignedAgentId: a.id, status: 'Completed' } }).catch(() => 0),
+          prisma.user.count({ where: { role: { in: ['seeker', 'provider'] }, ...userFilter } }).catch(() => 0),
         ]);
 
         return {
@@ -1049,12 +1053,14 @@ router.get('/agents', authenticateToken, async (req: AuthRequest, res) => {
           avatarUrl: a.avatarUrl,
           assignedArea: a.assignedArea || 'Addis Ababa',
           propertiesManaged: propsCount,
+          usersManaged: usersCount,
           verificationsCompleted: verificationsCount,
           activeTasks: a.tasks ? a.tasks.length : 0,
           performanceScore: 98.0,
           agentStatus: a.active ? 'Active' : 'Suspended',
           joinedDate: a.createdAt,
           city: a.city,
+          region: a.region,
         };
       })
     );
@@ -1066,22 +1072,42 @@ router.get('/agents', authenticateToken, async (req: AuthRequest, res) => {
   }
 });
 
-// POST /api/v1/admin/agents - Register a new field agent
+// POST /api/v1/admin/agents - Register a new field agent with territory conflict prevention
 router.post('/agents', authenticateToken, async (req: AuthRequest, res) => {
   try {
     if (req.user?.role !== 'admin') {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
-    const { name, email, phone, password, assignedArea, city } = req.body;
+    const { name, email, phone, password, assignedArea, city, region } = req.body;
 
     if (!name || !email || !phone || !password) {
       return res.status(400).json({ error: 'Name, email, phone, and password are required' });
     }
 
+    if (!assignedArea || !assignedArea.trim()) {
+      return res.status(400).json({ error: 'Assigned operational territory or city is required' });
+    }
+
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ error: 'An account with this email already exists' });
+    }
+
+    // Validate and prevent conflicting exclusive area assignment
+    const trimmedArea = assignedArea.trim();
+    const existingAgentInArea = await prisma.user.findFirst({
+      where: {
+        role: { in: ['agent', 'AGENT'] },
+        active: true,
+        assignedArea: { equals: trimmedArea, mode: 'insensitive' },
+      },
+    });
+
+    if (existingAgentInArea) {
+      return res.status(409).json({
+        error: `Territory Conflict: Agent "${existingAgentInArea.name}" is already actively assigned to "${trimmedArea}". Please specify a distinct sub-city, zone, or operational district to avoid conflicts.`
+      });
     }
 
     const passwordHash = await require('bcryptjs').hash(password, 10);
@@ -1097,8 +1123,9 @@ router.post('/agents', authenticateToken, async (req: AuthRequest, res) => {
         isEmailVerified: true,
         isPhoneVerified: true,
         active: true,
-        assignedArea: assignedArea || 'Addis Ababa',
-        city: city || 'Addis Ababa',
+        assignedArea: trimmedArea,
+        city: city || trimmedArea,
+        region: region || 'Addis Ababa',
       },
     });
 
@@ -1118,6 +1145,8 @@ router.post('/agents', authenticateToken, async (req: AuthRequest, res) => {
       phone: agent.phone,
       role: agent.role,
       assignedArea: agent.assignedArea,
+      city: agent.city,
+      region: agent.region,
       agentStatus: agent.active ? 'Active' : 'Suspended',
       performanceScore: 98.0,
       joinedDate: agent.createdAt,
@@ -1125,13 +1154,13 @@ router.post('/agents', authenticateToken, async (req: AuthRequest, res) => {
   } catch (error: any) {
     console.error('Create agent error:', error);
     if (error.code === 'P2002') {
-      return res.status(400).json({ error: 'Email address is already registered' });
+      return res.status(400).json({ error: 'Email or phone number is already registered' });
     }
     return res.status(500).json({ error: 'Failed to create field agent' });
   }
 });
 
-// PUT /api/v1/admin/agents/:id - Update field agent details & territory
+// PUT /api/v1/admin/agents/:id - Update field agent details & territory assignment
 router.put('/agents/:id', authenticateToken, async (req: AuthRequest, res) => {
   try {
     if (req.user?.role !== 'admin') {
@@ -1139,11 +1168,30 @@ router.put('/agents/:id', authenticateToken, async (req: AuthRequest, res) => {
     }
 
     const { id } = req.params;
-    const { name, phone, assignedArea, agentStatus, performanceScore, city } = req.body;
+    const { name, phone, assignedArea, agentStatus, performanceScore, city, region } = req.body;
 
     const agent = await prisma.user.findUnique({ where: { id } });
     if (!agent) {
       return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    // If changing territory, validate to prevent conflicting assignments
+    if (assignedArea && assignedArea.trim()) {
+      const trimmedArea = assignedArea.trim();
+      const conflict = await prisma.user.findFirst({
+        where: {
+          role: { in: ['agent', 'AGENT'] },
+          id: { not: id },
+          active: true,
+          assignedArea: { equals: trimmedArea, mode: 'insensitive' },
+        },
+      });
+
+      if (conflict) {
+        return res.status(409).json({
+          error: `Territory Conflict: Agent "${conflict.name}" is already assigned to "${trimmedArea}". Please specify a distinct sub-city, zone, or operational district.`
+        });
+      }
     }
 
     const updatedAgent = await prisma.user.update({
@@ -1151,11 +1199,12 @@ router.put('/agents/:id', authenticateToken, async (req: AuthRequest, res) => {
       data: {
         ...(name && { name }),
         ...(phone && { phone }),
-        ...(assignedArea && { assignedArea }),
+        ...(assignedArea && { assignedArea: assignedArea.trim() }),
         ...(agentStatus && {
           active: agentStatus === 'Active',
         }),
         ...(city && { city }),
+        ...(region && { region }),
       },
     });
 
@@ -1165,6 +1214,8 @@ router.put('/agents/:id', authenticateToken, async (req: AuthRequest, res) => {
       email: updatedAgent.email,
       phone: updatedAgent.phone,
       assignedArea: updatedAgent.assignedArea,
+      city: updatedAgent.city,
+      region: updatedAgent.region,
       agentStatus: updatedAgent.active ? 'Active' : 'Suspended',
       performanceScore: 98.0,
     });
@@ -1195,7 +1246,7 @@ router.delete('/agents/:id', authenticateToken, async (req: AuthRequest, res) =>
   }
 });
 
-// POST /api/v1/admin/agents/:id/tasks - Assign a new task to field agent
+// POST /api/v1/admin/agents/:id/tasks - Dispatch a new field inspection/operational task to field agent
 router.post('/agents/:id/tasks', authenticateToken, async (req: AuthRequest, res) => {
   try {
     if (req.user?.role !== 'admin') {
@@ -1220,7 +1271,7 @@ router.post('/agents/:id/tasks', authenticateToken, async (req: AuthRequest, res
         type,
         priority: priority || 'Medium',
         dueDate: new Date(dueDate),
-        description: description || 'Field inspection task assigned by Admin.',
+        description: description || `Field operational task dispatched by Administrator for ${agent.assignedArea || 'local territory'}.`,
         propertyId: propertyId || null,
         propertyTitle: propertyTitle || null,
         providerName: providerName || null,
@@ -1229,6 +1280,16 @@ router.post('/agents/:id/tasks', authenticateToken, async (req: AuthRequest, res
       },
     });
 
+    // Notify agent immediately
+    await prisma.notification.create({
+      data: {
+        userId: id,
+        title: `New Field Task Assigned: ${title}`,
+        message: `Admin assigned a new ${type} task (${priority || 'Medium'} priority, due ${new Date(dueDate).toLocaleDateString()}). ${description ? `Notes: ${description}` : ''}`,
+        type: 'AGENT_TASK',
+      },
+    }).catch(() => null);
+
     return res.status(201).json(task);
   } catch (error) {
     console.error('Assign agent task error:', error);
@@ -1236,7 +1297,7 @@ router.post('/agents/:id/tasks', authenticateToken, async (req: AuthRequest, res
   }
 });
 
-// GET /api/v1/admin/agents/:id/details - Fetch full agent details with linked items
+// GET /api/v1/admin/agents/:id/details - Fetch full agent details with managed houses, users, and tasks
 router.get('/agents/:id/details', authenticateToken, async (req: AuthRequest, res) => {
   try {
     if (req.user?.role !== 'admin') {
@@ -1258,7 +1319,52 @@ router.get('/agents/:id/details', authenticateToken, async (req: AuthRequest, re
       return res.status(404).json({ error: 'Agent not found' });
     }
 
-    return res.json(agent);
+    // Find properties and users within the agent's assigned area
+    const [propertiesInArea, usersInArea] = await Promise.all([
+      prisma.property.findMany({
+        where: buildPropertyTerritoryFilter(agent.assignedArea),
+        take: 12,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          title: true,
+          city: true,
+          area: true,
+          neighborhood: true,
+          price: true,
+          rentalPeriod: true,
+          isVerified: true,
+          listingStatus: true,
+          providerName: true,
+          providerPhone: true,
+        },
+      }).catch(() => []),
+      prisma.user.findMany({
+        where: {
+          role: { in: ['seeker', 'provider'] },
+          ...buildUserTerritoryFilter(agent.assignedArea),
+        },
+        take: 12,
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          role: true,
+          city: true,
+          address: true,
+          isVerified: true,
+          createdAt: true,
+        },
+      }).catch(() => []),
+    ]);
+
+    return res.json({
+      ...agent,
+      propertiesInArea,
+      usersInArea,
+    });
   } catch (error) {
     console.error('Fetch agent details error:', error);
     return res.status(500).json({ error: 'Failed to fetch agent details' });
