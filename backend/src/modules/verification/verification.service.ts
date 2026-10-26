@@ -1,4 +1,10 @@
 import { prisma } from '../../prisma';
+import {
+  buildPropertyTerritoryFilter,
+  buildUserTerritoryFilter,
+  isPropertyInTerritory,
+  isUserInTerritory,
+} from '../../utils/agentTerritory';
 
 export class VerificationService {
   async submitIdentityDocument(data: {
@@ -61,15 +67,34 @@ export class VerificationService {
     return doc;
   }
 
-  async getPendingVerifications() {
+  async getPendingVerifications(userId?: string, userRole?: string) {
+    const isAgent = userRole?.toLowerCase() === 'agent';
+    let assignedArea: string | null = null;
+
+    if (isAgent && userId) {
+      const agentUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { assignedArea: true, city: true, region: true },
+      });
+      assignedArea = agentUser?.assignedArea || agentUser?.city || agentUser?.region || 'Addis Ababa';
+    }
+
+    const idWhere: any = { status: 'UNDER_REVIEW' };
+    const propWhere: any = { status: 'UNDER_REVIEW' };
+
+    if (isAgent && assignedArea) {
+      idWhere.user = buildUserTerritoryFilter(assignedArea);
+      propWhere.property = buildPropertyTerritoryFilter(assignedArea);
+    }
+
     const identityDocs = await prisma.identityDocument.findMany({
-      where: { status: 'UNDER_REVIEW' },
+      where: idWhere,
       include: { user: true },
       orderBy: { createdAt: 'desc' },
     });
 
     const propertyDocs = await prisma.propertyDocument.findMany({
-      where: { status: 'UNDER_REVIEW' },
+      where: propWhere,
       include: { property: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -80,7 +105,33 @@ export class VerificationService {
     };
   }
 
-  async reviewIdentityDocument(docId: string, status: 'VERIFIED' | 'REJECTED' | 'UNDER_REVIEW', adminNotes?: string) {
+  async reviewIdentityDocument(
+    docId: string,
+    status: 'VERIFIED' | 'REJECTED' | 'UNDER_REVIEW',
+    adminNotes?: string,
+    reviewerId?: string,
+    reviewerRole?: string
+  ) {
+    if (reviewerRole?.toLowerCase() === 'agent' && reviewerId) {
+      const agentUser = await prisma.user.findUnique({
+        where: { id: reviewerId },
+        select: { assignedArea: true, city: true, region: true },
+      });
+      const assignedArea = agentUser?.assignedArea || agentUser?.city || agentUser?.region || 'Addis Ababa';
+      const existingDoc = await prisma.identityDocument.findUnique({
+        where: { id: docId },
+        include: { user: true },
+      });
+      if (!existingDoc || !existingDoc.user) {
+        throw new Error('Identity document not found');
+      }
+      if (!isUserInTerritory(existingDoc.user, assignedArea)) {
+        throw new Error(
+          `Access Denied: You are only authorized to verify users in your assigned territory (${assignedArea}). User "${existingDoc.user.name}" is outside your jurisdiction.`
+        );
+      }
+    }
+
     const doc = await prisma.identityDocument.update({
       where: { id: docId },
       data: {
@@ -104,7 +155,33 @@ export class VerificationService {
     return doc;
   }
 
-  async reviewPropertyDocument(docId: string, status: 'VERIFIED' | 'REJECTED', adminNotes?: string) {
+  async reviewPropertyDocument(
+    docId: string,
+    status: 'VERIFIED' | 'REJECTED',
+    adminNotes?: string,
+    reviewerId?: string,
+    reviewerRole?: string
+  ) {
+    if (reviewerRole?.toLowerCase() === 'agent' && reviewerId) {
+      const agentUser = await prisma.user.findUnique({
+        where: { id: reviewerId },
+        select: { assignedArea: true, city: true, region: true },
+      });
+      const assignedArea = agentUser?.assignedArea || agentUser?.city || agentUser?.region || 'Addis Ababa';
+      const existingDoc = await prisma.propertyDocument.findUnique({
+        where: { id: docId },
+        include: { property: true },
+      });
+      if (!existingDoc || !existingDoc.property) {
+        throw new Error('Property document not found');
+      }
+      if (!isPropertyInTerritory(existingDoc.property, assignedArea)) {
+        throw new Error(
+          `Access Denied: You are only authorized to verify properties in your assigned territory (${assignedArea}). Property "${existingDoc.property.title}" is located in (${existingDoc.property.city}, ${existingDoc.property.area}).`
+        );
+      }
+    }
+
     const doc = await prisma.propertyDocument.update({
       where: { id: docId },
       data: {

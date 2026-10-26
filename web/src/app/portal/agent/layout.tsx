@@ -22,7 +22,6 @@ import {
   ChevronDown,
   UserCheck,
   ExternalLink,
-  PhoneOff,
 } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 
@@ -79,9 +78,16 @@ export default function AgentPortalLayout({
     };
   }, []);
 
-  const agentNavItems = [
+  interface AgentNavItem {
+    href: string;
+    label: string;
+    icon: React.ComponentType<any>;
+    badge?: string;
+    highlight?: boolean;
+  }
+
+  const agentNavItems: AgentNavItem[] = [
     { href: "/portal/agent", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/portal/agent/assisted-rentals", label: "Assisted Rural Hub", icon: PhoneOff, badge: "Offline Hub", highlight: true },
     { href: "/portal/agent/properties", label: "Properties", icon: Building2 },
     { href: "/portal/agent/add-property", label: "Add Property", icon: PlusCircle },
     { href: "/portal/agent/tasks", label: "My Tasks", icon: CheckSquare, badge: tasksCount > 0 ? String(tasksCount) : undefined },

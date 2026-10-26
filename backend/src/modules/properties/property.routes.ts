@@ -3,6 +3,7 @@ import { prisma } from '../../prisma';
 import { authenticateToken, optionalAuthenticateToken, AuthRequest } from '../../middleware/auth';
 import { sendNewPropertyEmailAlert } from '../email/email.service';
 import { subscriptionService } from '../subscriptions/subscription.service';
+import { verifyAgentPropertyAccess, isPropertyInTerritory } from '../../utils/agentTerritory';
 
 const router = Router();
 
@@ -626,9 +627,20 @@ router.delete('/saved-searches/:id', optionalAuthenticateToken, async (req: Auth
 });
 
 // GET /api/v1/properties/:id
-router.get('/:id', async (req, res) => {
+router.get('/:id', optionalAuthenticateToken, async (req: AuthRequest, res) => {
   try {
     const { id } = req.params;
+
+    // Enforce territorial access control if accessed by an authenticated agent
+    if (req.user?.role?.toLowerCase() === 'agent') {
+      const access = await verifyAgentPropertyAccess(req.user.id, 'agent', id);
+      if (!access.authorized) {
+        return res.status(403).json({
+          error: access.error || 'Access forbidden: You are only authorized to view properties within your assigned area',
+        });
+      }
+    }
+
     const property = await prisma.property.findUnique({ where: { id } });
 
     if (!property) {
@@ -1058,8 +1070,17 @@ router.patch('/:id', authenticateToken, async (req: AuthRequest, res) => {
     const property = await prisma.property.findUnique({ where: { id } });
     if (!property) return res.status(404).json({ error: 'Property not found' });
 
-    if (property.providerId !== userId && req.user?.role !== 'admin') {
-      return res.status(403).json({ error: 'Not authorized to edit this property' });
+    // Check authorization: Provider owner, System Admin, or Authorized Territory Agent
+    const userRole = req.user?.role?.toLowerCase();
+    if (property.providerId !== userId && userRole !== 'admin') {
+      if (userRole === 'agent') {
+        const access = await verifyAgentPropertyAccess(userId!, 'agent', id);
+        if (!access.authorized) {
+          return res.status(403).json({ error: access.error || 'Not authorized to edit property outside your assigned area' });
+        }
+      } else {
+        return res.status(403).json({ error: 'Not authorized to edit this property' });
+      }
     }
 
     const {
@@ -1078,6 +1099,23 @@ router.patch('/:id', authenticateToken, async (req: AuthRequest, res) => {
       amenities,
       availability,
     } = req.body;
+
+    // Prevent agent from moving property to a different city/area outside their assigned territory
+    if (userRole === 'agent') {
+      const agentUser = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { assignedArea: true, city: true },
+      });
+      const assignedArea = agentUser?.assignedArea || agentUser?.city || 'Addis Ababa';
+      if (city || area) {
+        const testProp = { ...property, ...(city && { city }), ...(area && { area }) };
+        if (!isPropertyInTerritory(testProp, assignedArea)) {
+          return res.status(403).json({
+            error: `Access Denied: You cannot move a property to a city or area outside your assigned territory (${assignedArea}).`,
+          });
+        }
+      }
+    }
 
     const oldPrice = property.price;
     const newPrice = price !== undefined ? Number(price) : oldPrice;
@@ -1168,8 +1206,16 @@ router.delete('/:id', authenticateToken, async (req: AuthRequest, res) => {
     const property = await prisma.property.findUnique({ where: { id } });
     if (!property) return res.status(404).json({ error: 'Property not found' });
 
-    if (property.providerId !== userId && req.user?.role !== 'admin') {
-      return res.status(403).json({ error: 'Not authorized to delete this property' });
+    const userRole = req.user?.role?.toLowerCase();
+    if (property.providerId !== userId && userRole !== 'admin') {
+      if (userRole === 'agent') {
+        const access = await verifyAgentPropertyAccess(userId!, 'agent', id);
+        if (!access.authorized) {
+          return res.status(403).json({ error: access.error || 'Not authorized to delete property outside your assigned area' });
+        }
+      } else {
+        return res.status(403).json({ error: 'Not authorized to delete this property' });
+      }
     }
 
     await prisma.property.delete({ where: { id } });
@@ -1189,8 +1235,16 @@ router.patch('/:id/availability', authenticateToken, async (req: AuthRequest, re
     const property = await prisma.property.findUnique({ where: { id } });
     if (!property) return res.status(404).json({ error: 'Property not found' });
 
-    if (property.providerId !== userId && req.user?.role !== 'admin') {
-      return res.status(403).json({ error: 'Unauthorized' });
+    const userRole = req.user?.role?.toLowerCase();
+    if (property.providerId !== userId && userRole !== 'admin') {
+      if (userRole === 'agent') {
+        const access = await verifyAgentPropertyAccess(userId!, 'agent', id);
+        if (!access.authorized) {
+          return res.status(403).json({ error: access.error || 'Unauthorized' });
+        }
+      } else {
+        return res.status(403).json({ error: 'Unauthorized' });
+      }
     }
 
     const newAvailability = Boolean(availability);
@@ -1217,6 +1271,13 @@ router.patch('/:id/status', authenticateToken, async (req: AuthRequest, res) => 
 
     if (userRole !== 'admin' && userRole !== 'agent') {
       return res.status(403).json({ error: 'Only Admins and Field Agents can review and approve property listings' });
+    }
+
+    if (userRole === 'agent') {
+      const access = await verifyAgentPropertyAccess(req.user!.id, 'agent', id);
+      if (!access.authorized) {
+        return res.status(403).json({ error: access.error || 'Not authorized to review property outside your assigned territory' });
+      }
     }
 
     const property = await prisma.property.findUnique({ where: { id } });
