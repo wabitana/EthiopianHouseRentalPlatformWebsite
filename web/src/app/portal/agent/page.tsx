@@ -269,28 +269,7 @@ export default function AgentDashboardPage() {
         </div>
       </div>
 
-      {/* Assisted Rural & Offline Services Banner */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-950/80 via-slate-800 to-emerald-950/80 border border-blue-500/40 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <span className="px-2.5 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[10px] font-extrabold uppercase border border-blue-500/30">
-              Rural & Non-Smartphone Services
-            </span>
-            <span className="text-xs text-emerald-400 font-bold">{stats.assistedTenantsCount} Citizens Assisted</span>
-          </div>
-          <h3 className="text-lg font-bold text-white">Assisted Rural Rental & Direct Matching Hub</h3>
-          <p className="text-xs text-slate-300 max-w-2xl">
-            Help citizens in rural areas without smartphones or internet access find homes, rent directly from verified landlords, collect cash/mobile payments, print lease contracts, and send SMS alerts to feature phones.
-          </p>
-        </div>
 
-        <Link
-          href="/portal/agent/assisted-rentals"
-          className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
-        >
-          Open Assisted Rural Hub <ArrowUpRight className="h-4 w-4" />
-        </Link>
-      </div>
 
       {/* Assigned Territory & Location Summary */}
       <div className="p-6 rounded-2xl bg-slate-800/90 border border-slate-700/80 shadow-xl space-y-3">

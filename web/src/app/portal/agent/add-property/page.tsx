@@ -87,13 +87,40 @@ export default function AgentAddPropertyWizardPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setTimeout(() => {
-      setIsSubmitting(false);
+    setErrorMessage(null);
+    try {
+      await apiFetch("/agent/properties", {
+        method: "POST",
+        body: {
+          title: formData.title || `${formData.propertyType} in ${formData.city}`,
+          description: formData.description || `Spacious ${formData.bedrooms} bedroom ${formData.propertyType} located in ${formData.city}.`,
+          propertyType: formData.propertyType,
+          price: Number(formData.priceETB),
+          rentalPeriod: formData.period === "month" ? "Monthly" : "Yearly",
+          rooms: Number(formData.bedrooms),
+          bathrooms: Number(formData.bathrooms),
+          city: formData.city,
+          area: formData.subCity || formData.city,
+          neighborhood: formData.woreda || formData.subCity || formData.city,
+          addressDetails: formData.address,
+          amenities: formData.amenities,
+          images: [
+            "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=600",
+            "https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=600",
+          ],
+        },
+      });
       setIsSubmitted(true);
-    }, 1200);
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to submit property listing");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const toggleAmenity = (amenity: string) => {
@@ -152,6 +179,12 @@ export default function AgentAddPropertyWizardPage() {
           </p>
         </div>
       </div>
+
+      {errorMessage && (
+        <div className="p-4 rounded-xl bg-red-950/80 border border-red-500/50 text-red-200 text-xs font-semibold shadow-lg">
+          ⚠️ {errorMessage}
+        </div>
+      )}
 
       {/* Progress Bar */}
       <div className="bg-slate-800/90 p-4 rounded-2xl border border-slate-700 shadow-xl">

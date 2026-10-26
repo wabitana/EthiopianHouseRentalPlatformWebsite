@@ -75,7 +75,7 @@ router.get('/admin/pending', authenticateToken, async (req: AuthRequest, res) =>
       return res.status(403).json({ error: 'Admin or Agent access required' });
     }
 
-    const data = await verificationService.getPendingVerifications();
+    const data = await verificationService.getPendingVerifications(req.user?.id, req.user?.role);
     return res.json(data);
   } catch (error) {
     return res.status(500).json({ error: 'Failed to fetch verification queue' });
@@ -97,11 +97,19 @@ router.patch('/identity/:id/review', authenticateToken, async (req: AuthRequest,
       return res.status(400).json({ error: 'Invalid or missing status. Must be VERIFIED, REJECTED, or UNDER_REVIEW.' });
     }
 
-    const updatedDoc = await verificationService.reviewIdentityDocument(id, status, adminNotes);
+    const updatedDoc = await verificationService.reviewIdentityDocument(
+      id,
+      status,
+      adminNotes,
+      req.user?.id,
+      req.user?.role
+    );
     return res.json({ success: true, document: updatedDoc });
   } catch (error: any) {
     console.error('Identity review error:', error);
-    return res.status(500).json({ error: error.message || 'Failed to review identity document' });
+    const msg = error.message || 'Failed to review identity document';
+    const statusCode = msg.includes('Access Denied') ? 403 : 500;
+    return res.status(statusCode).json({ error: msg });
   }
 });
 
@@ -120,11 +128,19 @@ router.patch('/property-license/:id/review', authenticateToken, async (req: Auth
       return res.status(400).json({ error: 'Invalid or missing status. Must be VERIFIED or REJECTED.' });
     }
 
-    const updatedDoc = await verificationService.reviewPropertyDocument(id, status, adminNotes);
+    const updatedDoc = await verificationService.reviewPropertyDocument(
+      id,
+      status,
+      adminNotes,
+      req.user?.id,
+      req.user?.role
+    );
     return res.json({ success: true, document: updatedDoc });
   } catch (error: any) {
     console.error('Property document review error:', error);
-    return res.status(500).json({ error: error.message || 'Failed to review property document' });
+    const msg = error.message || 'Failed to review property document';
+    const statusCode = msg.includes('Access Denied') ? 403 : 500;
+    return res.status(statusCode).json({ error: msg });
   }
 });
 
