@@ -14,6 +14,7 @@ export const getJwtSecret = (): string => {
   return process.env.JWT_SECRET || 'ethiopian_house_rental_super_secret_jwt_key_2026';
 };
 
+
 export const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
   const headerToken = authHeader && authHeader.split(' ')[1];
@@ -72,4 +73,5 @@ export const requireAdmin = requireRole('admin');
 export const requireAgent = requireRole('agent', 'admin');
 export const requireProvider = requireRole('provider', 'admin');
 export const requireSeeker = requireRole('seeker', 'admin');
+
 
