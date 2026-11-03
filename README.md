@@ -229,7 +229,11 @@ Contirubition
 <img width="719" height="619" alt="image" src="https://github.com/user-attachments/assets/d5034367-33e9-46ec-b20e-586f6aee653b" />
 
 
+Video Link: https://drive.google.com/file/d/1sgKxR_uIxZgHpeMrn2acWOY4qmjtEkRx/view?usp=drivesdk
 
+
+
+About the project : https://drive.google.com/file/d/1BalR7Ck1USr7grUrfzFVA5Tky2Gi5rQS/view?usp=sharing
 
 
 ## 📄 License
