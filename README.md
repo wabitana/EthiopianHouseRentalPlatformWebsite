@@ -235,6 +235,9 @@ Video Link: https://drive.google.com/file/d/1sgKxR_uIxZgHpeMrn2acWOY4qmjtEkRx/vi
 
 About the project : https://drive.google.com/file/d/1BalR7Ck1USr7grUrfzFVA5Tky2Gi5rQS/view?usp=sharing
 
+Deployed Website Link : https://ethiopian-house-rental-platform-web.vercel.app/
+
+You can download the application from this above website and install it onto your phone!
 
 ## 📄 License
 
